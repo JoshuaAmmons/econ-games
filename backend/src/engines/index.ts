@@ -13,6 +13,9 @@ import { NegativeExternalityEngine } from './simultaneous/NegativeExternalityEng
 import { UltimatumEngine } from './sequential/UltimatumEngine';
 import { GiftExchangeEngine } from './sequential/GiftExchangeEngine';
 import { PrincipalAgentEngine } from './sequential/PrincipalAgentEngine';
+import { ComparativeAdvantageEngine } from './specialized/ComparativeAdvantageEngine';
+import { MonopolyEngine } from './specialized/MonopolyEngine';
+import { MarketForLemonsEngine } from './specialized/MarketForLemonsEngine';
 
 // Register all available game engines
 GameRegistry.register(new DoubleAuctionEngine());
@@ -25,9 +28,9 @@ GameRegistry.register(new NegativeExternalityEngine());
 GameRegistry.register(new UltimatumEngine());
 GameRegistry.register(new GiftExchangeEngine());
 GameRegistry.register(new PrincipalAgentEngine());
-// GameRegistry.register(new ComparativeAdvantageEngine());
-// GameRegistry.register(new MonopolyEngine());
-// GameRegistry.register(new MarketForLemonsEngine());
+GameRegistry.register(new ComparativeAdvantageEngine());
+GameRegistry.register(new MonopolyEngine());
+GameRegistry.register(new MarketForLemonsEngine());
 
 export { GameRegistry } from './GameRegistry';
 export type { GameEngine, GameType, UIConfig } from './GameEngine';
