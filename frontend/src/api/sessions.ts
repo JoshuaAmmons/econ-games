@@ -1,5 +1,5 @@
 import apiClient from './client';
-import type { Session, CreateSessionData, Player, Round, ApiResponse } from '../types';
+import type { Session, CreateSessionData, Player, Round, GameTypeConfig, ApiResponse } from '../types';
 
 export const sessionsApi = {
   // Create new session
@@ -45,6 +45,12 @@ export const sessionsApi = {
   // Get rounds for session
   getRounds: async (id: string): Promise<Round[]> => {
     const response = await apiClient.get<ApiResponse<Round[]>>(`/sessions/${id}/rounds`);
+    return response.data.data!;
+  },
+
+  // Get available game types
+  getGameTypes: async (): Promise<GameTypeConfig[]> => {
+    const response = await apiClient.get<ApiResponse<GameTypeConfig[]>>('/game-types');
     return response.data.data!;
   },
 };

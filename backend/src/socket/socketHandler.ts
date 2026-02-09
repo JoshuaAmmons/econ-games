@@ -1,12 +1,9 @@
 import { Server as HTTPServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import { RoundModel } from '../models/Round';
-import { BidModel } from '../models/Bid';
-import { AskModel } from '../models/Ask';
 import { TradeModel } from '../models/Trade';
-import { PlayerModel } from '../models/Player';
 import { SessionModel } from '../models/Session';
-import { matchTrades, validateBid, validateAsk } from '../services/gameLogic';
+import { GameRegistry } from '../engines/GameRegistry';
 
 export function setupSocketHandlers(httpServer: HTTPServer) {
   const allowedOrigins = [
@@ -23,6 +20,19 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
       credentials: true,
     },
   });
+
+  // Cache session game types to avoid repeated DB lookups
+  const sessionGameTypeCache: Map<string, string> = new Map();
+
+  async function getSessionGameType(sessionCode: string): Promise<string> {
+    const cached = sessionGameTypeCache.get(sessionCode);
+    if (cached) return cached;
+
+    const session = await SessionModel.findByCode(sessionCode);
+    const gameType = session?.game_type || 'double_auction';
+    sessionGameTypeCache.set(sessionCode, gameType);
+    return gameType;
+  }
 
   io.on('connection', (socket: Socket) => {
     console.log('Client connected:', socket.id);
@@ -48,7 +58,40 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
       console.log(`Player ${playerId} joined market ${sessionCode}`);
     });
 
-    // Submit bid
+    // =========================================================================
+    // Generic game action handler — delegates to the appropriate engine
+    // =========================================================================
+    socket.on('submit-action', async (data: {
+      roundId: string;
+      playerId: string;
+      sessionCode: string;
+      action: Record<string, any>;
+    }) => {
+      try {
+        const { roundId, playerId, sessionCode, action } = data;
+        const gameType = await getSessionGameType(sessionCode);
+        const engine = GameRegistry.get(gameType);
+
+        const result = await engine.handleAction(roundId, playerId, action, sessionCode, io);
+
+        if (!result.success) {
+          socket.emit('error', { message: result.error });
+        }
+
+        if (result.reply) {
+          socket.emit(result.reply.event, result.reply.data);
+        }
+        // Broadcasts are handled inside the engine via io parameter
+
+      } catch (error) {
+        console.error('Error handling action:', error);
+        socket.emit('error', { message: 'Failed to process action' });
+      }
+    });
+
+    // =========================================================================
+    // Backward-compatible DA events — map to engine actions
+    // =========================================================================
     socket.on('submit-bid', async (data: {
       roundId: string;
       playerId: string;
@@ -57,41 +100,26 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
     }) => {
       try {
         const { roundId, playerId, price, sessionCode } = data;
+        const gameType = await getSessionGameType(sessionCode);
+        const engine = GameRegistry.get(gameType);
 
-        // Get player
-        const player = await PlayerModel.findById(playerId);
-        if (!player) throw new Error('Player not found');
+        const result = await engine.handleAction(
+          roundId,
+          playerId,
+          { type: 'bid', price },
+          sessionCode,
+          io
+        );
 
-        // Validate bid
-        const validation = validateBid(price, player);
-        if (!validation.valid) {
-          socket.emit('error', { message: validation.error });
-          return;
+        if (!result.success) {
+          socket.emit('error', { message: result.error });
         }
-
-        // Create bid
-        const bid = await BidModel.create(roundId, playerId, price);
-
-        // Broadcast to market
-        io.to(`market-${sessionCode}`).emit('bid-submitted', {
-          bid,
-          player: {
-            id: player.id,
-            name: player.name,
-            is_bot: player.is_bot,
-          },
-        });
-
-        // Check for matches
-        await checkAndExecuteTrades(roundId, sessionCode, io);
-
       } catch (error) {
         console.error('Error submitting bid:', error);
         socket.emit('error', { message: 'Failed to submit bid' });
       }
     });
 
-    // Submit ask
     socket.on('submit-ask', async (data: {
       roundId: string;
       playerId: string;
@@ -100,39 +128,29 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
     }) => {
       try {
         const { roundId, playerId, price, sessionCode } = data;
+        const gameType = await getSessionGameType(sessionCode);
+        const engine = GameRegistry.get(gameType);
 
-        // Get player
-        const player = await PlayerModel.findById(playerId);
-        if (!player) throw new Error('Player not found');
+        const result = await engine.handleAction(
+          roundId,
+          playerId,
+          { type: 'ask', price },
+          sessionCode,
+          io
+        );
 
-        // Validate ask
-        const validation = validateAsk(price, player);
-        if (!validation.valid) {
-          socket.emit('error', { message: validation.error });
-          return;
+        if (!result.success) {
+          socket.emit('error', { message: result.error });
         }
-
-        // Create ask
-        const ask = await AskModel.create(roundId, playerId, price);
-
-        // Broadcast to market
-        io.to(`market-${sessionCode}`).emit('ask-submitted', {
-          ask,
-          player: {
-            id: player.id,
-            name: player.name,
-            is_bot: player.is_bot,
-          },
-        });
-
-        // Check for matches
-        await checkAndExecuteTrades(roundId, sessionCode, io);
-
       } catch (error) {
         console.error('Error submitting ask:', error);
         socket.emit('error', { message: 'Failed to submit ask' });
       }
     });
+
+    // =========================================================================
+    // Round management — works for all game types
+    // =========================================================================
 
     // Start round (admin only)
     socket.on('start-round', async (data: { sessionCode: string; roundNumber: number }) => {
@@ -170,20 +188,26 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
       try {
         const { sessionCode, roundId } = data;
 
-        await RoundModel.end(roundId);
-        await BidModel.deactivateAllForRound(roundId);
-        await AskModel.deactivateAllForRound(roundId);
+        // Let the engine process end-of-round logic
+        const gameType = await getSessionGameType(sessionCode);
+        const engine = GameRegistry.get(gameType);
 
+        await RoundModel.end(roundId);
+        const roundResult = await engine.processRoundEnd(roundId, sessionCode, io);
+
+        // Get trades for DA games (backward compat)
         const trades = await TradeModel.findByRound(roundId);
 
         io.to(`session-${sessionCode}`).emit('round-ended', {
           roundId,
           trades,
+          results: roundResult,
         });
 
         io.to(`market-${sessionCode}`).emit('round-ended', {
           roundId,
           trades,
+          results: roundResult,
         });
 
         console.log(`Round ended for session ${sessionCode}`);
@@ -200,73 +224,30 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
       });
     });
 
+    // Get game state (for reconnection/page load)
+    socket.on('get-game-state', async (data: {
+      sessionCode: string;
+      roundId: string;
+      playerId: string;
+    }) => {
+      try {
+        const { sessionCode, roundId, playerId } = data;
+        const gameType = await getSessionGameType(sessionCode);
+        const engine = GameRegistry.get(gameType);
+
+        const state = await engine.getGameState(roundId, playerId);
+        socket.emit('game-state', state);
+      } catch (error) {
+        console.error('Error getting game state:', error);
+        socket.emit('error', { message: 'Failed to get game state' });
+      }
+    });
+
     // Disconnect
     socket.on('disconnect', () => {
       console.log('Client disconnected:', socket.id);
     });
   });
-
-  // Helper function to check and execute trades
-  async function checkAndExecuteTrades(roundId: string, sessionCode: string, ioServer: Server) {
-    try {
-      // Get active bids and asks
-      const bids = await BidModel.findActiveByRound(roundId);
-      const asks = await AskModel.findActiveByRound(roundId);
-
-      // Get players for each bid/ask
-      const bidsWithPlayers = await Promise.all(
-        bids.map(async (bid) => ({
-          ...bid,
-          player: await PlayerModel.findById(bid.player_id),
-        }))
-      );
-
-      const asksWithPlayers = await Promise.all(
-        asks.map(async (ask) => ({
-          ...ask,
-          player: await PlayerModel.findById(ask.player_id),
-        }))
-      );
-
-      // Filter out any with missing players and match trades
-      const validBids = bidsWithPlayers.filter(b => b.player !== null) as any[];
-      const validAsks = asksWithPlayers.filter(a => a.player !== null) as any[];
-
-      const matches = matchTrades(validBids, validAsks);
-
-      // Execute trades
-      for (const match of matches) {
-        // Create trade record
-        const trade = await TradeModel.create(
-          roundId,
-          match.bid.player_id,
-          match.ask.player_id,
-          match.price,
-          match.buyerProfit,
-          match.sellerProfit,
-          match.bid.id,
-          match.ask.id
-        );
-
-        // Mark bid and ask as inactive
-        await BidModel.markInactive(match.bid.id);
-        await AskModel.markInactive(match.ask.id);
-
-        // Update player profits
-        await PlayerModel.updateProfit(match.bid.player_id, match.buyerProfit);
-        await PlayerModel.updateProfit(match.ask.player_id, match.sellerProfit);
-
-        // Broadcast trade
-        ioServer.to(`market-${sessionCode}`).emit('trade-executed', {
-          trade,
-          buyer: match.bid.player,
-          seller: match.ask.player,
-        });
-      }
-    } catch (error) {
-      console.error('Error checking trades:', error);
-    }
-  }
 
   return io;
 }

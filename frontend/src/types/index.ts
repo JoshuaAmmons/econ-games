@@ -3,6 +3,8 @@ export interface Session {
   id: string;
   code: string;
   status: 'waiting' | 'active' | 'completed' | 'cancelled';
+  game_type: string;
+  game_config: Record<string, any>;
   market_size: number;
   num_rounds: number;
   time_per_round: number;
@@ -20,6 +22,8 @@ export interface Session {
 }
 
 export interface CreateSessionData {
+  game_type?: string;
+  game_config?: Record<string, any>;
   market_size: number;
   num_rounds: number;
   time_per_round: number;
@@ -37,12 +41,13 @@ export interface Player {
   id: string;
   session_id: string;
   name?: string;
-  role: 'buyer' | 'seller';
+  role: string;
   valuation?: number;
   production_cost?: number;
   total_profit: number;
   is_bot: boolean;
   is_active: boolean;
+  game_data?: Record<string, any>;
   created_at: string;
 }
 
@@ -87,6 +92,52 @@ export interface Trade {
   buyer_profit: number;
   seller_profit: number;
   created_at: string;
+}
+
+// Game Action types (for non-DA games)
+export interface GameAction {
+  id: string;
+  round_id: string;
+  player_id: string;
+  action_type: string;
+  action_data: Record<string, any>;
+  created_at: string;
+}
+
+// Game Result types (for non-DA games)
+export interface GameResult {
+  id: string;
+  round_id: string;
+  player_id: string;
+  result_data: Record<string, any>;
+  profit: number;
+  created_at: string;
+}
+
+// Game Type UI Config (from backend engine registry)
+export interface GameTypeConfig {
+  gameType: string;
+  config: {
+    name: string;
+    description: string;
+    category: 'continuous_trading' | 'simultaneous' | 'sequential' | 'specialized';
+    roles: Array<{ role: string; label: string; description: string }>;
+    usesOrderBook: boolean;
+    usesValuationCost: boolean;
+    configFields: Array<{
+      name: string;
+      label: string;
+      type: 'number' | 'select' | 'checkbox';
+      default: any;
+      min?: number;
+      max?: number;
+      step?: number;
+      options?: Array<{ value: string; label: string }>;
+      description?: string;
+      daOnly?: boolean;
+    }>;
+    weekNumber: number;
+  };
 }
 
 // API response types
