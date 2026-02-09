@@ -91,6 +91,14 @@ export function useSocket(sessionCode: string, playerId: string) {
     });
   }, [sessionCode]);
 
+  const requestGameState = useCallback((roundId: string) => {
+    socketRef.current?.emit('get-game-state', {
+      sessionCode,
+      roundId,
+      playerId,
+    });
+  }, [playerId, sessionCode]);
+
   const onEvent = useCallback((event: string, callback: (...args: any[]) => void) => {
     const socket = socketRef.current;
     if (!socket) return () => {};
@@ -110,6 +118,7 @@ export function useSocket(sessionCode: string, playerId: string) {
     startRound,
     endRound,
     sendTimerUpdate,
+    requestGameState,
     onEvent,
   };
 }

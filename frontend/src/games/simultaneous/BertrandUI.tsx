@@ -58,6 +58,15 @@ const BertrandUI: React.FC<GameUIProps> = ({
   useEffect(() => {
     const cleanups: (() => void)[] = [];
 
+    // Recover game state on reconnect
+    cleanups.push(onEvent('game-state', (state: any) => {
+      if (state.myAction) setSubmitted(true);
+      if (state.submitted !== undefined && state.total !== undefined) {
+        setWaitingCount({ submitted: state.submitted, total: state.total });
+      }
+      if (state.results) setResults(state.results);
+    }));
+
     cleanups.push(onEvent('action-submitted', (data: { submitted: number; total: number }) => {
       setWaitingCount({ submitted: data.submitted, total: data.total });
     }));
