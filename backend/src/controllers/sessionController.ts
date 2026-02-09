@@ -172,6 +172,66 @@ export class SessionController {
     }
   }
 
+  // Get players for session
+  static async getPlayers(req: Request, res: Response) {
+    try {
+      const id = req.params.id as string;
+
+      const session = await SessionModel.findById(id);
+      if (!session) {
+        res.status(404).json({
+          success: false,
+          error: 'Session not found'
+        } as ApiResponse);
+        return;
+      }
+
+      const players = await PlayerModel.findBySession(session.id);
+
+      res.json({
+        success: true,
+        data: players
+      } as ApiResponse);
+
+    } catch (error) {
+      console.error('Error getting players:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get players'
+      } as ApiResponse);
+    }
+  }
+
+  // Get rounds for session
+  static async getRounds(req: Request, res: Response) {
+    try {
+      const id = req.params.id as string;
+
+      const session = await SessionModel.findById(id);
+      if (!session) {
+        res.status(404).json({
+          success: false,
+          error: 'Session not found'
+        } as ApiResponse);
+        return;
+      }
+
+      const rounds = await RoundModel.findBySession(session.id);
+
+      res.json({
+        success: true,
+        data: rounds
+      } as ApiResponse);
+
+    } catch (error) {
+      console.error('Error getting rounds:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get rounds'
+      } as ApiResponse);
+    }
+  }
+
   // End session
   static async end(req: Request, res: Response) {
     try {

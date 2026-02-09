@@ -8,8 +8,14 @@ export function useSocket(sessionCode: string, playerId: string) {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
+    if (!sessionCode || !playerId) return;
+
     const socket = io(WS_URL, {
       transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
 
     socketRef.current = socket;
@@ -23,6 +29,12 @@ export function useSocket(sessionCode: string, playerId: string) {
 
     socket.on('disconnect', () => {
       setConnected(false);
+    });
+
+    socket.on('reconnect', () => {
+      // Re-join rooms on reconnect
+      socket.emit('join-session', { sessionCode, playerId });
+      socket.emit('join-market', { sessionCode, playerId });
     });
 
     return () => {
@@ -49,18 +61,45 @@ export function useSocket(sessionCode: string, playerId: string) {
     });
   }, [playerId, sessionCode]);
 
+  const startRound = useCallback((roundNumber: number) => {
+    socketRef.current?.emit('start-round', {
+      sessionCode,
+      roundNumber,
+    });
+  }, [sessionCode]);
+
+  const endRound = useCallback((roundId: string) => {
+    socketRef.current?.emit('end-round', {
+      sessionCode,
+      roundId,
+    });
+  }, [sessionCode]);
+
+  const sendTimerUpdate = useCallback((secondsRemaining: number) => {
+    socketRef.current?.emit('timer-update', {
+      sessionCode,
+      secondsRemaining,
+    });
+  }, [sessionCode]);
+
   const onEvent = useCallback((event: string, callback: (...args: any[]) => void) => {
-    socketRef.current?.on(event, callback);
+    const socket = socketRef.current;
+    if (!socket) return () => {};
+
+    socket.on(event, callback);
     return () => {
-      socketRef.current?.off(event, callback);
+      socket.off(event, callback);
     };
-  }, []);
+  }, [connected]); // re-create when connection state changes
 
   return {
     socket: socketRef.current,
     connected,
     submitBid,
     submitAsk,
+    startRound,
+    endRound,
+    sendTimerUpdate,
     onEvent,
   };
 }

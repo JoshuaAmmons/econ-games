@@ -1,30 +1,135 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '../components/shared/Card';
 import { Button } from '../components/shared/Button';
+import { Timer } from '../components/shared/Timer';
 import { Spinner } from '../components/shared/Spinner';
 import { sessionsApi } from '../api/sessions';
-import type { Session } from '../types';
-import { ArrowLeft, Play, Square, Users } from 'lucide-react';
+import { useSocket } from '../hooks/useSocket';
+import type { Session, Player, Round } from '../types';
+import { ArrowLeft, Play, Square, Users, Copy, Check, SkipForward, Clock } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export const SessionMonitor: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
 
   const [session, setSession] = useState<Session | null>(null);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [rounds, setRounds] = useState<Round[]>([]);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const [currentRound, setCurrentRound] = useState<Round | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Use socket for admin controls — use 'admin' as playerId since this is the monitor
+  const { connected, startRound, endRound, sendTimerUpdate, onEvent } = useSocket(code || '', 'admin');
 
   useEffect(() => {
     loadSession();
-    const interval = setInterval(loadSession, 3000);
+    const interval = setInterval(loadSession, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Listen for socket events
+  useEffect(() => {
+    if (!connected) return;
+
+    const cleanups: (() => void)[] = [];
+
+    cleanups.push(onEvent('round-started', (data: { round: { id: string }; roundNumber: number }) => {
+      loadSession();
+      toast.success(`Round ${data.roundNumber} started!`);
+    }));
+
+    cleanups.push(onEvent('round-ended', () => {
+      loadSession();
+      toast('Round ended!', { icon: '🏁' });
+    }));
+
+    cleanups.push(onEvent('player-joined', () => {
+      loadSession();
+    }));
+
+    cleanups.push(onEvent('trade-executed', () => {
+      // Refresh players to see updated profits
+      if (session) {
+        sessionsApi.getPlayers(session.id).then(setPlayers).catch(console.error);
+      }
+    }));
+
+    return () => {
+      cleanups.forEach(fn => fn());
+    };
+  }, [connected, onEvent, session?.id]);
+
+  // Timer countdown effect
+  useEffect(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+
+    if (currentRound && currentRound.status === 'active' && timeRemaining > 0) {
+      timerIntervalRef.current = setInterval(() => {
+        setTimeRemaining(prev => {
+          const next = prev - 1;
+          // Broadcast timer to players every 5 seconds
+          if (next > 0 && next % 5 === 0) {
+            sendTimerUpdate(next);
+          }
+          if (next <= 0) {
+            if (timerIntervalRef.current) {
+              clearInterval(timerIntervalRef.current);
+              timerIntervalRef.current = null;
+            }
+            // Auto-end round when timer expires
+            handleEndRound();
+            return 0;
+          }
+          return next;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
+  }, [currentRound?.id, currentRound?.status]);
 
   const loadSession = async () => {
     try {
       if (!code) return;
       const data = await sessionsApi.getByCode(code);
       setSession(data);
+
+      // Load players and rounds
+      const [playerData, roundData] = await Promise.all([
+        sessionsApi.getPlayers(data.id),
+        sessionsApi.getRounds(data.id),
+      ]);
+      setPlayers(playerData);
+      setRounds(roundData);
+
+      // Find the current active round
+      const activeRound = roundData.find(r => r.status === 'active');
+      if (activeRound && (!currentRound || currentRound.id !== activeRound.id)) {
+        setCurrentRound(activeRound);
+        // Set timer based on session config
+        if (activeRound.started_at) {
+          const elapsed = Math.floor((Date.now() - new Date(activeRound.started_at).getTime()) / 1000);
+          const remaining = Math.max(0, data.time_per_round - elapsed);
+          setTimeRemaining(remaining);
+        } else {
+          setTimeRemaining(data.time_per_round);
+        }
+      } else if (!activeRound) {
+        setCurrentRound(null);
+      }
     } catch (error) {
       console.error('Failed to load session:', error);
     } finally {
@@ -36,9 +141,15 @@ export const SessionMonitor: React.FC = () => {
     if (!session) return;
     try {
       await sessionsApi.start(session.id);
+      toast.success('Session started!');
+      // The session start also starts round 1, so set timer
+      setTimeRemaining(session.time_per_round);
+      // Send initial timer to players
+      sendTimerUpdate(session.time_per_round);
       loadSession();
     } catch (error) {
       console.error('Failed to start session:', error);
+      toast.error('Failed to start session');
     }
   };
 
@@ -46,9 +157,48 @@ export const SessionMonitor: React.FC = () => {
     if (!session) return;
     try {
       await sessionsApi.end(session.id);
+      toast.success('Session ended!');
       loadSession();
     } catch (error) {
       console.error('Failed to end session:', error);
+      toast.error('Failed to end session');
+    }
+  };
+
+  const handleStartRound = useCallback((roundNumber: number) => {
+    if (!session) return;
+    startRound(roundNumber);
+    setTimeRemaining(session.time_per_round);
+    sendTimerUpdate(session.time_per_round);
+  }, [session, startRound, sendTimerUpdate]);
+
+  const handleEndRound = useCallback(() => {
+    if (!currentRound) return;
+    endRound(currentRound.id);
+    setTimeRemaining(0);
+  }, [currentRound, endRound]);
+
+  const handleNextRound = useCallback(() => {
+    if (!session || !rounds.length) return;
+    // Find the next waiting round
+    const nextRound = rounds.find(r => r.status === 'waiting');
+    if (nextRound) {
+      handleStartRound(nextRound.round_number);
+    } else {
+      toast('No more rounds available!', { icon: '⚠️' });
+    }
+  }, [session, rounds, handleStartRound]);
+
+  const copyCode = async () => {
+    if (!session) return;
+    try {
+      await navigator.clipboard.writeText(session.code);
+      setCopied(true);
+      toast.success('Code copied to clipboard!');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for browsers that don't support clipboard API
+      toast.error('Failed to copy — manually select the code');
     }
   };
 
@@ -82,6 +232,10 @@ export const SessionMonitor: React.FC = () => {
     }
   };
 
+  const buyers = players.filter(p => p.role === 'buyer');
+  const sellers = players.filter(p => p.role === 'seller');
+  const completedRounds = rounds.filter(r => r.status === 'completed').length;
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
@@ -99,21 +253,44 @@ export const SessionMonitor: React.FC = () => {
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(session.status)}`}>
                   {session.status}
                 </span>
+                {connected && (
+                  <span className="px-2 py-1 rounded bg-green-100 text-green-700 text-xs font-medium">
+                    WebSocket Connected
+                  </span>
+                )}
               </div>
               <div className="flex gap-6 text-sm text-gray-600">
                 <span className="flex items-center gap-1">
                   <Users className="w-4 h-4" />
-                  Market size: {session.market_size}
+                  {players.length} / {session.market_size} players
                 </span>
                 <span>Round {session.current_round} / {session.num_rounds}</span>
-                <span>{session.time_per_round}s per round</span>
+                <span className="flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  {session.time_per_round}s per round
+                </span>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              {currentRound && timeRemaining > 0 && (
+                <Timer seconds={timeRemaining} />
+              )}
               {session.status === 'waiting' && (
                 <Button onClick={handleStart}>
                   <Play className="w-4 h-4 inline mr-2" />
                   Start Session
+                </Button>
+              )}
+              {session.status === 'active' && !currentRound && (
+                <Button onClick={handleNextRound}>
+                  <SkipForward className="w-4 h-4 inline mr-2" />
+                  Start Next Round
+                </Button>
+              )}
+              {session.status === 'active' && currentRound && (
+                <Button variant="danger" onClick={handleEndRound}>
+                  <Square className="w-4 h-4 inline mr-2" />
+                  End Round
                 </Button>
               )}
               {session.status === 'active' && (
@@ -126,8 +303,32 @@ export const SessionMonitor: React.FC = () => {
           </div>
         </Card>
 
-        {/* Session Config */}
+        {/* Share Code (only when waiting) */}
+        {session.status === 'waiting' && (
+          <Card className="text-center mb-6">
+            <p className="text-gray-600 mb-2">Share this code with students to join:</p>
+            <div className="flex items-center justify-center gap-3">
+              <p className="text-5xl font-mono font-bold text-sky-600 tracking-widest">{session.code}</p>
+              <button
+                onClick={copyCode}
+                className="p-2 rounded hover:bg-gray-100 transition-colors"
+                title="Copy code to clipboard"
+              >
+                {copied ? (
+                  <Check className="w-6 h-6 text-green-600" />
+                ) : (
+                  <Copy className="w-6 h-6 text-gray-400" />
+                )}
+              </button>
+            </div>
+            <p className="text-sm text-gray-400 mt-2">
+              Students can join at the home page by clicking &quot;Join Session as Student&quot;
+            </p>
+          </Card>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          {/* Session Config */}
           <Card title="Buyer Valuations">
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
@@ -163,16 +364,83 @@ export const SessionMonitor: React.FC = () => {
           </Card>
         </div>
 
-        {/* Share Code */}
-        {session.status === 'waiting' && (
-          <Card className="text-center">
-            <p className="text-gray-600 mb-2">Share this code with students to join:</p>
-            <p className="text-5xl font-mono font-bold text-sky-600 tracking-widest">{session.code}</p>
-            <p className="text-sm text-gray-400 mt-2">
-              Students can join at the home page by clicking "Join Session as Student"
-            </p>
+        {/* Round Progress */}
+        {session.status !== 'waiting' && (
+          <Card title="Round Progress" className="mb-6">
+            <div className="flex gap-2 flex-wrap">
+              {rounds.map(round => (
+                <div
+                  key={round.id}
+                  className={`px-3 py-2 rounded text-sm font-medium ${
+                    round.status === 'completed'
+                      ? 'bg-green-100 text-green-800'
+                      : round.status === 'active'
+                        ? 'bg-sky-100 text-sky-800 ring-2 ring-sky-400'
+                        : 'bg-gray-100 text-gray-500'
+                  }`}
+                >
+                  Round {round.round_number}
+                  {round.status === 'active' && ' (Active)'}
+                  {round.status === 'completed' && ' ✓'}
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 text-sm text-gray-500">
+              {completedRounds} of {session.num_rounds} rounds completed
+            </div>
           </Card>
         )}
+
+        {/* Players */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card title={`Buyers (${buyers.length})`}>
+            {buyers.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-4">No buyers yet</p>
+            ) : (
+              <div className="space-y-2">
+                {buyers.map(player => (
+                  <div key={player.id} className="flex justify-between items-center bg-green-50 px-3 py-2 rounded">
+                    <div>
+                      <span className="font-medium">{player.name || 'Anonymous'}</span>
+                      <span className="text-xs text-gray-500 ml-2">
+                        Valuation: ${player.valuation}
+                      </span>
+                    </div>
+                    <span className={`font-mono font-medium ${
+                      player.total_profit >= 0 ? 'text-green-700' : 'text-red-700'
+                    }`}>
+                      ${player.total_profit.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card title={`Sellers (${sellers.length})`}>
+            {sellers.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-4">No sellers yet</p>
+            ) : (
+              <div className="space-y-2">
+                {sellers.map(player => (
+                  <div key={player.id} className="flex justify-between items-center bg-red-50 px-3 py-2 rounded">
+                    <div>
+                      <span className="font-medium">{player.name || 'Anonymous'}</span>
+                      <span className="text-xs text-gray-500 ml-2">
+                        Cost: ${player.production_cost}
+                      </span>
+                    </div>
+                    <span className={`font-mono font-medium ${
+                      player.total_profit >= 0 ? 'text-green-700' : 'text-red-700'
+                    }`}>
+                      ${player.total_profit.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
       </div>
     </div>
   );

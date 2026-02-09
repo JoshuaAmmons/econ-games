@@ -1,5 +1,5 @@
 import apiClient from './client';
-import type { Session, CreateSessionData, ApiResponse } from '../types';
+import type { Session, CreateSessionData, Player, Round, ApiResponse } from '../types';
 
 export const sessionsApi = {
   // Create new session
@@ -34,5 +34,17 @@ export const sessionsApi = {
   // End session
   end: async (id: string): Promise<void> => {
     await apiClient.post(`/sessions/${id}/end`);
+  },
+
+  // Get players for session
+  getPlayers: async (id: string): Promise<Player[]> => {
+    const response = await apiClient.get<ApiResponse<Player[]>>(`/sessions/${id}/players`);
+    return response.data.data!;
+  },
+
+  // Get rounds for session
+  getRounds: async (id: string): Promise<Round[]> => {
+    const response = await apiClient.get<ApiResponse<Round[]>>(`/sessions/${id}/rounds`);
+    return response.data.data!;
   },
 };

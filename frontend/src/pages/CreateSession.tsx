@@ -6,6 +6,7 @@ import { Card } from '../components/shared/Card';
 import { sessionsApi } from '../api/sessions';
 import type { CreateSessionData } from '../types';
 import { ArrowLeft } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export const CreateSession: React.FC = () => {
   const navigate = useNavigate();
@@ -29,11 +30,11 @@ export const CreateSession: React.FC = () => {
 
     try {
       const session = await sessionsApi.create(formData);
-      alert(`Session created! Code: ${session.code}`);
-      navigate('/admin');
+      toast.success(`Session created! Code: ${session.code}`);
+      navigate(`/session/${session.code}/monitor`);
     } catch (error) {
       console.error('Failed to create session:', error);
-      alert('Failed to create session');
+      toast.error('Failed to create session');
     } finally {
       setLoading(false);
     }
