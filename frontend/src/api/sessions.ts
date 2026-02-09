@@ -53,4 +53,16 @@ export const sessionsApi = {
     const response = await apiClient.get<ApiResponse<GameTypeConfig[]>>('/game-types');
     return response.data.data!;
   },
+
+  // Get comprehensive results for a session
+  getResults: async (id: string): Promise<any> => {
+    const response = await apiClient.get<ApiResponse<any>>(`/sessions/${id}/results`);
+    return response.data.data!;
+  },
+
+  // Get CSV export URL
+  getExportUrl: (id: string, type: string): string => {
+    const baseUrl = apiClient.defaults.baseURL || '';
+    return `${baseUrl}/sessions/${id}/export?type=${type}`;
+  },
 };

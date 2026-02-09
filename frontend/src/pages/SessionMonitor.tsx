@@ -7,8 +7,26 @@ import { Spinner } from '../components/shared/Spinner';
 import { sessionsApi } from '../api/sessions';
 import { useSocket } from '../hooks/useSocket';
 import type { Session, Player, Round } from '../types';
-import { ArrowLeft, Play, Square, Users, Copy, Check, SkipForward, Clock } from 'lucide-react';
+import { ArrowLeft, Play, Square, Users, Copy, Check, SkipForward, Clock, BarChart3 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+const DA_GAME_TYPES = ['double_auction', 'double_auction_tax', 'double_auction_price_controls'];
+
+const GAME_TYPE_LABELS: Record<string, string> = {
+  double_auction: 'Double Auction',
+  double_auction_tax: 'DA + Tax/Subsidy',
+  double_auction_price_controls: 'DA + Price Controls',
+  bertrand: 'Bertrand Competition',
+  cournot: 'Cournot Competition',
+  public_goods: 'Public Goods',
+  negative_externality: 'Negative Externality',
+  ultimatum: 'Ultimatum Game',
+  gift_exchange: 'Gift Exchange',
+  principal_agent: 'Principal-Agent',
+  comparative_advantage: 'Comparative Advantage',
+  monopoly: 'Monopoly',
+  market_for_lemons: 'Market for Lemons',
+};
 
 export const SessionMonitor: React.FC = () => {
   const { code } = useParams<{ code: string }>();
@@ -232,9 +250,16 @@ export const SessionMonitor: React.FC = () => {
     }
   };
 
-  const buyers = players.filter(p => p.role === 'buyer');
-  const sellers = players.filter(p => p.role === 'seller');
+  const isDA = DA_GAME_TYPES.includes(session.game_type);
   const completedRounds = rounds.filter(r => r.status === 'completed').length;
+
+  // Group players by role (generic for all game types)
+  const roleGroups = new Map<string, Player[]>();
+  for (const p of players) {
+    const role = p.role || 'player';
+    if (!roleGroups.has(role)) roleGroups.set(role, []);
+    roleGroups.get(role)!.push(p);
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -252,6 +277,9 @@ export const SessionMonitor: React.FC = () => {
                 <h1 className="text-3xl font-mono font-bold">{session.code}</h1>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(session.status)}`}>
                   {session.status}
+                </span>
+                <span className="px-2 py-1 rounded bg-sky-100 text-sky-700 text-xs font-medium">
+                  {GAME_TYPE_LABELS[session.game_type] || session.game_type}
                 </span>
                 {connected && (
                   <span className="px-2 py-1 rounded bg-green-100 text-green-700 text-xs font-medium">
@@ -275,6 +303,10 @@ export const SessionMonitor: React.FC = () => {
               {currentRound && timeRemaining > 0 && (
                 <Timer seconds={timeRemaining} />
               )}
+              <Button variant="secondary" onClick={() => navigate(`/session/${code}/results`)}>
+                <BarChart3 className="w-4 h-4 inline mr-2" />
+                Results
+              </Button>
               {session.status === 'waiting' && (
                 <Button onClick={handleStart}>
                   <Play className="w-4 h-4 inline mr-2" />
@@ -327,42 +359,60 @@ export const SessionMonitor: React.FC = () => {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {/* Session Config */}
-          <Card title="Buyer Valuations">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-sm text-gray-500">Min</p>
-                <p className="text-xl font-bold">${session.valuation_min}</p>
+        {/* Game Config - DA-specific valuations/costs */}
+        {isDA && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <Card title="Buyer Valuations">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <p className="text-sm text-gray-500">Min</p>
+                  <p className="text-xl font-bold">${session.valuation_min}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Max</p>
+                  <p className="text-xl font-bold">${session.valuation_max}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Increment</p>
+                  <p className="text-xl font-bold">${session.valuation_increments}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-500">Max</p>
-                <p className="text-xl font-bold">${session.valuation_max}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Increment</p>
-                <p className="text-xl font-bold">${session.valuation_increments}</p>
-              </div>
-            </div>
-          </Card>
+            </Card>
 
-          <Card title="Seller Costs">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-sm text-gray-500">Min</p>
-                <p className="text-xl font-bold">${session.cost_min}</p>
+            <Card title="Seller Costs">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <p className="text-sm text-gray-500">Min</p>
+                  <p className="text-xl font-bold">${session.cost_min}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Max</p>
+                  <p className="text-xl font-bold">${session.cost_max}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Increment</p>
+                  <p className="text-xl font-bold">${session.cost_increments}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-500">Max</p>
-                <p className="text-xl font-bold">${session.cost_max}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Increment</p>
-                <p className="text-xl font-bold">${session.cost_increments}</p>
-              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Game Config - non-DA game config display */}
+        {!isDA && session.game_config && Object.keys(session.game_config).length > 0 && (
+          <Card title="Game Configuration" className="mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {Object.entries(session.game_config).map(([key, value]) => (
+                <div key={key} className="text-center bg-gray-50 rounded p-3">
+                  <p className="text-xs text-gray-500 mb-1">
+                    {key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}
+                  </p>
+                  <p className="text-lg font-bold">{typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value}</p>
+                </div>
+              ))}
             </div>
           </Card>
-        </div>
+        )}
 
         {/* Round Progress */}
         {session.status !== 'waiting' && (
@@ -391,55 +441,43 @@ export const SessionMonitor: React.FC = () => {
           </Card>
         )}
 
-        {/* Players */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card title={`Buyers (${buyers.length})`}>
-            {buyers.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-4">No buyers yet</p>
-            ) : (
-              <div className="space-y-2">
-                {buyers.map(player => (
-                  <div key={player.id} className="flex justify-between items-center bg-green-50 px-3 py-2 rounded">
-                    <div>
-                      <span className="font-medium">{player.name || 'Anonymous'}</span>
-                      <span className="text-xs text-gray-500 ml-2">
-                        Valuation: ${player.valuation}
+        {/* Players - grouped by role */}
+        <div className={`grid grid-cols-1 ${roleGroups.size > 1 ? 'md:grid-cols-2' : ''} gap-6`}>
+          {Array.from(roleGroups.entries()).map(([role, rolePlayers]) => (
+            <Card key={role} title={`${role.charAt(0).toUpperCase() + role.slice(1)}s (${rolePlayers.length})`}>
+              {rolePlayers.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">None yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {rolePlayers
+                    .sort((a, b) => b.total_profit - a.total_profit)
+                    .map(player => (
+                    <div key={player.id} className="flex justify-between items-center bg-gray-50 px-3 py-2 rounded">
+                      <div>
+                        <span className="font-medium">{player.name || 'Anonymous'}</span>
+                        {player.is_bot && <span className="ml-1 text-xs text-gray-400">(Bot)</span>}
+                        {player.valuation != null && (
+                          <span className="text-xs text-gray-500 ml-2">
+                            Val: ${player.valuation}
+                          </span>
+                        )}
+                        {player.production_cost != null && (
+                          <span className="text-xs text-gray-500 ml-2">
+                            Cost: ${player.production_cost}
+                          </span>
+                        )}
+                      </div>
+                      <span className={`font-mono font-medium ${
+                        player.total_profit >= 0 ? 'text-green-700' : 'text-red-700'
+                      }`}>
+                        ${player.total_profit.toFixed(2)}
                       </span>
                     </div>
-                    <span className={`font-mono font-medium ${
-                      player.total_profit >= 0 ? 'text-green-700' : 'text-red-700'
-                    }`}>
-                      ${player.total_profit.toFixed(2)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          <Card title={`Sellers (${sellers.length})`}>
-            {sellers.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-4">No sellers yet</p>
-            ) : (
-              <div className="space-y-2">
-                {sellers.map(player => (
-                  <div key={player.id} className="flex justify-between items-center bg-red-50 px-3 py-2 rounded">
-                    <div>
-                      <span className="font-medium">{player.name || 'Anonymous'}</span>
-                      <span className="text-xs text-gray-500 ml-2">
-                        Cost: ${player.production_cost}
-                      </span>
-                    </div>
-                    <span className={`font-mono font-medium ${
-                      player.total_profit >= 0 ? 'text-green-700' : 'text-red-700'
-                    }`}>
-                      ${player.total_profit.toFixed(2)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
+                  ))}
+                </div>
+              )}
+            </Card>
+          ))}
         </div>
       </div>
     </div>
