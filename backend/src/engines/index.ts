@@ -10,6 +10,9 @@ import { BertrandEngine } from './simultaneous/BertrandEngine';
 import { CournotEngine } from './simultaneous/CournotEngine';
 import { PublicGoodsEngine } from './simultaneous/PublicGoodsEngine';
 import { NegativeExternalityEngine } from './simultaneous/NegativeExternalityEngine';
+import { UltimatumEngine } from './sequential/UltimatumEngine';
+import { GiftExchangeEngine } from './sequential/GiftExchangeEngine';
+import { PrincipalAgentEngine } from './sequential/PrincipalAgentEngine';
 
 // Register all available game engines
 GameRegistry.register(new DoubleAuctionEngine());
@@ -19,9 +22,9 @@ GameRegistry.register(new BertrandEngine());
 GameRegistry.register(new CournotEngine());
 GameRegistry.register(new PublicGoodsEngine());
 GameRegistry.register(new NegativeExternalityEngine());
-// GameRegistry.register(new UltimatumEngine());
-// GameRegistry.register(new GiftExchangeEngine());
-// GameRegistry.register(new PrincipalAgentEngine());
+GameRegistry.register(new UltimatumEngine());
+GameRegistry.register(new GiftExchangeEngine());
+GameRegistry.register(new PrincipalAgentEngine());
 // GameRegistry.register(new ComparativeAdvantageEngine());
 // GameRegistry.register(new MonopolyEngine());
 // GameRegistry.register(new MarketForLemonsEngine());
