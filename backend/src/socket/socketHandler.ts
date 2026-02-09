@@ -9,9 +9,16 @@ import { SessionModel } from '../models/Session';
 import { matchTrades, validateBid, validateAsk } from '../services/gameLogic';
 
 export function setupSocketHandlers(httpServer: HTTPServer) {
+  const allowedOrigins = [
+    'http://localhost:5173',
+    process.env.FRONTEND_URL,
+    'https://econ-games.vercel.app',
+    'https://econ-games.joshuadammons.com',
+  ].filter(Boolean) as string[];
+
   const io = new Server(httpServer, {
     cors: {
-      origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+      origin: allowedOrigins,
       methods: ['GET', 'POST'],
       credentials: true,
     },
