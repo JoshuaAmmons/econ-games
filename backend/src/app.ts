@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import sessionRoutes from './routes/sessions';
 import playerRoutes from './routes/players';
 import gameRoutes from './routes/game';
+import exportRoutes from './routes/export';
 
 // Initialize all game engines (must be imported before routes/sockets)
 import './engines';
@@ -62,6 +63,7 @@ app.get('/api/game-types', (_req, res) => {
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/players', playerRoutes);
 app.use('/api/game', gameRoutes);
+app.use('/api/sessions', exportRoutes);
 
 // 404 handler
 app.use((_req, res) => {

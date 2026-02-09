@@ -7,6 +7,7 @@ import { JoinSession } from './pages/JoinSession';
 import { Lobby } from './pages/Lobby';
 import { Market } from './pages/Market';
 import { SessionMonitor } from './pages/SessionMonitor';
+import { Results } from './pages/Results';
 
 const router = createBrowserRouter([
   {
@@ -36,6 +37,10 @@ const router = createBrowserRouter([
   {
     path: '/session/:code/monitor',
     element: <SessionMonitor />,
+  },
+  {
+    path: '/session/:code/results',
+    element: <Results />,
   },
 ]);
 
