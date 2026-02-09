@@ -37,9 +37,8 @@ export interface DAGameUIProps extends GameUIProps {
  */
 const gameUIRegistry: Record<string, React.LazyExoticComponent<React.ComponentType<any>>> = {
   double_auction: React.lazy(() => import('./doubleAuction/DoubleAuctionUI')),
-  // Future game UIs will be registered here:
-  // double_auction_tax: React.lazy(() => import('./doubleAuction/TaxSubsidyUI')),
-  // double_auction_price_controls: React.lazy(() => import('./doubleAuction/PriceControlsUI')),
+  double_auction_tax: React.lazy(() => import('./doubleAuction/TaxSubsidyUI')),
+  double_auction_price_controls: React.lazy(() => import('./doubleAuction/PriceControlsUI')),
   // bertrand: React.lazy(() => import('./simultaneous/BertrandUI')),
   // cournot: React.lazy(() => import('./simultaneous/CournotUI')),
   // public_goods: React.lazy(() => import('./simultaneous/PublicGoodsUI')),
