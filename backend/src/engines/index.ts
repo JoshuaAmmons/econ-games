@@ -6,15 +6,19 @@ import { GameRegistry } from './GameRegistry';
 import { DoubleAuctionEngine } from './doubleAuction/DoubleAuctionEngine';
 import { TaxSubsidyEngine } from './doubleAuction/TaxSubsidyEngine';
 import { PriceControlsEngine } from './doubleAuction/PriceControlsEngine';
+import { BertrandEngine } from './simultaneous/BertrandEngine';
+import { CournotEngine } from './simultaneous/CournotEngine';
+import { PublicGoodsEngine } from './simultaneous/PublicGoodsEngine';
+import { NegativeExternalityEngine } from './simultaneous/NegativeExternalityEngine';
 
 // Register all available game engines
 GameRegistry.register(new DoubleAuctionEngine());
 GameRegistry.register(new TaxSubsidyEngine());
 GameRegistry.register(new PriceControlsEngine());
-// GameRegistry.register(new BertrandEngine());
-// GameRegistry.register(new CournotEngine());
-// GameRegistry.register(new PublicGoodsEngine());
-// GameRegistry.register(new NegativeExternalityEngine());
+GameRegistry.register(new BertrandEngine());
+GameRegistry.register(new CournotEngine());
+GameRegistry.register(new PublicGoodsEngine());
+GameRegistry.register(new NegativeExternalityEngine());
 // GameRegistry.register(new UltimatumEngine());
 // GameRegistry.register(new GiftExchangeEngine());
 // GameRegistry.register(new PrincipalAgentEngine());

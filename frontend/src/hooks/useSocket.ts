@@ -61,6 +61,15 @@ export function useSocket(sessionCode: string, playerId: string) {
     });
   }, [playerId, sessionCode]);
 
+  const submitAction = useCallback((roundId: string, action: Record<string, any>) => {
+    socketRef.current?.emit('submit-action', {
+      roundId,
+      playerId,
+      sessionCode,
+      action,
+    });
+  }, [playerId, sessionCode]);
+
   const startRound = useCallback((roundNumber: number) => {
     socketRef.current?.emit('start-round', {
       sessionCode,
@@ -97,6 +106,7 @@ export function useSocket(sessionCode: string, playerId: string) {
     connected,
     submitBid,
     submitAsk,
+    submitAction,
     startRound,
     endRound,
     sendTimerUpdate,
