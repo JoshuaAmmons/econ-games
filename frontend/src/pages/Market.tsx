@@ -37,7 +37,7 @@ export const Market: React.FC = () => {
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const playerId = localStorage.getItem('playerId') || '';
-  const { connected, submitBid, submitAsk, onEvent } = useSocket(code || '', playerId);
+  const { connected, submitBid, submitAsk, submitAction: socketSubmitAction, onEvent } = useSocket(code || '', playerId);
 
   // Load player and session data
   useEffect(() => {
@@ -82,9 +82,11 @@ export const Market: React.FC = () => {
     }
   };
 
-  // Generic action submission (for non-DA games — will be used in future phases)
-  const submitAction = (_action: Record<string, any>) => {
-    // Placeholder — will emit 'submit-action' via socket when non-DA games are added
+  // Generic action submission for non-DA games
+  const submitAction = (action: Record<string, any>) => {
+    if (roundId) {
+      socketSubmitAction(roundId, action);
+    }
   };
 
   // Local countdown timer

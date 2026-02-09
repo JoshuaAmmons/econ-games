@@ -22,6 +22,23 @@ export class PlayerModel {
     return result.rows[0];
   }
 
+  // Create a generic player (no valuation/cost — for non-DA games)
+  static async createGeneric(
+    sessionId: string,
+    role: string,
+    name?: string,
+    isBot = false
+  ): Promise<Player> {
+    const result = await pool.query<Player>(
+      `INSERT INTO players (session_id, name, role, is_bot)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [sessionId, name, role, isBot]
+    );
+
+    return result.rows[0];
+  }
+
   // Get player by ID
   static async findById(id: string): Promise<Player | null> {
     const result = await pool.query<Player>(
