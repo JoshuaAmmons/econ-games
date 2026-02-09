@@ -1,5 +1,5 @@
 import apiClient from './client';
-import { Session, CreateSessionData, ApiResponse } from '../types';
+import type { Session, CreateSessionData, ApiResponse } from '../types';
 
 export const sessionsApi = {
   // Create new session
