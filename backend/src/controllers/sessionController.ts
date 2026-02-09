@@ -1,0 +1,195 @@
+import { Request, Response } from 'express';
+import { SessionModel } from '../models/Session';
+import { PlayerModel } from '../models/Player';
+import { RoundModel } from '../models/Round';
+import { CreateSessionRequest, ApiResponse } from '../types';
+
+export class SessionController {
+  // Create new session
+  static async create(req: Request, res: Response) {
+    try {
+      const sessionData: CreateSessionRequest = req.body;
+
+      // Validate input
+      if (!sessionData.market_size || sessionData.market_size < 2) {
+        res.status(400).json({
+          success: false,
+          error: 'Market size must be at least 2'
+        } as ApiResponse);
+        return;
+      }
+
+      // Create session
+      const session = await SessionModel.create(sessionData);
+
+      // Create initial rounds
+      for (let i = 1; i <= session.num_rounds; i++) {
+        await RoundModel.create(session.id, i);
+      }
+
+      res.status(201).json({
+        success: true,
+        data: session,
+        message: 'Session created successfully'
+      } as ApiResponse);
+
+    } catch (error) {
+      console.error('Error creating session:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to create session'
+      } as ApiResponse);
+    }
+  }
+
+  // Get session by ID
+  static async getById(req: Request, res: Response) {
+    try {
+      const id = req.params.id as string;
+      const session = await SessionModel.findById(id);
+
+      if (!session) {
+        res.status(404).json({
+          success: false,
+          error: 'Session not found'
+        } as ApiResponse);
+        return;
+      }
+
+      // Get players
+      const players = await PlayerModel.findBySession(session.id);
+
+      res.json({
+        success: true,
+        data: {
+          ...session,
+          players
+        }
+      } as ApiResponse);
+
+    } catch (error) {
+      console.error('Error getting session:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get session'
+      } as ApiResponse);
+    }
+  }
+
+  // Get session by code
+  static async getByCode(req: Request, res: Response) {
+    try {
+      const code = req.params.code as string;
+      const session = await SessionModel.findByCode(code.toUpperCase());
+
+      if (!session) {
+        res.status(404).json({
+          success: false,
+          error: 'Session not found'
+        } as ApiResponse);
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: session
+      } as ApiResponse);
+
+    } catch (error) {
+      console.error('Error getting session:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get session'
+      } as ApiResponse);
+    }
+  }
+
+  // List all sessions
+  static async list(req: Request, res: Response) {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      const sessions = await SessionModel.findAll(limit, offset);
+
+      res.json({
+        success: true,
+        data: sessions
+      } as ApiResponse);
+
+    } catch (error) {
+      console.error('Error listing sessions:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to list sessions'
+      } as ApiResponse);
+    }
+  }
+
+  // Start session
+  static async start(req: Request, res: Response) {
+    try {
+      const id = req.params.id as string;
+
+      const session = await SessionModel.findById(id);
+      if (!session) {
+        res.status(404).json({
+          success: false,
+          error: 'Session not found'
+        } as ApiResponse);
+        return;
+      }
+
+      if (session.status !== 'waiting') {
+        res.status(400).json({
+          success: false,
+          error: 'Session already started'
+        } as ApiResponse);
+        return;
+      }
+
+      // Start session
+      await SessionModel.start(id);
+
+      // Start first round
+      const firstRound = await RoundModel.findBySessionAndNumber(id, 1);
+      if (firstRound) {
+        await RoundModel.start(firstRound.id);
+        await SessionModel.updateCurrentRound(id, 1);
+      }
+
+      res.json({
+        success: true,
+        message: 'Session started'
+      } as ApiResponse);
+
+    } catch (error) {
+      console.error('Error starting session:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to start session'
+      } as ApiResponse);
+    }
+  }
+
+  // End session
+  static async end(req: Request, res: Response) {
+    try {
+      const id = req.params.id as string;
+
+      await SessionModel.end(id);
+
+      res.json({
+        success: true,
+        message: 'Session ended'
+      } as ApiResponse);
+
+    } catch (error) {
+      console.error('Error ending session:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to end session'
+      } as ApiResponse);
+    }
+  }
+}
