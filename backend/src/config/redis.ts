@@ -3,29 +3,55 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Create Redis client
+const REDIS_URL = process.env.REDIS_URL;
+
+// Create Redis client with retry strategy
 export const redisClient = createClient({
-  url: process.env.REDIS_URL,
+  url: REDIS_URL || undefined,
+  socket: {
+    reconnectStrategy: (retries: number) => {
+      if (!REDIS_URL) {
+        // No Redis URL configured — don't retry
+        return false;
+      }
+      if (retries > 5) {
+        console.warn('Redis: max retries reached, giving up');
+        return false;
+      }
+      // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+      return Math.min(retries * 1000, 16000);
+    },
+  },
 });
 
-// Connect to Redis
-redisClient.connect().catch((err) => {
-  console.error('Redis connection error:', err);
-  // Don't exit - Redis is optional for development
-  console.warn('Continuing without Redis. Some features may not work.');
-});
+let redisConnected = false;
 
-// Event handlers
-redisClient.on('connect', () => {
-  console.log('Connected to Redis');
-});
+// Only attempt connection if REDIS_URL is configured
+if (REDIS_URL) {
+  redisClient.connect().catch((err) => {
+    console.error('Redis connection error:', err.message);
+    console.warn('Continuing without Redis. Some features may not work.');
+  });
 
-redisClient.on('error', (err) => {
-  console.error('Redis error:', err);
-});
+  redisClient.on('connect', () => {
+    redisConnected = true;
+    console.log('Connected to Redis');
+  });
 
-// Helper functions
+  redisClient.on('error', (err) => {
+    if (redisConnected) {
+      // Only log if we were previously connected (i.e. lost connection)
+      console.error('Redis error:', err.message);
+    }
+    redisConnected = false;
+  });
+} else {
+  console.log('No REDIS_URL configured — Redis disabled');
+}
+
+// Helper functions (all gracefully handle missing Redis)
 export const setCache = async (key: string, value: any, expirationSeconds?: number) => {
+  if (!redisConnected) return;
   try {
     const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
     if (expirationSeconds) {
@@ -39,6 +65,7 @@ export const setCache = async (key: string, value: any, expirationSeconds?: numb
 };
 
 export const getCache = async (key: string) => {
+  if (!redisConnected) return null;
   try {
     const value = await redisClient.get(key);
     if (!value) return null;
@@ -55,6 +82,7 @@ export const getCache = async (key: string) => {
 };
 
 export const deleteCache = async (key: string) => {
+  if (!redisConnected) return;
   try {
     await redisClient.del(key);
   } catch (error) {
