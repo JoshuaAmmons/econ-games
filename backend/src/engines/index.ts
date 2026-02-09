@@ -4,13 +4,13 @@
  */
 import { GameRegistry } from './GameRegistry';
 import { DoubleAuctionEngine } from './doubleAuction/DoubleAuctionEngine';
+import { TaxSubsidyEngine } from './doubleAuction/TaxSubsidyEngine';
+import { PriceControlsEngine } from './doubleAuction/PriceControlsEngine';
 
 // Register all available game engines
 GameRegistry.register(new DoubleAuctionEngine());
-
-// Future engines will be registered here as they are implemented:
-// GameRegistry.register(new TaxSubsidyEngine());
-// GameRegistry.register(new PriceControlsEngine());
+GameRegistry.register(new TaxSubsidyEngine());
+GameRegistry.register(new PriceControlsEngine());
 // GameRegistry.register(new BertrandEngine());
 // GameRegistry.register(new CournotEngine());
 // GameRegistry.register(new PublicGoodsEngine());
