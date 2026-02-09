@@ -52,10 +52,29 @@ const UltimatumUI: React.FC<GameUIProps> = ({
   useEffect(() => {
     const cleanups: (() => void)[] = [];
 
+    // Recover game state on page load / reconnect
+    cleanups.push(onEvent('game-state', (state: any) => {
+      if (state.myAction) {
+        setSubmitted(true);
+      }
+      if (!isProposer && state.partnerAction) {
+        setPartnerOffer(state.partnerAction.offer);
+      }
+      if (state.results) {
+        setResults(state.results.map ? state.results : []);
+      }
+    }));
+
     cleanups.push(onEvent('first-move-submitted', (data: { partnerId: string; action: { offer: number } }) => {
       if (data.partnerId === playerId) {
         setPartnerOffer(data.action.offer);
         toast(`Your partner offered $${data.action.offer.toFixed(2)}`, { icon: '💰' });
+      }
+    }));
+
+    cleanups.push(onEvent('second-move-submitted', (data: { partnerId: string }) => {
+      if (data.partnerId === playerId) {
+        toast('Your partner has responded!', { icon: '⏳' });
       }
     }));
 
@@ -74,7 +93,7 @@ const UltimatumUI: React.FC<GameUIProps> = ({
     }));
 
     return () => cleanups.forEach(fn => fn());
-  }, [onEvent, playerId, refreshPlayer]);
+  }, [onEvent, playerId, refreshPlayer, isProposer]);
 
   const handleProposerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,9 +114,6 @@ const UltimatumUI: React.FC<GameUIProps> = ({
     setSubmitted(true);
     toast.success(accept ? 'Offer accepted!' : 'Offer rejected!');
   };
-
-  // myPair not used directly in template but kept for potential future use
-  void results?.find(p => p.firstMoverId === playerId || p.secondMoverId === playerId);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

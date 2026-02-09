@@ -57,10 +57,32 @@ const MarketForLemonsUI: React.FC<GameUIProps> = ({
   useEffect(() => {
     const cleanups: (() => void)[] = [];
 
+    // Recover game state on page load / reconnect
+    cleanups.push(onEvent('game-state', (state: any) => {
+      if (state.myAction) {
+        setSubmitted(true);
+        if (isSeller && state.myAction.quality) {
+          setSellerQuality(state.myAction.quality);
+        }
+      }
+      if (!isSeller && state.partnerAction) {
+        setPartnerPrice(state.partnerAction.price);
+      }
+      if (state.results) {
+        setResults(state.results.map ? state.results : []);
+      }
+    }));
+
     cleanups.push(onEvent('first-move-submitted', (data: { partnerId: string; action: { price: number } }) => {
       if (data.partnerId === playerId) {
         setPartnerPrice(data.action.price);
         toast(`Seller is offering at $${data.action.price.toFixed(2)}`, { icon: '🏷️' });
+      }
+    }));
+
+    cleanups.push(onEvent('second-move-submitted', (data: { partnerId: string }) => {
+      if (data.partnerId === playerId) {
+        toast('Buyer has decided!', { icon: '🤔' });
       }
     }));
 
@@ -79,7 +101,7 @@ const MarketForLemonsUI: React.FC<GameUIProps> = ({
     }));
 
     return () => cleanups.forEach(fn => fn());
-  }, [onEvent, playerId, refreshPlayer]);
+  }, [onEvent, playerId, refreshPlayer, isSeller]);
 
   const handleSellerSubmit = (e: React.FormEvent) => {
     e.preventDefault();

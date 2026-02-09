@@ -63,10 +63,29 @@ const GiftExchangeUI: React.FC<GameUIProps> = ({
   useEffect(() => {
     const cleanups: (() => void)[] = [];
 
+    // Recover game state on page load / reconnect
+    cleanups.push(onEvent('game-state', (state: any) => {
+      if (state.myAction) {
+        setSubmitted(true);
+      }
+      if (!isEmployer && state.partnerAction) {
+        setPartnerWage(state.partnerAction.wage);
+      }
+      if (state.results) {
+        setResults(state.results.map ? state.results : []);
+      }
+    }));
+
     cleanups.push(onEvent('first-move-submitted', (data: { partnerId: string; action: { wage: number } }) => {
       if (data.partnerId === playerId) {
         setPartnerWage(data.action.wage);
         toast(`Your employer offered $${data.action.wage.toFixed(2)} wage`, { icon: '💼' });
+      }
+    }));
+
+    cleanups.push(onEvent('second-move-submitted', (data: { partnerId: string }) => {
+      if (data.partnerId === playerId) {
+        toast('Worker chose effort level!', { icon: '⚡' });
       }
     }));
 
@@ -81,7 +100,7 @@ const GiftExchangeUI: React.FC<GameUIProps> = ({
     }));
 
     return () => cleanups.forEach(fn => fn());
-  }, [onEvent, playerId, refreshPlayer]);
+  }, [onEvent, playerId, refreshPlayer, isEmployer]);
 
   const handleEmployerSubmit = (e: React.FormEvent) => {
     e.preventDefault();

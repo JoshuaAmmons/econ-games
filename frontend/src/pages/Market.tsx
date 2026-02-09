@@ -37,7 +37,7 @@ export const Market: React.FC = () => {
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const playerId = localStorage.getItem('playerId') || '';
-  const { connected, submitBid, submitAsk, submitAction: socketSubmitAction, onEvent } = useSocket(code || '', playerId);
+  const { connected, submitBid, submitAsk, submitAction: socketSubmitAction, requestGameState, onEvent } = useSocket(code || '', playerId);
 
   // Load player and session data
   useEffect(() => {
@@ -64,6 +64,24 @@ export const Market: React.FC = () => {
       }
 
       setRoundNumber(s.current_round);
+
+      // Find the current active round so we can set roundId on page load.
+      // This is critical: sessionController.start() starts round 1 via HTTP
+      // but doesn't emit a socket event, so we must recover roundId here.
+      const rounds = await sessionsApi.getRounds(fullSession.id);
+      const activeRound = rounds.find((r: any) => r.status === 'active');
+      if (activeRound) {
+        setRoundId(activeRound.id);
+        setRoundActive(true);
+        setRoundNumber(activeRound.round_number);
+
+        // Estimate remaining time
+        if (activeRound.started_at) {
+          const elapsed = Math.floor((Date.now() - new Date(activeRound.started_at).getTime()) / 1000);
+          const remaining = Math.max(0, fullSession.time_per_round - elapsed);
+          setTimeRemaining(remaining);
+        }
+      }
     } catch (err) {
       console.error('Failed to load player:', err);
       navigate('/join');
@@ -81,6 +99,13 @@ export const Market: React.FC = () => {
       console.error('Failed to refresh player:', err);
     }
   };
+
+  // Request game state when we recover a round on page load (reconnection support)
+  useEffect(() => {
+    if (connected && roundId && roundActive) {
+      requestGameState(roundId);
+    }
+  }, [connected, roundId, roundActive, requestGameState]);
 
   // Generic action submission for non-DA games
   const submitAction = (action: Record<string, any>) => {

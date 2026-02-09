@@ -61,10 +61,29 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
   useEffect(() => {
     const cleanups: (() => void)[] = [];
 
+    // Recover game state on page load / reconnect
+    cleanups.push(onEvent('game-state', (state: any) => {
+      if (state.myAction) {
+        setSubmitted(true);
+      }
+      if (!isPrincipal && state.partnerAction) {
+        setPartnerContract({ fixedWage: state.partnerAction.fixedWage, bonus: state.partnerAction.bonus });
+      }
+      if (state.results) {
+        setResults(state.results.map ? state.results : []);
+      }
+    }));
+
     cleanups.push(onEvent('first-move-submitted', (data: { partnerId: string; action: { fixedWage: number; bonus: number } }) => {
       if (data.partnerId === playerId) {
         setPartnerContract(data.action);
         toast(`Contract received: $${data.action.fixedWage} wage + $${data.action.bonus} bonus`, { icon: '📄' });
+      }
+    }));
+
+    cleanups.push(onEvent('second-move-submitted', (data: { partnerId: string }) => {
+      if (data.partnerId === playerId) {
+        toast('Agent chose effort level!', { icon: '⚡' });
       }
     }));
 
@@ -80,7 +99,7 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
     }));
 
     return () => cleanups.forEach(fn => fn());
-  }, [onEvent, playerId, refreshPlayer]);
+  }, [onEvent, playerId, refreshPlayer, isPrincipal]);
 
   const handlePrincipalSubmit = (e: React.FormEvent) => {
     e.preventDefault();
