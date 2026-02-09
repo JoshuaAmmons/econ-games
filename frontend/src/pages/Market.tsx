@@ -213,7 +213,6 @@ export const Market: React.FC = () => {
   }
 
   const GameUIComponent = getGameUI(gameType);
-  const isBuyer = player?.role === 'buyer';
 
   // Human-readable game names
   const gameNames: Record<string, string> = {
