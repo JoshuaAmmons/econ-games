@@ -4,6 +4,8 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { CreateSession } from './pages/CreateSession';
 import { JoinSession } from './pages/JoinSession';
 import { Lobby } from './pages/Lobby';
+import { Market } from './pages/Market';
+import { SessionMonitor } from './pages/SessionMonitor';
 
 const router = createBrowserRouter([
   {
@@ -28,13 +30,11 @@ const router = createBrowserRouter([
   },
   {
     path: '/session/:code/market',
-    // Placeholder - will be built in Phase 5
-    element: <div className="min-h-screen flex items-center justify-center"><p className="text-xl text-gray-600">Market page coming soon...</p></div>,
+    element: <Market />,
   },
   {
     path: '/session/:code/monitor',
-    // Placeholder - will be built in Phase 5
-    element: <div className="min-h-screen flex items-center justify-center"><p className="text-xl text-gray-600">Session monitor coming soon...</p></div>,
+    element: <SessionMonitor />,
   },
 ]);
 

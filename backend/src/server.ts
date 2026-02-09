@@ -2,21 +2,31 @@ import http from 'http';
 import app from './app';
 import { pool } from './config/database';
 import { redisClient } from './config/redis';
+import { setupSocketHandlers } from './socket/socketHandler';
 
 const PORT = process.env.PORT || 3000;
 
 // Create HTTP server
 const server = http.createServer(app);
 
+// Setup Socket.io
+const io = setupSocketHandlers(server);
+
 // Start server
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`WebSocket server ready`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
 // Graceful shutdown
 const shutdown = async () => {
   console.log('\nShutting down gracefully...');
+
+  // Close socket connections
+  io.close(() => {
+    console.log('WebSocket connections closed');
+  });
 
   // Close server
   server.close(() => {
