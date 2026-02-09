@@ -1,5 +1,5 @@
 import apiClient from './client';
-import { Player, Session, ApiResponse } from '../types';
+import type { Player, Session, ApiResponse } from '../types';
 
 export const playersApi = {
   // Join session

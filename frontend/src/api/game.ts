@@ -1,5 +1,5 @@
 import apiClient from './client';
-import { Bid, Ask, Trade, ApiResponse } from '../types';
+import type { Bid, Ask, Trade, ApiResponse } from '../types';
 
 export const gameApi = {
   // Submit bid
