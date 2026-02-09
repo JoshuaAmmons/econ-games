@@ -256,11 +256,7 @@ export const Market: React.FC = () => {
           <div className="flex items-center gap-4">
             {timeRemaining > 0 && <Timer seconds={timeRemaining} />}
             <div className="text-sm text-gray-600">
-              <span className={`font-medium capitalize px-2 py-0.5 rounded ${
-                isBuyer ? 'bg-green-100 text-green-700' :
-                player?.role === 'seller' ? 'bg-red-100 text-red-700' :
-                'bg-gray-100 text-gray-700'
-              }`}>
+              <span className="font-medium capitalize px-2 py-0.5 rounded bg-sky-100 text-sky-700">
                 {player?.role}
               </span>
               {player?.name && <span className="ml-2">({player.name})</span>}
