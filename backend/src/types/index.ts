@@ -6,6 +6,8 @@ export interface Session {
   id: string;
   code: string;
   status: 'waiting' | 'active' | 'completed' | 'cancelled';
+  game_type: string;
+  game_config: Record<string, any>;
   market_size: number;
   num_rounds: number;
   time_per_round: number;
@@ -26,12 +28,13 @@ export interface Player {
   id: string;
   session_id: string;
   name?: string;
-  role: 'buyer' | 'seller';
+  role: string;
   valuation?: number;
   production_cost?: number;
   total_profit: number;
   is_bot: boolean;
   is_active: boolean;
+  game_data?: Record<string, any>;
   created_at: Date;
   last_active_at: Date;
 }
@@ -81,6 +84,8 @@ export interface Trade {
 // ============================================================================
 
 export interface CreateSessionRequest {
+  game_type?: string;
+  game_config?: Record<string, any>;
   market_size: number;
   num_rounds: number;
   time_per_round: number;

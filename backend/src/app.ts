@@ -5,6 +5,9 @@ import sessionRoutes from './routes/sessions';
 import playerRoutes from './routes/players';
 import gameRoutes from './routes/game';
 
+// Initialize all game engines (must be imported before routes/sockets)
+import './engines';
+
 dotenv.config();
 
 const app = express();
@@ -42,6 +45,16 @@ app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString()
+  });
+});
+
+// Game types discovery endpoint
+app.get('/api/game-types', (_req, res) => {
+  const { GameRegistry } = require('./engines');
+  const gameTypes = GameRegistry.listWithConfigs();
+  res.json({
+    success: true,
+    data: gameTypes
   });
 });
 
