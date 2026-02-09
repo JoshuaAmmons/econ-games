@@ -5,6 +5,7 @@ import { Input } from '../components/shared/Input';
 import { Card } from '../components/shared/Card';
 import { playersApi } from '../api/players';
 import { ArrowLeft } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export const JoinSession: React.FC = () => {
   const navigate = useNavigate();
@@ -24,6 +25,8 @@ export const JoinSession: React.FC = () => {
       // Store player info
       localStorage.setItem('playerId', player.id);
       localStorage.setItem('sessionCode', session.code);
+
+      toast.success('Joined session successfully!');
 
       // Navigate to lobby
       navigate(`/session/${session.code}/lobby`);

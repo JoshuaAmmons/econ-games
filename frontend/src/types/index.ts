@@ -81,6 +81,8 @@ export interface Trade {
   round_id: string;
   buyer_id: string;
   seller_id: string;
+  bid_id?: string;
+  ask_id?: string;
   price: number;
   buyer_profit: number;
   seller_profit: number;

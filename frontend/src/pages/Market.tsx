@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card } from '../components/shared/Card';
 import { Button } from '../components/shared/Button';
@@ -10,6 +10,7 @@ import { playersApi } from '../api/players';
 import { gameApi } from '../api/game';
 import type { Player, Bid, Ask, Trade } from '../types';
 import { ArrowUpCircle, ArrowDownCircle, TrendingUp, DollarSign } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export const Market: React.FC = () => {
   const { code } = useParams<{ code: string }>();
@@ -22,9 +23,15 @@ export const Market: React.FC = () => {
   const [asks, setAsks] = useState<Ask[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [roundId, setRoundId] = useState<string | null>(null);
+  const [roundNumber, setRoundNumber] = useState(0);
+  const [numRounds, setNumRounds] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [roundActive, setRoundActive] = useState(false);
+
+  // Use a ref for the local countdown timer
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const playerId = localStorage.getItem('playerId') || '';
   const { connected, submitBid, submitAsk, onEvent } = useSocket(code || '', playerId);
@@ -42,14 +49,14 @@ export const Market: React.FC = () => {
     try {
       const { player: p, session } = await playersApi.getStatus(playerId);
       setPlayer(p);
+      setNumRounds(session.num_rounds);
 
       if (session.status !== 'active') {
         navigate(`/session/${code}/lobby`);
         return;
       }
 
-      // Load current round data
-      // The round ID will come from WebSocket events
+      setRoundNumber(session.current_round);
     } catch (err) {
       console.error('Failed to load player:', err);
       navigate('/join');
@@ -57,6 +64,46 @@ export const Market: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Reload player data to get updated profit
+  const refreshPlayer = async () => {
+    try {
+      const { player: p } = await playersApi.getStatus(playerId);
+      setPlayer(p);
+    } catch (err) {
+      console.error('Failed to refresh player:', err);
+    }
+  };
+
+  // Local countdown timer - decrements timeRemaining every second
+  useEffect(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+
+    if (roundActive && timeRemaining > 0) {
+      timerIntervalRef.current = setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev <= 1) {
+            if (timerIntervalRef.current) {
+              clearInterval(timerIntervalRef.current);
+              timerIntervalRef.current = null;
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
+  }, [roundActive, roundId]);
 
   // Socket event handlers
   useEffect(() => {
@@ -72,24 +119,41 @@ export const Market: React.FC = () => {
       setAsks(prev => [data.ask, ...prev]);
     }));
 
-    cleanups.push(onEvent('trade-executed', (data: { trade: Trade }) => {
+    cleanups.push(onEvent('trade-executed', (data: { trade: Trade; buyer: { id: string }; seller: { id: string } }) => {
       setTrades(prev => [data.trade, ...prev]);
-      // Remove matched bids and asks
-      setBids(prev => prev.filter(b => b.is_active));
-      setAsks(prev => prev.filter(a => a.is_active));
+      // Remove the matched bid and ask by their IDs
+      setBids(prev => prev.filter(b => b.id !== data.trade.bid_id));
+      setAsks(prev => prev.filter(a => a.id !== data.trade.ask_id));
+
+      // Refresh player to get updated profit
+      refreshPlayer();
+
+      // Show toast if this trade involves the current player
+      if (data.trade.buyer_id === playerId) {
+        toast.success(`Trade! You bought at $${data.trade.price.toFixed(2)} — Profit: $${data.trade.buyer_profit.toFixed(2)}`);
+      } else if (data.trade.seller_id === playerId) {
+        toast.success(`Trade! You sold at $${data.trade.price.toFixed(2)} — Profit: $${data.trade.seller_profit.toFixed(2)}`);
+      } else {
+        toast('Trade executed at $' + data.trade.price.toFixed(2), { icon: '🤝' });
+      }
     }));
 
     cleanups.push(onEvent('round-started', (data: { round: { id: string }; roundNumber: number }) => {
       setRoundId(data.round.id);
+      setRoundNumber(data.roundNumber);
+      setRoundActive(true);
       setBids([]);
       setAsks([]);
       setTrades([]);
       setError('');
+      toast(`Round ${data.roundNumber} started!`, { icon: '🔔' });
     }));
 
     cleanups.push(onEvent('round-ended', () => {
       setRoundId(null);
+      setRoundActive(false);
       setTimeRemaining(0);
+      toast('Round ended!', { icon: '🏁' });
     }));
 
     cleanups.push(onEvent('timer-update', (data: { seconds_remaining: number }) => {
@@ -99,6 +163,7 @@ export const Market: React.FC = () => {
     cleanups.push(onEvent('error', (data: { message: string }) => {
       setError(data.message);
       setSubmitting(false);
+      toast.error(data.message);
     }));
 
     return () => {
@@ -141,8 +206,10 @@ export const Market: React.FC = () => {
 
     if (player?.role === 'buyer') {
       submitBid(roundId, priceNum);
+      toast.success(`Bid of $${priceNum.toFixed(2)} submitted!`);
     } else {
       submitAsk(roundId, priceNum);
+      toast.success(`Ask of $${priceNum.toFixed(2)} submitted!`);
     }
 
     setPrice('');
@@ -167,6 +234,11 @@ export const Market: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <h1 className="text-xl font-bold">Session {code}</h1>
+            {roundActive && (
+              <span className="px-2 py-1 rounded bg-sky-100 text-sky-800 text-sm font-medium">
+                Round {roundNumber}{numRounds > 0 ? ` / ${numRounds}` : ''}
+              </span>
+            )}
             <span className={`px-2 py-1 rounded text-sm font-medium ${
               connected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
             }`}>
@@ -176,8 +248,12 @@ export const Market: React.FC = () => {
           <div className="flex items-center gap-4">
             {timeRemaining > 0 && <Timer seconds={timeRemaining} />}
             <div className="text-sm text-gray-600">
-              <span className="font-medium capitalize">{player?.role}</span>
-              {player?.name && <span> ({player.name})</span>}
+              <span className={`font-medium capitalize px-2 py-0.5 rounded ${
+                isBuyer ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+              }`}>
+                {player?.role}
+              </span>
+              {player?.name && <span className="ml-2">({player.name})</span>}
             </div>
           </div>
         </div>
@@ -204,7 +280,7 @@ export const Market: React.FC = () => {
 
             {/* Submit Form */}
             <Card title={isBuyer ? 'Submit Bid' : 'Submit Ask'}>
-              {roundId ? (
+              {roundActive && roundId ? (
                 <form onSubmit={handleSubmit} className="space-y-3">
                   <Input
                     label={`${isBuyer ? 'Bid' : 'Ask'} Price`}
@@ -226,7 +302,6 @@ export const Market: React.FC = () => {
                     type="submit"
                     className="w-full"
                     disabled={submitting || !price}
-                    variant={isBuyer ? 'primary' : 'primary'}
                   >
                     {submitting ? 'Submitting...' : `Submit ${isBuyer ? 'Bid' : 'Ask'}`}
                   </Button>
@@ -245,7 +320,9 @@ export const Market: React.FC = () => {
                   <DollarSign className="w-5 h-5 text-green-600" />
                   <span className="font-medium">Total Profit</span>
                 </div>
-                <span className="text-2xl font-bold text-green-600">
+                <span className={`text-2xl font-bold ${
+                  (player?.total_profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
                   ${player?.total_profit?.toFixed(2) || '0.00'}
                 </span>
               </div>
@@ -262,12 +339,11 @@ export const Market: React.FC = () => {
                     <ArrowUpCircle className="w-4 h-4" />
                     Asks (Sellers)
                   </h4>
-                  {asks.filter(a => a.is_active).length === 0 ? (
+                  {asks.length === 0 ? (
                     <p className="text-xs text-gray-400 text-center py-2">No active asks</p>
                   ) : (
                     <div className="space-y-1">
-                      {asks
-                        .filter(a => a.is_active)
+                      {[...asks]
                         .sort((a, b) => b.price - a.price)
                         .map((ask) => (
                           <div key={ask.id} className="flex justify-between items-center bg-red-50 px-3 py-1 rounded text-sm">
@@ -289,12 +365,11 @@ export const Market: React.FC = () => {
                     <ArrowDownCircle className="w-4 h-4" />
                     Bids (Buyers)
                   </h4>
-                  {bids.filter(b => b.is_active).length === 0 ? (
+                  {bids.length === 0 ? (
                     <p className="text-xs text-gray-400 text-center py-2">No active bids</p>
                   ) : (
                     <div className="space-y-1">
-                      {bids
-                        .filter(b => b.is_active)
+                      {[...bids]
                         .sort((a, b) => b.price - a.price)
                         .map((bid) => (
                           <div key={bid.id} className="flex justify-between items-center bg-green-50 px-3 py-1 rounded text-sm">
@@ -325,17 +400,26 @@ export const Market: React.FC = () => {
               ) : (
                 <div className="space-y-2">
                   {trades.map((trade) => (
-                    <div key={trade.id} className="bg-gray-50 rounded px-3 py-2">
+                    <div key={trade.id} className={`rounded px-3 py-2 ${
+                      trade.buyer_id === playerId || trade.seller_id === playerId
+                        ? 'bg-sky-50 border border-sky-200'
+                        : 'bg-gray-50'
+                    }`}>
                       <div className="flex justify-between items-center">
                         <span className="font-mono font-medium">${trade.price.toFixed(2)}</span>
                         <span className="text-xs text-gray-400">
                           {new Date(trade.created_at).toLocaleTimeString()}
                         </span>
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Buyer profit: ${trade.buyer_profit.toFixed(2)} |
-                        Seller profit: ${trade.seller_profit.toFixed(2)}
-                      </div>
+                      {(trade.buyer_id === playerId || trade.seller_id === playerId) && (
+                        <div className="text-xs text-sky-600 mt-1 font-medium">
+                          Your trade — Profit: ${
+                            trade.buyer_id === playerId
+                              ? trade.buyer_profit.toFixed(2)
+                              : trade.seller_profit.toFixed(2)
+                          }
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

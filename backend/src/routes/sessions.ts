@@ -15,6 +15,12 @@ router.get('/code/:code', SessionController.getByCode);
 // Get session by ID
 router.get('/:id', SessionController.getById);
 
+// Get players for session
+router.get('/:id/players', SessionController.getPlayers);
+
+// Get rounds for session
+router.get('/:id/rounds', SessionController.getRounds);
+
 // Start session
 router.post('/:id/start', SessionController.start);
 
