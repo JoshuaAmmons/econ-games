@@ -303,8 +303,11 @@ export const SessionMonitor: React.FC = () => {
               {currentRound && timeRemaining > 0 && (
                 <Timer seconds={timeRemaining} />
               )}
-              <Button variant="secondary" onClick={() => navigate(`/session/${code}/results`)}>
+              <Button variant="secondary" onClick={() => navigate(`/session/${code}/analytics`)}>
                 <BarChart3 className="w-4 h-4 inline mr-2" />
+                Analytics
+              </Button>
+              <Button variant="secondary" onClick={() => navigate(`/session/${code}/results`)}>
                 Results
               </Button>
               {session.status === 'waiting' && (

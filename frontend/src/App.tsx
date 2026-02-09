@@ -8,6 +8,7 @@ import { Lobby } from './pages/Lobby';
 import { Market } from './pages/Market';
 import { SessionMonitor } from './pages/SessionMonitor';
 import { Results } from './pages/Results';
+import { Analytics } from './pages/Analytics';
 
 const router = createBrowserRouter([
   {
@@ -41,6 +42,10 @@ const router = createBrowserRouter([
   {
     path: '/session/:code/results',
     element: <Results />,
+  },
+  {
+    path: '/session/:code/analytics',
+    element: <Analytics />,
   },
 ]);
 
