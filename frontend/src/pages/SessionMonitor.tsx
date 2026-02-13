@@ -8,6 +8,7 @@ import { sessionsApi } from '../api/sessions';
 import { useSocket } from '../hooks/useSocket';
 import type { Session, Player, Round } from '../types';
 import { ArrowLeft, Play, Square, Users, Copy, Check, SkipForward, Clock, BarChart3 } from 'lucide-react';
+import { GameInstructions } from '../components/shared/GameInstructions';
 import toast from 'react-hot-toast';
 
 const DA_GAME_TYPES = ['double_auction', 'double_auction_tax', 'double_auction_price_controls'];
@@ -417,6 +418,9 @@ export const SessionMonitor: React.FC = () => {
           </Card>
         )}
 
+        {/* Instructor Notes */}
+        <GameInstructions gameType={session.game_type} variant="instructor" />
+
         {/* Round Progress */}
         {session.status !== 'waiting' && (
           <Card title="Round Progress" className="mb-6">
@@ -453,8 +457,10 @@ export const SessionMonitor: React.FC = () => {
               ) : (
                 <div className="space-y-2">
                   {rolePlayers
-                    .sort((a, b) => b.total_profit - a.total_profit)
-                    .map(player => (
+                    .sort((a, b) => Number(b.total_profit) - Number(a.total_profit))
+                    .map(player => {
+                      const profit = Number(player.total_profit) || 0;
+                      return (
                     <div key={player.id} className="flex justify-between items-center bg-gray-50 px-3 py-2 rounded">
                       <div>
                         <span className="font-medium">{player.name || 'Anonymous'}</span>
@@ -471,12 +477,13 @@ export const SessionMonitor: React.FC = () => {
                         )}
                       </div>
                       <span className={`font-mono font-medium ${
-                        player.total_profit >= 0 ? 'text-green-700' : 'text-red-700'
+                        profit >= 0 ? 'text-green-700' : 'text-red-700'
                       }`}>
-                        ${player.total_profit.toFixed(2)}
+                        ${profit.toFixed(2)}
                       </span>
                     </div>
-                  ))}
+                      );
+                    })}
                 </div>
               )}
             </Card>

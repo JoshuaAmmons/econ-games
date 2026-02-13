@@ -8,6 +8,7 @@ import { sessionsApi } from '../api/sessions';
 import { gameApi } from '../api/game';
 import { getGameUI } from '../games/GameUIRegistry';
 import type { Player, Session, Bid, Ask, Trade } from '../types';
+import { GameInstructions } from '../components/shared/GameInstructions';
 import toast from 'react-hot-toast';
 
 /**
@@ -171,11 +172,11 @@ export const Market: React.FC = () => {
       refreshPlayer();
 
       if (data.trade.buyer_id === playerId) {
-        toast.success(`Trade! You bought at $${data.trade.price.toFixed(2)} — Profit: $${data.trade.buyer_profit.toFixed(2)}`);
+        toast.success(`Trade! You bought at $${Number(data.trade.price).toFixed(2)} — Profit: $${Number(data.trade.buyer_profit).toFixed(2)}`);
       } else if (data.trade.seller_id === playerId) {
-        toast.success(`Trade! You sold at $${data.trade.price.toFixed(2)} — Profit: $${data.trade.seller_profit.toFixed(2)}`);
+        toast.success(`Trade! You sold at $${Number(data.trade.price).toFixed(2)} — Profit: $${Number(data.trade.seller_profit).toFixed(2)}`);
       } else {
-        toast('Trade executed at $' + data.trade.price.toFixed(2), { icon: '🤝' });
+        toast('Trade executed at $' + Number(data.trade.price).toFixed(2), { icon: '🤝' });
       }
     }));
 
@@ -291,6 +292,7 @@ export const Market: React.FC = () => {
 
       {/* Game UI */}
       <div className="max-w-7xl mx-auto px-4 py-6">
+        <GameInstructions gameType={gameType} variant="student" />
         <Suspense fallback={
           <div className="flex items-center justify-center py-20">
             <Spinner />
