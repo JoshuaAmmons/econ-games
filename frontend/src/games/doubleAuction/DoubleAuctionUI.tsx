@@ -116,9 +116,9 @@ const DoubleAuctionUI: React.FC<DAGameUIProps> = ({
               <span className="font-medium">Total Profit</span>
             </div>
             <span className={`text-2xl font-bold ${
-              (player?.total_profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+              (Number(player?.total_profit) || 0) >= 0 ? 'text-green-600' : 'text-red-600'
             }`}>
-              ${player?.total_profit?.toFixed(2) || '0.00'}
+              ${Number(player?.total_profit || 0).toFixed(2)}
             </span>
           </div>
         </Card>
@@ -142,7 +142,7 @@ const DoubleAuctionUI: React.FC<DAGameUIProps> = ({
                     .sort((a, b) => b.price - a.price)
                     .map((ask) => (
                       <div key={ask.id} className="flex justify-between items-center bg-red-50 px-3 py-1 rounded text-sm">
-                        <span className="text-red-700 font-mono">${ask.price.toFixed(2)}</span>
+                        <span className="text-red-700 font-mono">${Number(ask.price).toFixed(2)}</span>
                         <span className="text-xs text-gray-400">
                           {new Date(ask.created_at).toLocaleTimeString()}
                         </span>
@@ -168,7 +168,7 @@ const DoubleAuctionUI: React.FC<DAGameUIProps> = ({
                     .sort((a, b) => b.price - a.price)
                     .map((bid) => (
                       <div key={bid.id} className="flex justify-between items-center bg-green-50 px-3 py-1 rounded text-sm">
-                        <span className="text-green-700 font-mono">${bid.price.toFixed(2)}</span>
+                        <span className="text-green-700 font-mono">${Number(bid.price).toFixed(2)}</span>
                         <span className="text-xs text-gray-400">
                           {new Date(bid.created_at).toLocaleTimeString()}
                         </span>
@@ -201,7 +201,7 @@ const DoubleAuctionUI: React.FC<DAGameUIProps> = ({
                     : 'bg-gray-50'
                 }`}>
                   <div className="flex justify-between items-center">
-                    <span className="font-mono font-medium">${trade.price.toFixed(2)}</span>
+                    <span className="font-mono font-medium">${Number(trade.price).toFixed(2)}</span>
                     <span className="text-xs text-gray-400">
                       {new Date(trade.created_at).toLocaleTimeString()}
                     </span>
@@ -210,8 +210,8 @@ const DoubleAuctionUI: React.FC<DAGameUIProps> = ({
                     <div className="text-xs text-sky-600 mt-1 font-medium">
                       Your trade — Profit: ${
                         trade.buyer_id === playerId
-                          ? trade.buyer_profit.toFixed(2)
-                          : trade.seller_profit.toFixed(2)
+                          ? Number(trade.buyer_profit).toFixed(2)
+                          : Number(trade.seller_profit).toFixed(2)
                       }
                     </div>
                   )}

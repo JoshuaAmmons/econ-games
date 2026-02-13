@@ -173,8 +173,8 @@ const PublicGoodsUI: React.FC<GameUIProps> = ({
               <DollarSign className="w-5 h-5 text-green-600" />
               <span className="font-medium">Total Earnings</span>
             </div>
-            <span className={`text-2xl font-bold ${(player?.total_profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              ${player?.total_profit?.toFixed(2) || '0.00'}
+            <span className={`text-2xl font-bold ${(Number(player?.total_profit) || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              ${Number(player?.total_profit || 0).toFixed(2)}
             </span>
           </div>
         </Card>

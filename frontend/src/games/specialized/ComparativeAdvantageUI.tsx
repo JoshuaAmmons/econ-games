@@ -150,7 +150,7 @@ const ComparativeAdvantageUI: React.FC<GameUIProps> = ({
               <span className="font-medium">Total Utility</span>
             </div>
             <span className="text-2xl font-bold text-green-600">
-              {player?.total_profit?.toFixed(2) || '0.00'}
+              {Number(player?.total_profit || 0).toFixed(2)}
             </span>
           </div>
         </Card>
