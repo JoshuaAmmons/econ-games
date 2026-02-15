@@ -49,6 +49,7 @@ const gameUIRegistry: Record<string, React.LazyExoticComponent<React.ComponentTy
   comparative_advantage: React.lazy(() => import('./specialized/ComparativeAdvantageUI')),
   monopoly: React.lazy(() => import('./specialized/MonopolyUI')),
   market_for_lemons: React.lazy(() => import('./specialized/MarketForLemonsUI')),
+  discovery_process: React.lazy(() => import('./specialized/DiscoveryProcessUI')),
 };
 
 /**

@@ -255,6 +255,7 @@ export const Market: React.FC = () => {
     comparative_advantage: 'Comparative Advantage',
     monopoly: 'Monopoly',
     market_for_lemons: 'Market for Lemons',
+    discovery_process: 'Exchange & Specialization',
   };
 
   return (

@@ -552,4 +552,51 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       ],
     },
   },
+
+  discovery_process: {
+    studentInstructions: {
+      premise:
+        'You are a person in a small village economy. You and others each have a field that produces colored goods and a house where goods are stored. Each period has a production phase and a move phase.',
+      yourGoal:
+        'Maximize your earnings by producing goods and getting the right combination of goods into your house. Earnings depend on having complete "sets" of goods in your house at the end of each period.',
+      howToPlay: [
+        'During the Production Phase, use the slider to decide how to split your production time between goods. Click "Start Production" when ready.',
+        'Your field produces goods automatically based on your slider setting and your production function.',
+        'During the Move Phase, click on goods in your field or house to select them, then click on a house (yours or another player\'s) to move them there.',
+        'Goods in your HOUSE count toward earnings. Goods left in your field do NOT earn anything.',
+        'Earnings = number of complete sets of goods in your house × earning amount per set.',
+        'Leftover goods that don\'t form complete sets are wasted.',
+        'Use the chat to communicate with other players.',
+      ],
+      tips: [
+        'Pay attention to which goods you produce most efficiently — that is your comparative advantage.',
+        'Moving goods to another player\'s house is how you trade. Consider specializing and exchanging.',
+        'Look at what other players are producing and try to find mutually beneficial trades.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Production: output = P1 + P2 × time^P3 (per good, per player type)',
+        'Earnings: floor(min(good_i / required_i for all goods)) × earning_amount_per_set',
+      ],
+      equilibrium:
+        'At competitive equilibrium, each player type specializes in the good for which they have comparative advantage and trades with others. Earnings at CE are typically 3x autarky earnings.',
+      keyParameters: [
+        'Production length (seconds) — time for production phase (default 10)',
+        'Move length (seconds) — time for trading/move phase (default 90)',
+        'Player type production functions (P1, P2, P3 per good) — determines comparative advantage',
+        'Earning requirements per type — how many of each good needed per "set"',
+        'Allow stealing — whether players can take from others\' houses',
+        'Chat settings — group and/or private chat',
+      ],
+      teachingNotes: [
+        'Based on Crockett, Smith & Wilson (2009) "Exchange and Specialisation as a Discovery Process".',
+        'Key insight: players must DISCOVER that they can move goods to others — trading is not explicitly explained.',
+        'Watch for emergence of bilateral trading relationships and specialization.',
+        'Near-full efficiency typically occurs through stable "monogamous" trading pairs.',
+        'Compare actual earnings to autarky (self-sufficient) and competitive equilibrium benchmarks.',
+        'Many subjects do NOT fully specialize even though it would maximize total surplus.',
+      ],
+    },
+  },
 };

@@ -16,6 +16,7 @@ import { PrincipalAgentEngine } from './sequential/PrincipalAgentEngine';
 import { ComparativeAdvantageEngine } from './specialized/ComparativeAdvantageEngine';
 import { MonopolyEngine } from './specialized/MonopolyEngine';
 import { MarketForLemonsEngine } from './specialized/MarketForLemonsEngine';
+import { DiscoveryProcessEngine } from './specialized/DiscoveryProcessEngine';
 
 // Register all available game engines
 GameRegistry.register(new DoubleAuctionEngine());
@@ -31,6 +32,7 @@ GameRegistry.register(new PrincipalAgentEngine());
 GameRegistry.register(new ComparativeAdvantageEngine());
 GameRegistry.register(new MonopolyEngine());
 GameRegistry.register(new MarketForLemonsEngine());
+GameRegistry.register(new DiscoveryProcessEngine());
 
 export { GameRegistry } from './GameRegistry';
 export type { GameEngine, GameType, UIConfig } from './GameEngine';
