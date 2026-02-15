@@ -188,6 +188,13 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
       try {
         const { sessionCode, roundId } = data;
 
+        // Guard against double-ending (timer auto-end + manual click)
+        const round = await RoundModel.findById(roundId);
+        if (!round || round.status === 'completed') {
+          console.log(`Round ${roundId} already ended, skipping duplicate end-round`);
+          return;
+        }
+
         // Let the engine process end-of-round logic
         const gameType = await getSessionGameType(sessionCode);
         const engine = GameRegistry.get(gameType);
