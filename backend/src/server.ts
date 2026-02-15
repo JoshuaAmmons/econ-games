@@ -6,6 +6,34 @@ import { setupSocketHandlers } from './socket/socketHandler';
 
 const PORT = process.env.PORT || 3000;
 
+// Auto-apply database constraint updates on startup
+async function applyConstraintUpdates() {
+  try {
+    // Ensure game_type_check includes all game types
+    await pool.query(`ALTER TABLE sessions DROP CONSTRAINT IF EXISTS game_type_check`);
+    await pool.query(`ALTER TABLE sessions ADD CONSTRAINT game_type_check CHECK (game_type IN (
+      'double_auction', 'double_auction_tax', 'double_auction_price_controls',
+      'bertrand', 'cournot', 'public_goods', 'negative_externality',
+      'ultimatum', 'gift_exchange', 'principal_agent',
+      'comparative_advantage', 'monopoly', 'market_for_lemons',
+      'discovery_process'
+    ))`);
+
+    // Ensure role_check includes all roles
+    await pool.query(`ALTER TABLE players DROP CONSTRAINT IF EXISTS role_check`);
+    await pool.query(`ALTER TABLE players ADD CONSTRAINT role_check CHECK (role IN (
+      'buyer', 'seller', 'player', 'firm',
+      'proposer', 'responder', 'employer', 'worker',
+      'principal', 'agent', 'country', 'monopolist',
+      'producer'
+    ))`);
+
+    console.log('Database constraints updated successfully');
+  } catch (err) {
+    console.error('Error updating database constraints:', err);
+  }
+}
+
 // Create HTTP server
 const server = http.createServer(app);
 
@@ -13,10 +41,11 @@ const server = http.createServer(app);
 const io = setupSocketHandlers(server);
 
 // Start server
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`WebSocket server ready`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  await applyConstraintUpdates();
 });
 
 // Graceful shutdown
