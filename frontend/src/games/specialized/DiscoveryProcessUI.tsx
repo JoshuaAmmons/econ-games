@@ -90,7 +90,10 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
   const [results, setResults] = useState<PeriodResult[] | null>(null);
   const [productionStarted, setProductionStarted] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const hasRequestedState = useRef(false);
+  const onEventRef = useRef(onEvent);
+  const refreshPlayerRef = useRef(refreshPlayer);
+  onEventRef.current = onEvent;
+  refreshPlayerRef.current = refreshPlayer;
 
   // Derive good configs
   const goods: GoodConfig[] = gameConfig
@@ -107,12 +110,13 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
   const myInfo = playerInfo.find((p) => p.id === playerId);
   const myInventory = inventories[playerId] || { field: {}, house: {} };
 
-  // Socket event listeners
+  // Socket event listeners — register once, use refs for callbacks that change
   useEffect(() => {
+    const oe = onEventRef.current;
     const cleanups: (() => void)[] = [];
 
     cleanups.push(
-      onEvent('phase-changed', (data: { phase: string; timeRemaining: number }) => {
+      oe('phase-changed', (data: { phase: string; timeRemaining: number }) => {
         setPhase(data.phase as any);
         setPhaseTimeRemaining(data.timeRemaining);
         if (data.phase === 'move') {
@@ -125,7 +129,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
     );
 
     cleanups.push(
-      onEvent('inventory-updated', (data: { playerId: string; inventory: PlayerInventory }) => {
+      oe('inventory-updated', (data: { playerId: string; inventory: PlayerInventory }) => {
         setInventories((prev) => ({
           ...prev,
           [data.playerId]: data.inventory,
@@ -134,7 +138,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
     );
 
     cleanups.push(
-      onEvent('goods-moved', (data: { fromPlayerId: string; toPlayerId: string; good: string; amount: number; movedBy: string }) => {
+      oe('goods-moved', (data: { fromPlayerId: string; toPlayerId: string; good: string; amount: number; movedBy: string }) => {
         if (data.toPlayerId === playerId && data.movedBy !== playerId) {
           toast(`${data.amount} ${data.good} moved to your house!`);
         }
@@ -142,16 +146,16 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
     );
 
     cleanups.push(
-      onEvent('production-updated', (_data: { playerId: string; allocation: number[] }) => {
+      oe('production-updated', (_data: { playerId: string; allocation: number[] }) => {
         // Could update a display of other players' production settings if needed
       })
     );
 
     cleanups.push(
-      onEvent('period-earnings', (data: { results: PeriodResult[] }) => {
+      oe('period-earnings', (data: { results: PeriodResult[] }) => {
         setResults(data.results);
         setPhase('complete');
-        refreshPlayer();
+        refreshPlayerRef.current();
         const myResult = data.results.find((r) => r.playerId === playerId);
         if (myResult) {
           toast.success(`Period earnings: ${myResult.earnings}¢ (${myResult.completeSets} complete sets)`);
@@ -160,8 +164,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
     );
 
     cleanups.push(
-      onEvent('chat-message', (msg: ChatMessage) => {
-        // Filter: show if recipients is 'all', or if current player is sender or in recipients
+      oe('chat-message', (msg: ChatMessage) => {
         if (
           msg.recipients === 'all' ||
           msg.from === playerId ||
@@ -172,9 +175,8 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
       })
     );
 
-    // Handle game state response (for reconnection)
     cleanups.push(
-      onEvent('game-state', (data: any) => {
+      oe('game-state', (data: any) => {
         if (data.phase) setPhase(data.phase);
         if (data.timeRemaining !== undefined) setPhaseTimeRemaining(data.timeRemaining);
         if (data.inventories) setInventories(data.inventories);
@@ -188,14 +190,9 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
       })
     );
 
-    // Request game state once after registering listeners
-    if (roundId && !hasRequestedState.current) {
-      hasRequestedState.current = true;
-      submitAction({ type: 'get_state' });
-    }
-
     return () => cleanups.forEach((fn) => fn());
-  }, [onEvent, playerId, refreshPlayer]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerId]);
 
   // Initialize config from session
   useEffect(() => {
@@ -218,20 +215,20 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
     setAllocation(numGoods === 3 ? [34, 33, 33] : [50, 50]);
   }, [session]);
 
-  // Reset on new round
+  // Request game state when round changes
   useEffect(() => {
-    if (roundActive && roundId) {
+    if (roundId) {
+      // Reset state for new round
       setResults(null);
       setPhase('production');
       setProductionStarted(false);
       setChatMessages([]);
       setInventories({});
-      // Allow re-requesting state for new round
-      hasRequestedState.current = false;
+      // Request fresh state from server
       submitAction({ type: 'get_state' });
-      hasRequestedState.current = true;
     }
-  }, [roundId, roundActive]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roundId]);
 
   // Auto-scroll chat
   useEffect(() => {
