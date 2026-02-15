@@ -189,7 +189,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
     );
 
     // Request game state once after registering listeners
-    if (roundId && roundActive && !hasRequestedState.current) {
+    if (roundId && !hasRequestedState.current) {
       hasRequestedState.current = true;
       submitAction({ type: 'get_state' });
     }

@@ -545,12 +545,14 @@ export class DiscoveryProcessEngine implements GameEngine {
       state.phase = 'complete';
     }
 
-    // Broadcast earnings
+    // Broadcast earnings (flatten resultData into the result objects for the frontend)
     io.to(`market-${sessionCode}`).emit('period-earnings', {
       roundId,
       results: results.map((r) => ({
-        ...r,
+        playerId: r.playerId,
         playerName: activePlayers.find((p) => p.id === r.playerId)?.name || 'Unknown',
+        profit: r.profit,
+        ...r.resultData,
       })),
     });
 
@@ -559,8 +561,7 @@ export class DiscoveryProcessEngine implements GameEngine {
       timeRemaining: 0,
     });
 
-    // Clean up in-memory state and timers for this round
-    this.roundStates.delete(roundId);
+    // Clean up timers for this round (keep roundState for reconnection)
     const timer = this.productionTimers.get(roundId);
     if (timer) {
       clearTimeout(timer);
@@ -661,6 +662,7 @@ export class DiscoveryProcessEngine implements GameEngine {
         results: existingResults.length > 0
           ? existingResults.map((r) => ({
               playerId: r.player_id,
+              playerName: activePlayers.find((p) => p.id === r.player_id)?.name || 'Unknown',
               profit: Number(r.profit),
               ...r.result_data,
             }))
@@ -694,6 +696,7 @@ export class DiscoveryProcessEngine implements GameEngine {
       results: existingResults.length > 0
         ? existingResults.map((r) => ({
             playerId: r.player_id,
+            playerName: activePlayers.find((p) => p.id === r.player_id)?.name || 'Unknown',
             profit: Number(r.profit),
             ...r.result_data,
           }))
