@@ -215,19 +215,15 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
     setAllocation(numGoods === 3 ? [34, 33, 33] : [50, 50]);
   }, [session]);
 
-  // Request game state when round changes
+  // Reset local state when round changes (server state comes via Market.tsx requestGameState)
   useEffect(() => {
     if (roundId) {
-      // Reset state for new round
       setResults(null);
       setPhase('production');
       setProductionStarted(false);
       setChatMessages([]);
       setInventories({});
-      // Request fresh state from server
-      submitAction({ type: 'get_state' });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roundId]);
 
   // Auto-scroll chat

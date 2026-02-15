@@ -215,6 +215,25 @@ export class DiscoveryProcessEngine implements GameEngine {
     if (!session) return { success: false, error: 'Session not found' };
 
     const config = session.game_config || {};
+
+    // Handle get_state without creating fresh round state (uses getGameState which can reconstruct from DB)
+    if (action.type === 'get_state') {
+      const gameState = await this.getGameState(roundId, playerId);
+      const sockets = await io.in(`market-${sessionCode}`).fetchSockets();
+      for (const s of sockets) {
+        if ((s as any).playerId === playerId) {
+          s.emit('game-state', gameState);
+          break;
+        }
+      }
+      // If state was reconstructed and is in production, schedule auto-transition
+      const state = this.roundStates.get(roundId);
+      if (state && state.phase === 'production' && !this.productionTimers.has(roundId)) {
+        this.scheduleProductionEnd(roundId, state, config, session, sessionCode, io);
+      }
+      return { success: true };
+    }
+
     const isNew = !this.roundStates.has(roundId);
     const state = this.getOrCreateRoundState(roundId, config);
 
@@ -235,23 +254,6 @@ export class DiscoveryProcessEngine implements GameEngine {
 
       case 'chat':
         return this.handleChat(state, playerId, player.name || `Player`, action, sessionCode, io);
-
-      case 'get_state': {
-        // Ensure production timer is scheduled if not already
-        if (state.phase === 'production' && !this.productionTimers.has(roundId)) {
-          this.scheduleProductionEnd(roundId, state, config, session, sessionCode, io);
-        }
-        const gameState = await this.getGameState(roundId, playerId);
-        // Only emit to the requesting player, not the whole room
-        const sockets = await io.in(`market-${sessionCode}`).fetchSockets();
-        for (const s of sockets) {
-          if ((s as any).playerId === playerId) {
-            s.emit('game-state', gameState);
-            break;
-          }
-        }
-        return { success: true };
-      }
 
       default:
         return { success: false, error: `Unknown action type: ${action.type}` };
@@ -670,7 +672,101 @@ export class DiscoveryProcessEngine implements GameEngine {
       };
     }
 
-    // No active state — return config and any existing results
+    // No active in-memory state — try to reconstruct from database
+    const configBlock = {
+      numGoods: parseInt(config.numGoods) || 2,
+      good1Name: config.good1Name || 'Orange',
+      good1Color: config.good1Color || '#FF5733',
+      good2Name: config.good2Name || 'Blue',
+      good2Color: config.good2Color || '#6495ED',
+      good3Name: config.good3Name || 'Pink',
+      good3Color: config.good3Color || '#FF1493',
+      productionLength: config.productionLength || 10,
+      moveLength: config.time_per_round || 90,
+      allowStealing: config.allowStealing || false,
+      allowChat: config.allowChat !== false,
+      allowPrivateChat: config.allowPrivateChat !== false,
+    };
+
+    // If round is active and has production actions, reconstruct state
+    if (round.status === 'active') {
+      const allActions = await GameActionModel.findByRound(roundId);
+      const productionActions = allActions.filter(a => a.action_type === 'production');
+      const moveActions = allActions.filter(a => a.action_type === 'move');
+
+      if (productionActions.length > 0) {
+        // Reconstruct inventories from production + moves
+        const inventories: Record<string, PlayerInventory> = {};
+        for (const pa of productionActions) {
+          const produced = pa.action_data?.produced || {};
+          inventories[pa.player_id] = {
+            field: { ...produced },
+            house: {},
+          };
+          // Initialize house with 0 for each good
+          for (const goodName of goodNames) {
+            inventories[pa.player_id].house[goodName] = 0;
+          }
+        }
+
+        // Replay move actions
+        for (const ma of moveActions) {
+          const { good, amount, fromLocation, fromPlayerId, toPlayerId } = ma.action_data;
+          const fromInv = inventories[fromPlayerId];
+          const toInv = inventories[toPlayerId];
+          if (fromInv && toInv) {
+            const fromStore = fromLocation === 'field' ? fromInv.field : fromInv.house;
+            fromStore[good] = (fromStore[good] || 0) - amount;
+            toInv.house[good] = (toInv.house[good] || 0) + amount;
+          }
+        }
+
+        // Reconstruct in-memory state so future requests are fast
+        const reconstructed: RoundState = {
+          phase: 'move',
+          inventories: new Map(Object.entries(inventories)),
+          productionSettings: new Map(),
+          playerTypes: new Map(),
+          phaseStartedAt: Date.now(), // approximate
+          productionLength: config.productionLength || 10,
+          moveLength: config.time_per_round || 90,
+          chatMessages: [],
+        };
+        // Restore player types
+        for (const p of activePlayers) {
+          const typeIdx = this.getPlayerTypeIndex(p, activePlayers);
+          reconstructed.playerTypes.set(p.id, typeIdx);
+        }
+        // Restore production settings
+        for (const pa of productionActions) {
+          if (pa.action_data?.allocation) {
+            reconstructed.productionSettings.set(pa.player_id, pa.action_data.allocation);
+          }
+        }
+        this.roundStates.set(roundId, reconstructed);
+
+        // Estimate time remaining from round start
+        const elapsed = round.started_at
+          ? (Date.now() - new Date(round.started_at).getTime()) / 1000
+          : 0;
+        const moveLength = config.time_per_round || 90;
+        const prodLength = config.productionLength || 10;
+        const moveTimeRemaining = Math.max(0, (prodLength + moveLength) - elapsed);
+
+        return {
+          phase: 'move',
+          timeRemaining: Math.round(moveTimeRemaining),
+          inventories,
+          productionSettings: Object.fromEntries(reconstructed.productionSettings),
+          chatMessages: [],
+          goodNames,
+          playerInfo,
+          config: configBlock,
+          results: null,
+        };
+      }
+    }
+
     return {
       phase: existingResults.length > 0 ? 'complete' : 'waiting',
       timeRemaining: 0,
@@ -679,20 +775,7 @@ export class DiscoveryProcessEngine implements GameEngine {
       chatMessages: [],
       goodNames,
       playerInfo,
-      config: {
-        numGoods: parseInt(config.numGoods) || 2,
-        good1Name: config.good1Name || 'Orange',
-        good1Color: config.good1Color || '#FF5733',
-        good2Name: config.good2Name || 'Blue',
-        good2Color: config.good2Color || '#6495ED',
-        good3Name: config.good3Name || 'Pink',
-        good3Color: config.good3Color || '#FF1493',
-        productionLength: config.productionLength || 10,
-        moveLength: config.time_per_round || 90,
-        allowStealing: config.allowStealing || false,
-        allowChat: config.allowChat !== false,
-        allowPrivateChat: config.allowPrivateChat !== false,
-      },
+      config: configBlock,
       results: existingResults.length > 0
         ? existingResults.map((r) => ({
             playerId: r.player_id,
