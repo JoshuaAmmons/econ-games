@@ -228,6 +228,23 @@ export class DiscoveryProcessEngine implements GameEngine {
       case 'chat':
         return this.handleChat(state, playerId, player.name || `Player`, action, sessionCode, io);
 
+      case 'get_state': {
+        const gameState = await this.getGameState(roundId, playerId);
+        // Find the socket for this player and emit directly
+        const sockets = await io.in(`market-${sessionCode}`).fetchSockets();
+        for (const s of sockets) {
+          if ((s as any).playerId === playerId) {
+            s.emit('game-state', gameState);
+            break;
+          }
+        }
+        // Also broadcast to the room with a player-specific wrapper
+        // In case socket matching doesn't work, emit to entire room
+        // and let the client filter
+        io.to(`market-${sessionCode}`).emit('game-state', gameState);
+        return { success: true };
+      }
+
       default:
         return { success: false, error: `Unknown action type: ${action.type}` };
     }
