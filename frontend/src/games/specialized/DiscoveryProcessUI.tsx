@@ -106,12 +106,8 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
   const myInfo = playerInfo.find((p) => p.id === playerId);
   const myInventory = inventories[playerId] || { field: {}, house: {} };
 
-  // Request game state on mount and round change
-  useEffect(() => {
-    if (roundId && roundActive) {
-      submitAction({ type: 'get_state' });
-    }
-  }, [roundId, roundActive]);
+  // Game state is requested automatically by Market.tsx via requestGameState()
+  // when roundId/roundActive change, which triggers the 'game-state' socket event.
 
   // Socket event listeners
   useEffect(() => {
@@ -181,10 +177,14 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
     // Handle game state response (for reconnection)
     cleanups.push(
       onEvent('game-state', (data: any) => {
+        console.log('[DiscoveryProcess] game-state received:', JSON.stringify(data).substring(0, 500));
         if (data.phase) setPhase(data.phase);
         if (data.timeRemaining !== undefined) setPhaseTimeRemaining(data.timeRemaining);
         if (data.inventories) setInventories(data.inventories);
-        if (data.playerInfo) setPlayerInfo(data.playerInfo);
+        if (data.playerInfo) {
+          console.log('[DiscoveryProcess] Setting playerInfo:', data.playerInfo.length, 'players');
+          setPlayerInfo(data.playerInfo);
+        }
         if (data.config) setGameConfig(data.config);
         if (data.chatMessages) setChatMessages(data.chatMessages);
         if (data.productionSettings && data.productionSettings[playerId]) {
