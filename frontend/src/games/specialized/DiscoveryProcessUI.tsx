@@ -90,6 +90,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
   const [results, setResults] = useState<PeriodResult[] | null>(null);
   const [productionStarted, setProductionStarted] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const hasRequestedState = useRef(false);
 
   // Derive good configs
   const goods: GoodConfig[] = gameConfig
@@ -174,14 +175,10 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
     // Handle game state response (for reconnection)
     cleanups.push(
       onEvent('game-state', (data: any) => {
-        console.log('[DiscoveryProcess] game-state received:', JSON.stringify(data).substring(0, 500));
         if (data.phase) setPhase(data.phase);
         if (data.timeRemaining !== undefined) setPhaseTimeRemaining(data.timeRemaining);
         if (data.inventories) setInventories(data.inventories);
-        if (data.playerInfo) {
-          console.log('[DiscoveryProcess] Setting playerInfo:', data.playerInfo.length, 'players');
-          setPlayerInfo(data.playerInfo);
-        }
+        if (data.playerInfo) setPlayerInfo(data.playerInfo);
         if (data.config) setGameConfig(data.config);
         if (data.chatMessages) setChatMessages(data.chatMessages);
         if (data.productionSettings && data.productionSettings[playerId]) {
@@ -191,10 +188,9 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
       })
     );
 
-    // After registering listeners, request game state so we don't miss
-    // the response from Market.tsx's requestGameState (which fires before
-    // this child component mounts its listeners).
-    if (roundId && roundActive) {
+    // Request game state once after registering listeners
+    if (roundId && roundActive && !hasRequestedState.current) {
+      hasRequestedState.current = true;
       submitAction({ type: 'get_state' });
     }
 
@@ -230,6 +226,10 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
       setProductionStarted(false);
       setChatMessages([]);
       setInventories({});
+      // Allow re-requesting state for new round
+      hasRequestedState.current = false;
+      submitAction({ type: 'get_state' });
+      hasRequestedState.current = true;
     }
   }, [roundId, roundActive]);
 

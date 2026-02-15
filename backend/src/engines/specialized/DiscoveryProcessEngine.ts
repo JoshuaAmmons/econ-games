@@ -77,6 +77,8 @@ export class DiscoveryProcessEngine implements GameEngine {
 
   // In-memory round states keyed by roundId
   private roundStates: Map<string, RoundState> = new Map();
+  // Production phase auto-transition timers
+  private productionTimers: Map<string, NodeJS.Timeout> = new Map();
 
   getUIConfig(): UIConfig {
     return {
@@ -213,7 +215,13 @@ export class DiscoveryProcessEngine implements GameEngine {
     if (!session) return { success: false, error: 'Session not found' };
 
     const config = session.game_config || {};
+    const isNew = !this.roundStates.has(roundId);
     const state = this.getOrCreateRoundState(roundId, config);
+
+    // Schedule auto-transition from production→move when round state is first created
+    if (isNew && state.phase === 'production') {
+      this.scheduleProductionEnd(roundId, state, config, session, sessionCode, io);
+    }
 
     switch (action.type) {
       case 'set_production':
@@ -229,8 +237,12 @@ export class DiscoveryProcessEngine implements GameEngine {
         return this.handleChat(state, playerId, player.name || `Player`, action, sessionCode, io);
 
       case 'get_state': {
+        // Ensure production timer is scheduled if not already
+        if (state.phase === 'production' && !this.productionTimers.has(roundId)) {
+          this.scheduleProductionEnd(roundId, state, config, session, sessionCode, io);
+        }
         const gameState = await this.getGameState(roundId, playerId);
-        // Find the socket for this player and emit directly
+        // Only emit to the requesting player, not the whole room
         const sockets = await io.in(`market-${sessionCode}`).fetchSockets();
         for (const s of sockets) {
           if ((s as any).playerId === playerId) {
@@ -238,10 +250,6 @@ export class DiscoveryProcessEngine implements GameEngine {
             break;
           }
         }
-        // Also broadcast to the room with a player-specific wrapper
-        // In case socket matching doesn't work, emit to entire room
-        // and let the client filter
-        io.to(`market-${sessionCode}`).emit('game-state', gameState);
         return { success: true };
       }
 
@@ -287,6 +295,13 @@ export class DiscoveryProcessEngine implements GameEngine {
   ): Promise<ActionResult> {
     if (state.phase !== 'production') {
       return { success: false, error: 'Not in production phase' };
+    }
+
+    // Cancel the auto-transition timer if it exists
+    const existingTimer = this.productionTimers.get(roundId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      this.productionTimers.delete(roundId);
     }
 
     // Calculate production for all players
@@ -544,8 +559,13 @@ export class DiscoveryProcessEngine implements GameEngine {
       timeRemaining: 0,
     });
 
-    // Clean up in-memory state for this round
+    // Clean up in-memory state and timers for this round
     this.roundStates.delete(roundId);
+    const timer = this.productionTimers.get(roundId);
+    if (timer) {
+      clearTimeout(timer);
+      this.productionTimers.delete(roundId);
+    }
 
     return {
       playerResults: results,
@@ -701,6 +721,34 @@ export class DiscoveryProcessEngine implements GameEngine {
       this.roundStates.set(roundId, state);
     }
     return state;
+  }
+
+  /**
+   * Schedule automatic production → move transition after productionLength seconds.
+   * Called the first time handleAction is invoked for a new round.
+   */
+  private scheduleProductionEnd(
+    roundId: string,
+    state: RoundState,
+    config: Record<string, any>,
+    session: any,
+    sessionCode: string,
+    io: Server
+  ): void {
+    // Don't double-schedule
+    if (this.productionTimers.has(roundId)) return;
+
+    const delayMs = state.productionLength * 1000;
+    const timer = setTimeout(async () => {
+      this.productionTimers.delete(roundId);
+      const currentState = this.roundStates.get(roundId);
+      if (currentState && currentState.phase === 'production') {
+        console.log(`[DiscoveryProcess] Auto-transitioning production→move for round ${roundId}`);
+        await this.handleStartProduction(roundId, currentState, config, session, sessionCode, io);
+      }
+    }, delayMs);
+
+    this.productionTimers.set(roundId, timer);
   }
 
   private getGoodNames(config: Record<string, any>): string[] {
