@@ -106,9 +106,6 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
   const myInfo = playerInfo.find((p) => p.id === playerId);
   const myInventory = inventories[playerId] || { field: {}, house: {} };
 
-  // Game state is requested automatically by Market.tsx via requestGameState()
-  // when roundId/roundActive change, which triggers the 'game-state' socket event.
-
   // Socket event listeners
   useEffect(() => {
     const cleanups: (() => void)[] = [];
@@ -193,6 +190,13 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
         if (data.results) setResults(data.results);
       })
     );
+
+    // After registering listeners, request game state so we don't miss
+    // the response from Market.tsx's requestGameState (which fires before
+    // this child component mounts its listeners).
+    if (roundId && roundActive) {
+      submitAction({ type: 'get_state' });
+    }
 
     return () => cleanups.forEach((fn) => fn());
   }, [onEvent, playerId, refreshPlayer]);
