@@ -16,7 +16,8 @@ export type GameType =
   | 'principal_agent'
   | 'comparative_advantage'
   | 'monopoly'
-  | 'market_for_lemons';
+  | 'market_for_lemons'
+  | 'discovery_process';
 
 /**
  * Result of validating a game config

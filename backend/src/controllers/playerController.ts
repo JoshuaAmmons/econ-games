@@ -19,6 +19,7 @@ const GAME_ROLES: Record<string, string> = {
   comparative_advantage: 'country',
   monopoly: 'monopolist',
   market_for_lemons: 'seller',
+  discovery_process: 'producer',
 };
 
 // Games where players alternate between two roles
