@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface PlayerInventory {
   field: Record<string, number>;
@@ -55,6 +55,13 @@ const TownView: React.FC<TownViewProps> = ({
   onMoveGoods,
 }) => {
   const [selected, setSelected] = useState<SelectedGood | null>(null);
+
+  // Clear selection when phase changes away from 'move'
+  useEffect(() => {
+    if (phase !== 'move') {
+      setSelected(null);
+    }
+  }, [phase]);
 
   const half = Math.ceil(players.length / 2);
   const leftCol = players.slice(0, half);
@@ -210,6 +217,20 @@ const TownView: React.FC<TownViewProps> = ({
           style={{ cursor: isDropTarget ? 'pointer' : 'default' }}
         />
         {renderGoodOvals(inv.field, fieldX, fieldY, FIELD_W, FIELD_H, 'field', player.id)}
+        {/* Field drop target overlay (on top of ovals) */}
+        {isDropTarget && (
+          <rect
+            x={fieldX}
+            y={fieldY}
+            width={FIELD_W}
+            height={FIELD_H}
+            fill="transparent"
+            stroke="none"
+            rx={3}
+            onClick={() => handleHouseClick(player.id)}
+            style={{ cursor: 'pointer' }}
+          />
+        )}
 
         {/* House (pentagon shape) */}
         <polygon
@@ -233,21 +254,32 @@ const TownView: React.FC<TownViewProps> = ({
         </text>
         {renderGoodOvals(inv.house, houseX, wallTop, HOUSE_W, HOUSE_H, 'house', player.id)}
 
-        {/* Drop target highlight */}
+        {/* Drop target: clickable overlay on top of ovals + dashed highlight */}
         {isDropTarget && (
-          <rect
-            x={houseX - 2}
-            y={roofTop - 2}
-            width={HOUSE_W + 4}
-            height={HOUSE_H + ROOF_H + 4}
-            fill="none"
-            stroke="#2196f3"
-            strokeWidth={2}
-            strokeDasharray="4,3"
-            rx={4}
-            opacity={0.6}
-            pointerEvents="none"
-          />
+          <>
+            {/* Transparent clickable polygon covering the whole house area */}
+            <polygon
+              points={`${roofLeft},${wallTop} ${(roofLeft + roofRight) / 2},${roofTop} ${roofRight},${wallTop} ${roofRight},${wallBottom} ${roofLeft},${wallBottom}`}
+              fill="transparent"
+              stroke="none"
+              onClick={() => handleHouseClick(player.id)}
+              style={{ cursor: 'pointer' }}
+            />
+            {/* Dashed border highlight */}
+            <rect
+              x={houseX - 2}
+              y={roofTop - 2}
+              width={HOUSE_W + 4}
+              height={HOUSE_H + ROOF_H + 4}
+              fill="none"
+              stroke="#2196f3"
+              strokeWidth={2}
+              strokeDasharray="4,3"
+              rx={4}
+              opacity={0.6}
+              pointerEvents="none"
+            />
+          </>
         )}
       </g>
     );
