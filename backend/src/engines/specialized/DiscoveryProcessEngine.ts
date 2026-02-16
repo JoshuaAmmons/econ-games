@@ -195,6 +195,30 @@ export class DiscoveryProcessEngine implements GameEngine {
   }
 
   // --------------------------------------------------------------------------
+  // Round lifecycle
+  // --------------------------------------------------------------------------
+
+  async onRoundStart(
+    roundId: string,
+    sessionCode: string,
+    io: Server
+  ): Promise<void> {
+    const round = await RoundModel.findById(roundId);
+    if (!round) return;
+
+    const session = await SessionModel.findById(round.session_id);
+    if (!session) return;
+
+    const config = session.game_config || {};
+
+    // Create fresh round state and schedule the production→move auto-transition
+    const state = this.getOrCreateRoundState(roundId, config);
+    this.scheduleProductionEnd(roundId, state, config, session, sessionCode, io);
+
+    console.log(`[DiscoveryProcess] Round ${roundId} initialized, production timer scheduled (${state.productionLength}s)`);
+  }
+
+  // --------------------------------------------------------------------------
   // Action handling
   // --------------------------------------------------------------------------
 
@@ -216,31 +240,8 @@ export class DiscoveryProcessEngine implements GameEngine {
 
     const config = session.game_config || {};
 
-    // Handle get_state without creating fresh round state (uses getGameState which can reconstruct from DB)
-    if (action.type === 'get_state') {
-      const gameState = await this.getGameState(roundId, playerId);
-      const sockets = await io.in(`market-${sessionCode}`).fetchSockets();
-      for (const s of sockets) {
-        if ((s as any).playerId === playerId) {
-          s.emit('game-state', gameState);
-          break;
-        }
-      }
-      // If state was reconstructed and is in production, schedule auto-transition
-      const state = this.roundStates.get(roundId);
-      if (state && state.phase === 'production' && !this.productionTimers.has(roundId)) {
-        this.scheduleProductionEnd(roundId, state, config, session, sessionCode, io);
-      }
-      return { success: true };
-    }
-
-    const isNew = !this.roundStates.has(roundId);
+    // Ensure round state exists (getOrCreateRoundState is idempotent)
     const state = this.getOrCreateRoundState(roundId, config);
-
-    // Schedule auto-transition from production→move when round state is first created
-    if (isNew && state.phase === 'production') {
-      this.scheduleProductionEnd(roundId, state, config, session, sessionCode, io);
-    }
 
     switch (action.type) {
       case 'set_production':
@@ -758,6 +759,83 @@ export class DiscoveryProcessEngine implements GameEngine {
           timeRemaining: Math.round(moveTimeRemaining),
           inventories,
           productionSettings: Object.fromEntries(reconstructed.productionSettings),
+          chatMessages: [],
+          goodNames,
+          playerInfo,
+          config: configBlock,
+          results: null,
+        };
+      }
+    }
+
+    // If round is active but no production happened yet, determine phase from elapsed time
+    if (round.status === 'active') {
+      const elapsed = round.started_at
+        ? (Date.now() - new Date(round.started_at).getTime()) / 1000
+        : 0;
+      const prodLength = config.productionLength || 10;
+      const moveLength = config.time_per_round || 90;
+
+      if (elapsed < prodLength) {
+        // Still in production phase
+        return {
+          phase: 'production',
+          timeRemaining: Math.round(prodLength - elapsed),
+          inventories: {},
+          productionSettings: {},
+          chatMessages: [],
+          goodNames,
+          playerInfo,
+          config: configBlock,
+          results: null,
+        };
+      } else {
+        // Production time has passed but no production actions in DB (server restarted)
+        // Run production now so players get their goods
+        const state = this.getOrCreateRoundState(roundId, config);
+        if (state.phase === 'production') {
+          // Calculate production for all players inline
+          for (const p of activePlayers) {
+            const typeIndex = this.getPlayerTypeIndex(p, activePlayers);
+            state.playerTypes.set(p.id, typeIndex);
+            const pType = playerTypes[typeIndex % playerTypes.length];
+            const allocation = state.productionSettings.get(p.id) || this.defaultAllocation(goodNames.length);
+            const inventory = state.inventories.get(p.id) || { field: {}, house: {} };
+
+            goodNames.forEach((goodName, i) => {
+              const goodKey = `good${i + 1}`;
+              const params = pType.production[goodKey] || { p1: 0, p2: 1, p3: 1 };
+              const timeFraction = (allocation[i] / 100) * prodLength;
+              const produced = Math.floor(params.p1 + params.p2 * Math.pow(timeFraction, params.p3));
+              inventory.field[goodName] = (inventory.field[goodName] || 0) + produced;
+            });
+
+            // Initialize house
+            for (const goodName of goodNames) {
+              if (inventory.house[goodName] === undefined) inventory.house[goodName] = 0;
+            }
+            state.inventories.set(p.id, inventory);
+
+            await GameActionModel.create(roundId, p.id, 'production', {
+              allocation,
+              produced: { ...inventory.field },
+            });
+          }
+          state.phase = 'move';
+          state.phaseStartedAt = Date.now();
+        }
+
+        const inventories: Record<string, PlayerInventory> = {};
+        for (const [pid, inv] of state.inventories) {
+          inventories[pid] = inv;
+        }
+
+        const moveTimeRemaining = Math.max(0, (prodLength + moveLength) - elapsed);
+        return {
+          phase: 'move',
+          timeRemaining: Math.round(moveTimeRemaining),
+          inventories,
+          productionSettings: {},
           chatMessages: [],
           goodNames,
           playerInfo,

@@ -166,6 +166,13 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
         await RoundModel.start(round.id);
         await SessionModel.updateCurrentRound(session.id, roundNumber);
 
+        // Let the engine initialize round state (timers, inventories, etc.)
+        const gameType = await getSessionGameType(sessionCode);
+        const engine = GameRegistry.get(gameType);
+        if (engine.onRoundStart) {
+          await engine.onRoundStart(round.id, sessionCode, io);
+        }
+
         io.to(`session-${sessionCode}`).emit('round-started', {
           round: { ...round, status: 'active' },
           roundNumber,

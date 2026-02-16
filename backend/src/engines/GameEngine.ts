@@ -151,4 +151,14 @@ export interface GameEngine {
    * Used when a player reconnects or loads the page mid-round.
    */
   getGameState(roundId: string, playerId?: string): Promise<Record<string, any>>;
+
+  /**
+   * Called when a round starts (optional lifecycle hook).
+   * Engines can use this to initialize in-memory state, schedule timers, etc.
+   */
+  onRoundStart?(
+    roundId: string,
+    sessionCode: string,
+    io: Server
+  ): Promise<void>;
 }
