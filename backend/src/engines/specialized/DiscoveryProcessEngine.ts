@@ -231,10 +231,52 @@ export class DiscoveryProcessEngine implements GameEngine {
 
     this.scheduleProductionEnd(roundId, state, config, session, sessionCode, io);
 
-    // Emit initial phase to all players so they know we're in production
-    io.to(`market-${sessionCode}`).emit('phase-changed', {
+    // Build and broadcast the full initial game state to all players
+    const playerTypes = this.getPlayerTypes(config);
+    const playerInfo = activePlayers.map((p, idx) => {
+      const typeIndex = state.playerTypes.get(p.id) ?? this.getPlayerTypeIndex(p, activePlayers);
+      const pType = playerTypes[typeIndex % playerTypes.length];
+      return {
+        id: p.id,
+        name: p.name || `Player ${idx + 1}`,
+        label: idx + 1,
+        typeIndex,
+        earningRequirements: pType.earningRequirements,
+        earningAmount: pType.earningAmount,
+      };
+    });
+
+    const inventories: Record<string, PlayerInventory> = {};
+    for (const [pid, inv] of state.inventories) {
+      inventories[pid] = inv;
+    }
+
+    const configBlock = {
+      numGoods: parseInt(config.numGoods) || 2,
+      good1Name: config.good1Name || 'Orange',
+      good1Color: config.good1Color || '#FF5733',
+      good2Name: config.good2Name || 'Blue',
+      good2Color: config.good2Color || '#6495ED',
+      good3Name: config.good3Name || 'Pink',
+      good3Color: config.good3Color || '#FF1493',
+      productionLength: config.productionLength || 10,
+      moveLength: config.time_per_round || 90,
+      allowStealing: config.allowStealing || false,
+      allowChat: config.allowChat !== false,
+      allowPrivateChat: config.allowPrivateChat !== false,
+    };
+
+    // Broadcast full game-state to ALL players in the market room
+    io.to(`market-${sessionCode}`).emit('game-state', {
       phase: 'production',
       timeRemaining: state.productionLength,
+      inventories,
+      productionSettings: {},
+      chatMessages: [],
+      goodNames,
+      playerInfo,
+      config: configBlock,
+      results: null,
     });
 
     console.log(`[DiscoveryProcess] Round ${roundId} initialized for ${activePlayers.length} players, production timer scheduled (${state.productionLength}s)`);
