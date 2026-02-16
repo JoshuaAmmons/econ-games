@@ -213,9 +213,31 @@ export class DiscoveryProcessEngine implements GameEngine {
 
     // Create fresh round state and schedule the production→move auto-transition
     const state = this.getOrCreateRoundState(roundId, config);
+
+    // Pre-populate player inventories with empty goods so getGameState can return them
+    const activePlayers = await PlayerModel.findActiveBySession(session.id);
+    const goodNames = this.getGoodNames(config);
+    for (const p of activePlayers) {
+      if (!state.inventories.has(p.id)) {
+        const inv: PlayerInventory = { field: {}, house: {} };
+        for (const gn of goodNames) {
+          inv.field[gn] = 0;
+          inv.house[gn] = 0;
+        }
+        state.inventories.set(p.id, inv);
+      }
+      state.playerTypes.set(p.id, this.getPlayerTypeIndex(p, activePlayers));
+    }
+
     this.scheduleProductionEnd(roundId, state, config, session, sessionCode, io);
 
-    console.log(`[DiscoveryProcess] Round ${roundId} initialized, production timer scheduled (${state.productionLength}s)`);
+    // Emit initial phase to all players so they know we're in production
+    io.to(`market-${sessionCode}`).emit('phase-changed', {
+      phase: 'production',
+      timeRemaining: state.productionLength,
+    });
+
+    console.log(`[DiscoveryProcess] Round ${roundId} initialized for ${activePlayers.length} players, production timer scheduled (${state.productionLength}s)`);
   }
 
   // --------------------------------------------------------------------------
@@ -343,6 +365,8 @@ export class DiscoveryProcessEngine implements GameEngine {
     state.phase = 'move';
     state.phaseStartedAt = Date.now();
 
+    console.log(`[DiscoveryProcess] Broadcasting phase-changed: move (${state.moveLength}s) to market-${sessionCode}`);
+
     // Broadcast phase change and all inventories
     io.to(`market-${sessionCode}`).emit('phase-changed', {
       phase: 'move',
@@ -351,6 +375,7 @@ export class DiscoveryProcessEngine implements GameEngine {
 
     // Broadcast all inventories so everyone sees production results
     for (const [pid, inv] of state.inventories) {
+      console.log(`[DiscoveryProcess] Broadcasting inventory for ${pid}: field=${JSON.stringify(inv.field)}, house=${JSON.stringify(inv.house)}`);
       io.to(`market-${sessionCode}`).emit('inventory-updated', {
         playerId: pid,
         inventory: inv,
@@ -948,12 +973,20 @@ export class DiscoveryProcessEngine implements GameEngine {
     if (this.productionTimers.has(roundId)) return;
 
     const delayMs = state.productionLength * 1000;
+    console.log(`[DiscoveryProcess] Scheduling production end in ${delayMs}ms for round ${roundId}`);
     const timer = setTimeout(async () => {
       this.productionTimers.delete(roundId);
       const currentState = this.roundStates.get(roundId);
       if (currentState && currentState.phase === 'production') {
         console.log(`[DiscoveryProcess] Auto-transitioning production→move for round ${roundId}`);
-        await this.handleStartProduction(roundId, currentState, config, session, sessionCode, io);
+        try {
+          await this.handleStartProduction(roundId, currentState, config, session, sessionCode, io);
+          console.log(`[DiscoveryProcess] Production→move transition complete for round ${roundId}`);
+        } catch (err) {
+          console.error(`[DiscoveryProcess] Error in production→move transition:`, err);
+        }
+      } else {
+        console.log(`[DiscoveryProcess] Timer fired but phase is ${currentState?.phase || 'no state'} for round ${roundId}`);
       }
     }, delayMs);
 

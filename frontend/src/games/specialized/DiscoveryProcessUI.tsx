@@ -90,10 +90,6 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
   const [results, setResults] = useState<PeriodResult[] | null>(null);
   const [productionStarted, setProductionStarted] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const onEventRef = useRef(onEvent);
-  const refreshPlayerRef = useRef(refreshPlayer);
-  onEventRef.current = onEvent;
-  refreshPlayerRef.current = refreshPlayer;
 
   // Derive good configs
   const goods: GoodConfig[] = gameConfig
@@ -110,13 +106,12 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
   const myInfo = playerInfo.find((p) => p.id === playerId);
   const myInventory = inventories[playerId] || { field: {}, house: {} };
 
-  // Socket event listeners — register once, use refs for callbacks that change
+  // Socket event listeners
   useEffect(() => {
-    const oe = onEventRef.current;
     const cleanups: (() => void)[] = [];
 
     cleanups.push(
-      oe('phase-changed', (data: { phase: string; timeRemaining: number }) => {
+      onEvent('phase-changed', (data: { phase: string; timeRemaining: number }) => {
         setPhase(data.phase as any);
         setPhaseTimeRemaining(data.timeRemaining);
         if (data.phase === 'move') {
@@ -129,7 +124,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
     );
 
     cleanups.push(
-      oe('inventory-updated', (data: { playerId: string; inventory: PlayerInventory }) => {
+      onEvent('inventory-updated', (data: { playerId: string; inventory: PlayerInventory }) => {
         setInventories((prev) => ({
           ...prev,
           [data.playerId]: data.inventory,
@@ -138,7 +133,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
     );
 
     cleanups.push(
-      oe('goods-moved', (data: { fromPlayerId: string; toPlayerId: string; good: string; amount: number; movedBy: string }) => {
+      onEvent('goods-moved', (data: { fromPlayerId: string; toPlayerId: string; good: string; amount: number; movedBy: string }) => {
         if (data.toPlayerId === playerId && data.movedBy !== playerId) {
           toast(`${data.amount} ${data.good} moved to your house!`);
         }
@@ -146,16 +141,16 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
     );
 
     cleanups.push(
-      oe('production-updated', (_data: { playerId: string; allocation: number[] }) => {
+      onEvent('production-updated', (_data: { playerId: string; allocation: number[] }) => {
         // Could update a display of other players' production settings if needed
       })
     );
 
     cleanups.push(
-      oe('period-earnings', (data: { results: PeriodResult[] }) => {
+      onEvent('period-earnings', (data: { results: PeriodResult[] }) => {
         setResults(data.results);
         setPhase('complete');
-        refreshPlayerRef.current();
+        refreshPlayer();
         const myResult = data.results.find((r) => r.playerId === playerId);
         if (myResult) {
           toast.success(`Period earnings: ${myResult.earnings}¢ (${myResult.completeSets} complete sets)`);
@@ -164,7 +159,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
     );
 
     cleanups.push(
-      oe('chat-message', (msg: ChatMessage) => {
+      onEvent('chat-message', (msg: ChatMessage) => {
         if (
           msg.recipients === 'all' ||
           msg.from === playerId ||
@@ -176,7 +171,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
     );
 
     cleanups.push(
-      oe('game-state', (data: any) => {
+      onEvent('game-state', (data: any) => {
         if (data.phase) setPhase(data.phase);
         if (data.timeRemaining !== undefined) setPhaseTimeRemaining(data.timeRemaining);
         if (data.inventories) setInventories(data.inventories);
@@ -191,8 +186,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
     );
 
     return () => cleanups.forEach((fn) => fn());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playerId]);
+  }, [onEvent, playerId, refreshPlayer]);
 
   // Initialize config from session
   useEffect(() => {
