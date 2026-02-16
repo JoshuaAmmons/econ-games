@@ -82,6 +82,16 @@ export const Market: React.FC = () => {
           const remaining = Math.max(0, fullSession.time_per_round - elapsed);
           setTimeRemaining(remaining);
         }
+      } else {
+        // No active round — find the most recent completed round so we can
+        // request game state (needed for playerInfo on Discovery Process etc.)
+        const completedRounds = rounds
+          .filter((r: any) => r.status === 'completed')
+          .sort((a: any, b: any) => b.round_number - a.round_number);
+        if (completedRounds.length > 0) {
+          setRoundId(completedRounds[0].id);
+          setRoundNumber(completedRounds[0].round_number);
+        }
       }
     } catch (err) {
       console.error('Failed to load player:', err);
@@ -102,11 +112,12 @@ export const Market: React.FC = () => {
   };
 
   // Request game state when we recover a round on page load (reconnection support)
+  // Also request when round exists but is completed (so playerInfo etc. are populated)
   useEffect(() => {
-    if (connected && roundId && roundActive) {
+    if (connected && roundId) {
       requestGameState(roundId);
     }
-  }, [connected, roundId, roundActive, requestGameState]);
+  }, [connected, roundId, requestGameState]);
 
   // Generic action submission for non-DA games
   const submitAction = (action: Record<string, any>) => {
