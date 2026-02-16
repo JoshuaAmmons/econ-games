@@ -10,6 +10,12 @@ export class SessionController {
     try {
       const sessionData: CreateSessionRequest = req.body;
 
+      // Sync top-level fields from game_config if the engine defines them there
+      const gc = sessionData.game_config || {};
+      if (gc.market_size) sessionData.market_size = Number(gc.market_size);
+      if (gc.num_rounds) sessionData.num_rounds = Number(gc.num_rounds);
+      if (gc.time_per_round) sessionData.time_per_round = Number(gc.time_per_round);
+
       // Validate input
       if (!sessionData.market_size || sessionData.market_size < 2) {
         res.status(400).json({
