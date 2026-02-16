@@ -79,6 +79,8 @@ export class DiscoveryProcessEngine implements GameEngine {
   private roundStates: Map<string, RoundState> = new Map();
   // Production phase auto-transition timers
   private productionTimers: Map<string, NodeJS.Timeout> = new Map();
+  // Move phase auto-end timers
+  private moveTimers: Map<string, NodeJS.Timeout> = new Map();
 
   getUIConfig(): UIConfig {
     return {
@@ -407,6 +409,9 @@ export class DiscoveryProcessEngine implements GameEngine {
     state.phase = 'move';
     state.phaseStartedAt = Date.now();
 
+    // Schedule auto-end of move phase
+    this.scheduleMoveEnd(roundId, state, sessionCode, io);
+
     console.log(`[DiscoveryProcess] Broadcasting phase-changed: move (${state.moveLength}s) to market-${sessionCode}`);
 
     // Broadcast phase change and all inventories
@@ -555,6 +560,21 @@ export class DiscoveryProcessEngine implements GameEngine {
     let state = this.roundStates.get(roundId);
     const activePlayers = await PlayerModel.findActiveBySession(session.id);
 
+    // Guard against double processing (auto-timer + manual end-round)
+    if (state && state.phase === 'complete') {
+      console.log(`[DiscoveryProcess] Round ${roundId} already completed, skipping duplicate processRoundEnd`);
+      // Return existing results from DB
+      const existingResults = await GameResultModel.findByRound(roundId);
+      return {
+        playerResults: existingResults.map(r => ({
+          playerId: r.player_id,
+          profit: Number(r.profit),
+          resultData: r.result_data || {},
+        })),
+        summary: {},
+      };
+    }
+
     // If no in-memory state (server restarted), check DB for production actions
     if (!state) {
       const allActions = await GameActionModel.findByRound(roundId);
@@ -681,6 +701,11 @@ export class DiscoveryProcessEngine implements GameEngine {
     if (timer) {
       clearTimeout(timer);
       this.productionTimers.delete(roundId);
+    }
+    const moveTimer = this.moveTimers.get(roundId);
+    if (moveTimer) {
+      clearTimeout(moveTimer);
+      this.moveTimers.delete(roundId);
     }
 
     return {
@@ -1033,6 +1058,61 @@ export class DiscoveryProcessEngine implements GameEngine {
     }, delayMs);
 
     this.productionTimers.set(roundId, timer);
+  }
+
+  /**
+   * Schedule automatic move phase end after moveLength seconds.
+   * Triggers processRoundEnd and emits round-ended to all clients.
+   */
+  private scheduleMoveEnd(
+    roundId: string,
+    state: RoundState,
+    sessionCode: string,
+    io: Server
+  ): void {
+    // Don't double-schedule
+    if (this.moveTimers.has(roundId)) return;
+
+    const delayMs = state.moveLength * 1000;
+    console.log(`[DiscoveryProcess] Scheduling move end in ${delayMs}ms for round ${roundId}`);
+    const timer = setTimeout(async () => {
+      this.moveTimers.delete(roundId);
+      const currentState = this.roundStates.get(roundId);
+      if (currentState && currentState.phase === 'move') {
+        console.log(`[DiscoveryProcess] Auto-ending move phase for round ${roundId}`);
+        try {
+          // Mark the round as ended in DB
+          await RoundModel.end(roundId);
+
+          // Process round end (calculates earnings, broadcasts results)
+          const roundResult = await this.processRoundEnd(roundId, sessionCode, io);
+
+          // Get trades for backward compat
+          const { TradeModel } = await import('../../models/Trade');
+          const trades = await TradeModel.findByRound(roundId);
+
+          // Emit round-ended to both session and market rooms
+          io.to(`session-${sessionCode}`).emit('round-ended', {
+            roundId,
+            trades,
+            results: roundResult,
+          });
+          io.to(`market-${sessionCode}`).emit('round-ended', {
+            roundId,
+            trades,
+            results: roundResult,
+          });
+
+          console.log(`[DiscoveryProcess] Move phase auto-ended for round ${roundId}`);
+        } catch (err) {
+          console.error(`[DiscoveryProcess] Error in move phase auto-end:`, err);
+        }
+      } else {
+        console.log(`[DiscoveryProcess] Move timer fired but phase is ${currentState?.phase || 'no state'} for round ${roundId}`);
+      }
+    }, delayMs);
+
+    this.moveTimers.set(roundId, timer);
   }
 
   private getGoodNames(config: Record<string, any>): string[] {
