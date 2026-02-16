@@ -485,11 +485,56 @@ export class DiscoveryProcessEngine implements GameEngine {
     if (!session) return { playerResults: [], summary: {} };
 
     const config = session.game_config || {};
-    const state = this.roundStates.get(roundId);
+    let state = this.roundStates.get(roundId);
     const activePlayers = await PlayerModel.findActiveBySession(session.id);
 
-    // If production never happened (e.g., timer expired during production), run it now
-    if (state && state.phase === 'production') {
+    // If no in-memory state (server restarted), check DB for production actions
+    if (!state) {
+      const allActions = await GameActionModel.findByRound(roundId);
+      const hasProduction = allActions.some(a => a.action_type === 'production');
+      if (!hasProduction) {
+        // No production happened — create state and run production now
+        state = this.getOrCreateRoundState(roundId, config);
+        await this.handleStartProduction(roundId, state, config, session, sessionCode, io);
+      } else {
+        // Reconstruct state from DB
+        const goodNames = this.getGoodNames(config);
+        const productionActions = allActions.filter(a => a.action_type === 'production');
+        const moveActions = allActions.filter(a => a.action_type === 'move');
+        const inventories = new Map<string, PlayerInventory>();
+        for (const pa of productionActions) {
+          const produced = pa.action_data?.produced || {};
+          const inv: PlayerInventory = { field: { ...produced }, house: {} };
+          for (const gn of goodNames) inv.house[gn] = 0;
+          inventories.set(pa.player_id, inv);
+        }
+        for (const ma of moveActions) {
+          const { good, amount, fromLocation, fromPlayerId, toPlayerId } = ma.action_data;
+          const fromInv = inventories.get(fromPlayerId);
+          const toInv = inventories.get(toPlayerId);
+          if (fromInv && toInv) {
+            const fromStore = fromLocation === 'field' ? fromInv.field : fromInv.house;
+            fromStore[good] = (fromStore[good] || 0) - amount;
+            toInv.house[good] = (toInv.house[good] || 0) + amount;
+          }
+        }
+        state = {
+          phase: 'move' as const,
+          inventories,
+          productionSettings: new Map(),
+          playerTypes: new Map(),
+          phaseStartedAt: Date.now(),
+          productionLength: config.productionLength || 10,
+          moveLength: config.time_per_round || 90,
+          chatMessages: [],
+        };
+        for (const p of activePlayers) {
+          state.playerTypes.set(p.id, this.getPlayerTypeIndex(p, activePlayers));
+        }
+        this.roundStates.set(roundId, state);
+      }
+    } else if (state.phase === 'production') {
+      // State exists but production never transitioned — run it now
       await this.handleStartProduction(roundId, state, config, session, sessionCode, io);
     }
 
