@@ -210,9 +210,13 @@ export const CreateSession: React.FC = () => {
               )}
             </div>
 
-            {/* Common Settings — hide fields that the game config already defines */}
+            {/* Common Settings — hide fields that the game config section will render */}
             {(() => {
-              const configFieldNames = new Set(selectedGame?.configFields.map((f: any) => f.name) || []);
+              // Only hide common fields when the game config section is shown (!showValuationCost)
+              // and those fields are defined in the game's configFields
+              const configFieldNames = !showValuationCost
+                ? new Set(selectedGame?.configFields.map((f: any) => f.name) || [])
+                : new Set<string>();
               const commonFields = [
                 { label: 'Market Size', name: 'market_size', min: 2, max: 100 },
                 { label: 'Number of Rounds', name: 'num_rounds', min: 1, max: 50 },
