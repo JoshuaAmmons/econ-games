@@ -108,10 +108,18 @@ export const CreateSession: React.FC = () => {
       }
     }
     setGameConfig(defaults);
+    // Sync top-level session fields from game config defaults
+    const topLevelOverrides: Record<string, any> = {};
+    for (const key of ['market_size', 'num_rounds', 'time_per_round']) {
+      if (defaults[key] !== undefined) {
+        topLevelOverrides[key] = Number(defaults[key]);
+      }
+    }
     setFormData(prev => ({
       ...prev,
       game_type: gt,
       game_config: defaults,
+      ...topLevelOverrides,
     }));
   };
 
@@ -145,7 +153,13 @@ export const CreateSession: React.FC = () => {
   const handleConfigChange = (name: string, value: any) => {
     setGameConfig(prev => {
       const next = { ...prev, [name]: value };
-      setFormData(f => ({ ...f, game_config: next }));
+      // Sync game config fields that share names with top-level session fields
+      const topLevelFields = ['market_size', 'num_rounds', 'time_per_round'];
+      const updates: Record<string, any> = { game_config: next };
+      if (topLevelFields.includes(name)) {
+        updates[name] = Number(value);
+      }
+      setFormData(f => ({ ...f, ...updates }));
       return next;
     });
   };
@@ -196,41 +210,32 @@ export const CreateSession: React.FC = () => {
               )}
             </div>
 
-            {/* Common Settings */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                label="Market Size"
-                name="market_size"
-                type="number"
-                value={formData.market_size}
-                onChange={handleChange}
-                min={2}
-                max={100}
-                required
-              />
-
-              <Input
-                label="Number of Rounds"
-                name="num_rounds"
-                type="number"
-                value={formData.num_rounds}
-                onChange={handleChange}
-                min={1}
-                max={50}
-                required
-              />
-
-              <Input
-                label="Time per Round (seconds)"
-                name="time_per_round"
-                type="number"
-                value={formData.time_per_round}
-                onChange={handleChange}
-                min={30}
-                max={600}
-                required
-              />
-            </div>
+            {/* Common Settings — hide fields that the game config already defines */}
+            {(() => {
+              const configFieldNames = new Set(selectedGame?.configFields.map((f: any) => f.name) || []);
+              const commonFields = [
+                { label: 'Market Size', name: 'market_size', min: 2, max: 100 },
+                { label: 'Number of Rounds', name: 'num_rounds', min: 1, max: 50 },
+                { label: 'Time per Round (seconds)', name: 'time_per_round', min: 30, max: 600 },
+              ].filter(f => !configFieldNames.has(f.name));
+              return commonFields.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {commonFields.map(f => (
+                    <Input
+                      key={f.name}
+                      label={f.label}
+                      name={f.name}
+                      type="number"
+                      value={(formData as any)[f.name]}
+                      onChange={handleChange}
+                      min={f.min}
+                      max={f.max}
+                      required
+                    />
+                  ))}
+                </div>
+              ) : null;
+            })()}
 
             {/* DA-specific: Valuation/Cost settings */}
             {showValuationCost && (
