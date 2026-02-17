@@ -50,7 +50,7 @@ export class RoundModel {
   // Start round
   static async start(id: string): Promise<Round> {
     const result = await pool.query<Round>(
-      "UPDATE rounds SET status = 'active', started_at = NOW() WHERE id = $1 RETURNING *",
+      "UPDATE rounds SET status = 'active', started_at = NOW() WHERE id = $1 AND status = 'waiting' RETURNING *",
       [id]
     );
     return result.rows[0];
@@ -59,7 +59,7 @@ export class RoundModel {
   // End round
   static async end(id: string): Promise<Round> {
     const result = await pool.query<Round>(
-      "UPDATE rounds SET status = 'completed', ended_at = NOW() WHERE id = $1 RETURNING *",
+      "UPDATE rounds SET status = 'completed', ended_at = NOW() WHERE id = $1 AND status = 'active' RETURNING *",
       [id]
     );
     return result.rows[0];

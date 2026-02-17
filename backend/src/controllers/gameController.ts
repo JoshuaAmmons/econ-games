@@ -4,6 +4,7 @@ import { AskModel } from '../models/Ask';
 import { TradeModel } from '../models/Trade';
 import { PlayerModel } from '../models/Player';
 import { SubmitBidRequest, SubmitAskRequest, ApiResponse } from '../types';
+import { RoundModel } from '../models/Round';
 import { validateBid, validateAsk } from '../services/gameLogic';
 
 export class GameController {
@@ -37,6 +38,25 @@ export class GameController {
         res.status(400).json({
           success: false,
           error: validation.error
+        } as ApiResponse);
+        return;
+      }
+
+      // Validate price is a finite number
+      if (typeof price !== 'number' || !Number.isFinite(price) || price < 0) {
+        res.status(400).json({
+          success: false,
+          error: 'Price must be a valid non-negative number'
+        } as ApiResponse);
+        return;
+      }
+
+      // Check round is active
+      const round = await RoundModel.findById(round_id);
+      if (!round || round.status !== 'active') {
+        res.status(409).json({
+          success: false,
+          error: 'Round is not active'
         } as ApiResponse);
         return;
       }
@@ -89,6 +109,25 @@ export class GameController {
         res.status(400).json({
           success: false,
           error: validation.error
+        } as ApiResponse);
+        return;
+      }
+
+      // Validate price is a finite number
+      if (typeof price !== 'number' || !Number.isFinite(price) || price < 0) {
+        res.status(400).json({
+          success: false,
+          error: 'Price must be a valid non-negative number'
+        } as ApiResponse);
+        return;
+      }
+
+      // Check round is active
+      const askRound = await RoundModel.findById(round_id);
+      if (!askRound || askRound.status !== 'active') {
+        res.status(409).json({
+          success: false,
+          error: 'Round is not active'
         } as ApiResponse);
         return;
       }

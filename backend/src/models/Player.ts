@@ -39,6 +39,65 @@ export class PlayerModel {
     return result.rows[0];
   }
 
+  /**
+   * Atomically check capacity and create a player inside a transaction.
+   * Locks the session row to serialize concurrent joins and prevent exceeding market_size.
+   * Returns null if the session is full.
+   */
+  static async createWithCapacityCheck(
+    sessionId: string,
+    marketSize: number,
+    role: string,
+    name?: string,
+    isBot = false,
+    valueColumn?: 'valuation' | 'production_cost',
+    value?: number
+  ): Promise<Player | null> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      // Lock the session row to serialize concurrent join attempts
+      await client.query('SELECT id FROM sessions WHERE id = $1 FOR UPDATE', [sessionId]);
+
+      // Recheck capacity inside the transaction
+      const countResult = await client.query(
+        'SELECT COUNT(*) as count FROM players WHERE session_id = $1',
+        [sessionId]
+      );
+      const currentCount = parseInt(countResult.rows[0].count, 10);
+      if (currentCount >= marketSize) {
+        await client.query('ROLLBACK');
+        return null; // Session is full
+      }
+
+      // Create the player
+      let result;
+      if (valueColumn && value !== undefined) {
+        result = await client.query<Player>(
+          `INSERT INTO players (session_id, name, role, ${valueColumn}, is_bot)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING *`,
+          [sessionId, name, role, value, isBot]
+        );
+      } else {
+        result = await client.query<Player>(
+          `INSERT INTO players (session_id, name, role, is_bot)
+           VALUES ($1, $2, $3, $4)
+           RETURNING *`,
+          [sessionId, name, role, isBot]
+        );
+      }
+
+      await client.query('COMMIT');
+      return result.rows[0];
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
   // Get player by ID
   static async findById(id: string): Promise<Player | null> {
     const result = await pool.query<Player>(

@@ -155,13 +155,22 @@ async function exportCSV(req: Request, res: Response) {
       header.push('TotalProfit');
       csv = header.join(',') + '\n';
 
-      // For each player, get per-round profits
+      // Pre-fetch all round data in parallel to avoid N×M database queries
+      const roundDataMap = new Map<string, any[]>();
+      await Promise.all(completedRounds.map(async (round) => {
+        if (isDA) {
+          roundDataMap.set(round.id, await TradeModel.findByRound(round.id));
+        } else {
+          roundDataMap.set(round.id, await GameResultModel.findByRound(round.id));
+        }
+      }));
+
       for (const player of players) {
         const row: string[] = [`"${player.name || 'Anonymous'}"`, `"${player.role}"`];
 
         for (const round of completedRounds) {
           if (isDA) {
-            const trades = await TradeModel.findByRound(round.id);
+            const trades = roundDataMap.get(round.id) || [];
             let roundProfit = 0;
             for (const t of trades) {
               if (t.buyer_id === player.id) roundProfit += Number(t.buyer_profit);
@@ -169,7 +178,8 @@ async function exportCSV(req: Request, res: Response) {
             }
             row.push(roundProfit.toFixed(2));
           } else {
-            const result = await GameResultModel.findByRoundAndPlayer(round.id, player.id);
+            const results = roundDataMap.get(round.id) || [];
+            const result = results.find((r: any) => r.player_id === player.id);
             row.push(result ? Number(result.profit).toFixed(2) : '0.00');
           }
         }
@@ -181,9 +191,17 @@ async function exportCSV(req: Request, res: Response) {
       // Trade-level CSV for DA games
       csv = 'Round,Price,BuyerName,SellerName,BuyerProfit,SellerProfit,Time\n';
       const playerMap = new Map(players.map((p) => [p.id, p.name || 'Anonymous']));
+      const completedForTrades = rounds.filter((r) => r.status === 'completed');
 
-      for (const round of rounds.filter((r) => r.status === 'completed')) {
-        const trades = await TradeModel.findByRound(round.id);
+      // Pre-fetch all trades in parallel
+      const tradesByRound = await Promise.all(
+        completedForTrades.map(async (round) => ({
+          round,
+          trades: await TradeModel.findByRound(round.id),
+        }))
+      );
+
+      for (const { round, trades } of tradesByRound) {
         for (const t of trades) {
           csv += `${round.round_number},${t.price},"${playerMap.get(t.buyer_id) || 'Unknown'}","${playerMap.get(t.seller_id) || 'Unknown'}",${t.buyer_profit},${t.seller_profit},${t.created_at}\n`;
         }
@@ -191,12 +209,20 @@ async function exportCSV(req: Request, res: Response) {
     } else if (type === 'actions' && !isDA) {
       // Action-level CSV for non-DA games
       csv = 'Round,PlayerName,Role,ActionType,ActionData,Time\n';
-      const playerMap = new Map(players.map((p) => [p.id, { name: p.name || 'Anonymous', role: p.role }]));
+      const playerMapActions = new Map(players.map((p) => [p.id, { name: p.name || 'Anonymous', role: p.role }]));
+      const completedForActions = rounds.filter((r) => r.status === 'completed');
 
-      for (const round of rounds.filter((r) => r.status === 'completed')) {
-        const actions = await GameActionModel.findByRound(round.id);
+      // Pre-fetch all actions in parallel
+      const actionsByRound = await Promise.all(
+        completedForActions.map(async (round) => ({
+          round,
+          actions: await GameActionModel.findByRound(round.id),
+        }))
+      );
+
+      for (const { round, actions } of actionsByRound) {
         for (const a of actions) {
-          const info = playerMap.get(a.player_id);
+          const info = playerMapActions.get(a.player_id);
           csv += `${round.round_number},"${info?.name || 'Unknown'}","${info?.role || ''}","${a.action_type}","${JSON.stringify(a.action_data).replace(/"/g, '""')}",${a.created_at}\n`;
         }
       }
