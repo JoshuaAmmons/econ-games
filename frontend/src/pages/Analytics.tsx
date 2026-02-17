@@ -12,6 +12,7 @@ import {
   RoundSummaryChart,
 } from '../analytics/UniversalCharts';
 import { ArrowLeft, BarChart3, Users, RefreshCw } from 'lucide-react';
+import { AdminPasswordGate } from '../components/shared/AdminPasswordGate';
 
 const GAME_TYPE_LABELS: Record<string, string> = {
   double_auction: 'Double Auction',
@@ -30,7 +31,7 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   discovery_process: 'Exchange & Specialization',
 };
 
-export const Analytics: React.FC = () => {
+const AnalyticsContent: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { data, loading, error, refresh, completedRounds } = useAnalyticsData(code);
@@ -139,5 +140,14 @@ export const Analytics: React.FC = () => {
         )}
       </div>
     </div>
+  );
+};
+
+export const Analytics: React.FC = () => {
+  const { code } = useParams<{ code: string }>();
+  return (
+    <AdminPasswordGate sessionCode={code || ''}>
+      <AnalyticsContent />
+    </AdminPasswordGate>
   );
 };

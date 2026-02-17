@@ -12,6 +12,9 @@ router.get('/', SessionController.list);
 // Get session by code (must be before /:id to avoid conflict)
 router.get('/code/:code', SessionController.getByCode);
 
+// Verify admin password for session
+router.post('/code/:code/verify-admin', SessionController.verifyAdminPassword);
+
 // Get session by ID
 router.get('/:id', SessionController.getById);
 

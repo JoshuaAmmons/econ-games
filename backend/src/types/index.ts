@@ -19,6 +19,7 @@ export interface Session {
   cost_increments: number;
   bot_enabled: boolean;
   passcode?: string | null;
+  admin_password?: string | null;
   current_round: number;
   created_at: Date;
   started_at?: Date;
@@ -98,6 +99,7 @@ export interface CreateSessionRequest {
   cost_increments: number;
   bot_enabled?: boolean;
   passcode?: string;
+  admin_password?: string;
 }
 
 export interface JoinSessionRequest {

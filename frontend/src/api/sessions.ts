@@ -20,6 +20,19 @@ export const sessionsApi = {
     return response.data.data!;
   },
 
+  // Verify admin password for a session
+  verifyAdminPassword: async (code: string, admin_password: string): Promise<boolean> => {
+    try {
+      const response = await apiClient.post<ApiResponse<{ verified: boolean }>>(
+        `/sessions/code/${code}/verify-admin`,
+        { admin_password }
+      );
+      return response.data.data?.verified ?? false;
+    } catch {
+      return false;
+    }
+  },
+
   // Get all sessions
   getAll: async (): Promise<Session[]> => {
     const response = await apiClient.get<ApiResponse<Session[]>>('/sessions');

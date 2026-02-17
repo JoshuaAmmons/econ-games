@@ -96,11 +96,15 @@ export class SessionController {
         return;
       }
 
-      // Strip actual passcode value from public response, expose only boolean flag
-      const { passcode, ...sessionData } = session;
+      // Strip secrets from public response, expose only boolean flags
+      const { passcode, admin_password, ...sessionData } = session;
       res.json({
         success: true,
-        data: { ...sessionData, has_passcode: !!passcode }
+        data: {
+          ...sessionData,
+          has_passcode: !!passcode,
+          has_admin_password: !!admin_password,
+        }
       } as ApiResponse);
 
     } catch (error) {
@@ -258,6 +262,37 @@ export class SessionController {
         success: false,
         error: 'Failed to end session'
       } as ApiResponse);
+    }
+  }
+
+  // Verify admin password for a session
+  static async verifyAdminPassword(req: Request, res: Response) {
+    try {
+      const code = req.params.code as string;
+      const { admin_password } = req.body;
+
+      const session = await SessionModel.findByCode(code.toUpperCase());
+      if (!session) {
+        res.status(404).json({ success: false, error: 'Session not found' } as ApiResponse);
+        return;
+      }
+
+      // If no admin password is set, access is open
+      if (!session.admin_password) {
+        res.json({ success: true, data: { verified: true } } as ApiResponse);
+        return;
+      }
+
+      // Check the provided password
+      if (!admin_password || admin_password !== session.admin_password) {
+        res.status(401).json({ success: false, error: 'Incorrect admin password' } as ApiResponse);
+        return;
+      }
+
+      res.json({ success: true, data: { verified: true } } as ApiResponse);
+    } catch (error) {
+      console.error('Error verifying admin password:', error);
+      res.status(500).json({ success: false, error: 'Failed to verify admin password' } as ApiResponse);
     }
   }
 

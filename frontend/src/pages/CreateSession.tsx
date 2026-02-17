@@ -199,7 +199,7 @@ export const CreateSession: React.FC = () => {
                   <optgroup key={category} label={category}>
                     {games.map(game => (
                       <option key={game.value} value={game.value}>
-                        Week {game.weekNumber}: {game.label}
+                        {game.label}
                       </option>
                     ))}
                   </optgroup>
@@ -412,6 +412,20 @@ export const CreateSession: React.FC = () => {
               placeholder="Leave blank for open access"
               maxLength={20}
             />
+
+            <div>
+              <Input
+                label="Admin Password (Optional)"
+                name="admin_password"
+                value={formData.admin_password || ''}
+                onChange={handleChange}
+                placeholder="Protect monitor/analytics access"
+                maxLength={50}
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                If set, only users with this password can view session monitor, analytics, and results.
+              </p>
+            </div>
 
             <div className="flex justify-end gap-3">
               <Button type="button" variant="secondary" onClick={() => navigate('/admin')}>
