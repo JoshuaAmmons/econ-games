@@ -16,6 +16,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { AdminPasswordGate } from '../components/shared/AdminPasswordGate';
 
 const DA_GAME_TYPES = ['double_auction', 'double_auction_tax', 'double_auction_price_controls'];
 
@@ -90,7 +91,7 @@ interface ResultsData {
   };
 }
 
-export const Results: React.FC = () => {
+const ResultsContent: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const [data, setData] = useState<ResultsData | null>(null);
@@ -402,5 +403,14 @@ export const Results: React.FC = () => {
         </Card>
       </div>
     </div>
+  );
+};
+
+export const Results: React.FC = () => {
+  const { code } = useParams<{ code: string }>();
+  return (
+    <AdminPasswordGate sessionCode={code || ''}>
+      <ResultsContent />
+    </AdminPasswordGate>
   );
 };

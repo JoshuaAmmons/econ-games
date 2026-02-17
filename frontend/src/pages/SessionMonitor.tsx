@@ -9,6 +9,7 @@ import { useSocket } from '../hooks/useSocket';
 import type { Session, Player, Round } from '../types';
 import { ArrowLeft, Play, Square, Users, Copy, Check, SkipForward, Clock, BarChart3 } from 'lucide-react';
 import { GameInstructions } from '../components/shared/GameInstructions';
+import { AdminPasswordGate } from '../components/shared/AdminPasswordGate';
 import toast from 'react-hot-toast';
 
 const DA_GAME_TYPES = ['double_auction', 'double_auction_tax', 'double_auction_price_controls'];
@@ -82,7 +83,7 @@ const CONFIG_LABELS: Record<string, string> = {
   fixedCost: 'Fixed Cost',
 };
 
-export const SessionMonitor: React.FC = () => {
+const SessionMonitorContent: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
 
@@ -550,5 +551,14 @@ export const SessionMonitor: React.FC = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+export const SessionMonitor: React.FC = () => {
+  const { code } = useParams<{ code: string }>();
+  return (
+    <AdminPasswordGate sessionCode={code || ''}>
+      <SessionMonitorContent />
+    </AdminPasswordGate>
   );
 };
