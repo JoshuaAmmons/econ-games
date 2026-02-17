@@ -37,6 +37,35 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
     return gameType;
   }
 
+  /**
+   * Verify that the caller is authorized to perform admin actions on a session.
+   * If the session has an admin_password set, the provided password must match.
+   * If no admin_password is configured, the action is allowed (open access).
+   * Returns the session on success, or null if authorization fails.
+   */
+  async function verifyAdminAuth(
+    sessionCode: string,
+    adminPassword: string | undefined,
+    socket: Socket
+  ): Promise<import('../types').Session | null> {
+    const session = await SessionModel.findByCode(sessionCode);
+    if (!session) {
+      socket.emit('error', { message: 'Session not found' });
+      return null;
+    }
+
+    // If the session has an admin password, validate it
+    if (session.admin_password) {
+      if (!adminPassword || adminPassword !== session.admin_password) {
+        console.warn(`Unauthorized admin action on session ${sessionCode} from socket ${socket.id}`);
+        socket.emit('error', { message: 'Unauthorized: invalid admin password' });
+        return null;
+      }
+    }
+
+    return session;
+  }
+
   io.on('connection', (socket: Socket) => {
     console.log('Client connected:', socket.id);
 
@@ -167,17 +196,18 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
     // =========================================================================
 
     // Start round (admin only)
-    socket.on('start-round', async (data: { sessionCode: string; roundNumber: number }) => {
+    socket.on('start-round', async (data: { sessionCode: string; roundNumber: number; adminPassword?: string }) => {
       try {
-        const { sessionCode, roundNumber } = data;
+        const { sessionCode, roundNumber, adminPassword } = data;
 
-        const session = await SessionModel.findByCode(sessionCode);
-        if (!session) throw new Error('Session not found');
+        // Verify admin authorization
+        const session = await verifyAdminAuth(sessionCode, adminPassword, socket);
+        if (!session) return;
 
         const round = await RoundModel.findBySessionAndNumber(session.id, roundNumber);
         if (!round) throw new Error('Round not found');
 
-        await RoundModel.start(round.id);
+        const updatedRound = await RoundModel.start(round.id);
         await SessionModel.updateCurrentRound(session.id, roundNumber);
 
         // Let the engine initialize round state (timers, inventories, etc.)
@@ -188,12 +218,12 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
         }
 
         io.to(`session-${sessionCode}`).emit('round-started', {
-          round: { ...round, status: 'active' },
+          round: updatedRound,
           roundNumber,
         });
 
         io.to(`market-${sessionCode}`).emit('round-started', {
-          round: { ...round, status: 'active' },
+          round: updatedRound,
           roundNumber,
         });
 
@@ -205,9 +235,13 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
     });
 
     // End round (admin or timer)
-    socket.on('end-round', async (data: { sessionCode: string; roundId: string }) => {
+    socket.on('end-round', async (data: { sessionCode: string; roundId: string; adminPassword?: string }) => {
       try {
-        const { sessionCode, roundId } = data;
+        const { sessionCode, roundId, adminPassword } = data;
+
+        // Verify admin authorization
+        const session = await verifyAdminAuth(sessionCode, adminPassword, socket);
+        if (!session) return;
 
         // Guard against concurrent end-round processing (timer + manual click race)
         if (endingRounds.has(roundId)) {
@@ -253,6 +287,10 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
           });
 
           console.log(`Round ended for session ${sessionCode}`);
+
+          // Clear cached game type to prevent unbounded memory growth.
+          // It will be re-populated on the next lookup if needed.
+          sessionGameTypeCache.delete(sessionCode);
         } finally {
           endingRounds.delete(roundId);
         }
@@ -262,10 +300,15 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
       }
     });
 
-    // Timer update
-    socket.on('timer-update', (data: { sessionCode: string; secondsRemaining: number }) => {
+    // Timer update (admin only)
+    socket.on('timer-update', async (data: { sessionCode: string; secondsRemaining: number; adminPassword?: string }) => {
       try {
         if (!data?.sessionCode || data.secondsRemaining == null) return;
+
+        // Verify admin authorization
+        const session = await verifyAdminAuth(data.sessionCode, data.adminPassword, socket);
+        if (!session) return;
+
         io.to(`market-${data.sessionCode}`).emit('timer-update', {
           seconds_remaining: data.secondsRemaining,
         });

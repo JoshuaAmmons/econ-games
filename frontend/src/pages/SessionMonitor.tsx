@@ -96,8 +96,37 @@ const SessionMonitorContent: React.FC = () => {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Retrieve admin password from localStorage (saved by AdminPasswordGate on verification).
+  // This is sent with admin-only socket events for server-side authorization.
+  const storedAdminPassword = code ? localStorage.getItem(`admin_pw_${code}`) || undefined : undefined;
+
   // Use socket for admin controls — use 'admin' as playerId since this is the monitor
-  const { connected, startRound, endRound, sendTimerUpdate, onEvent } = useSocket(code || '', 'admin');
+  const { socket: rawSocket, connected, onEvent } = useSocket(code || '', 'admin');
+
+  // Admin-authorized socket emitters that include the admin password
+  const startRound = useCallback((roundNumber: number) => {
+    rawSocket?.emit('start-round', {
+      sessionCode: code,
+      roundNumber,
+      adminPassword: storedAdminPassword,
+    });
+  }, [code, storedAdminPassword, rawSocket]);
+
+  const endRound = useCallback((roundId: string) => {
+    rawSocket?.emit('end-round', {
+      sessionCode: code,
+      roundId,
+      adminPassword: storedAdminPassword,
+    });
+  }, [code, storedAdminPassword, rawSocket]);
+
+  const sendTimerUpdate = useCallback((secondsRemaining: number) => {
+    rawSocket?.emit('timer-update', {
+      sessionCode: code,
+      secondsRemaining,
+      adminPassword: storedAdminPassword,
+    });
+  }, [code, storedAdminPassword, rawSocket]);
 
   useEffect(() => {
     loadSession();
