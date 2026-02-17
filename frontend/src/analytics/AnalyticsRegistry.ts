@@ -27,6 +27,7 @@ const analyticsRegistry: Record<string, React.LazyExoticComponent<React.Componen
   comparative_advantage: React.lazy(() => import('./specialized/ComparativeAdvantageAnalytics')),
   monopoly: React.lazy(() => import('./specialized/MonopolyAnalytics')),
   market_for_lemons: React.lazy(() => import('./sequential/MarketForLemonsAnalytics')),
+  discovery_process: React.lazy(() => import('./specialized/DiscoveryProcessAnalytics')),
 };
 
 export function getAnalyticsComponent(gameType: string): React.LazyExoticComponent<React.ComponentType<AnalyticsProps>> | null {

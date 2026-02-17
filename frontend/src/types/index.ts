@@ -15,6 +15,7 @@ export interface Session {
   cost_max: number;
   cost_increments: number;
   bot_enabled: boolean;
+  has_passcode?: boolean;
   current_round: number;
   created_at: string;
   started_at?: string;
@@ -34,6 +35,7 @@ export interface CreateSessionData {
   cost_max: number;
   cost_increments: number;
   bot_enabled?: boolean;
+  passcode?: string;
 }
 
 // Player types

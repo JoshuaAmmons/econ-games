@@ -3,10 +3,10 @@ import type { Player, Session, ApiResponse } from '../types';
 
 export const playersApi = {
   // Join session
-  join: async (code: string, name?: string): Promise<{ player: Player; session: Pick<Session, 'id' | 'code' | 'status'> }> => {
+  join: async (code: string, name?: string, passcode?: string): Promise<{ player: Player; session: Pick<Session, 'id' | 'code' | 'status'> }> => {
     const response = await apiClient.post<ApiResponse<{ player: Player; session: Pick<Session, 'id' | 'code' | 'status'> }>>(
       '/players/join',
-      { code, name }
+      { code, name, passcode }
     );
     return response.data.data!;
   },

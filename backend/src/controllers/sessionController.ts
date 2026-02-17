@@ -96,9 +96,11 @@ export class SessionController {
         return;
       }
 
+      // Strip actual passcode value from public response, expose only boolean flag
+      const { passcode, ...sessionData } = session;
       res.json({
         success: true,
-        data: session
+        data: { ...sessionData, has_passcode: !!passcode }
       } as ApiResponse);
 
     } catch (error) {

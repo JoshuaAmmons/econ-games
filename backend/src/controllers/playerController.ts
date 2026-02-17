@@ -34,7 +34,7 @@ export class PlayerController {
   // Join session
   static async joinSession(req: Request, res: Response) {
     try {
-      const { code, name }: JoinSessionRequest = req.body;
+      const { code, name, passcode }: JoinSessionRequest = req.body;
 
       // Find session
       const session = await SessionModel.findByCode(code.toUpperCase());
@@ -52,6 +52,17 @@ export class PlayerController {
           error: 'Session already started'
         } as ApiResponse);
         return;
+      }
+
+      // Check passcode if session is protected
+      if (session.passcode) {
+        if (!passcode || passcode !== session.passcode) {
+          res.status(401).json({
+            success: false,
+            error: 'Incorrect passcode'
+          } as ApiResponse);
+          return;
+        }
       }
 
       // Check if session is full

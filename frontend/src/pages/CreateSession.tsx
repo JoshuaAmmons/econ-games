@@ -404,6 +404,15 @@ export const CreateSession: React.FC = () => {
               </label>
             </div>
 
+            <Input
+              label="Session Passcode (Optional)"
+              name="passcode"
+              value={formData.passcode || ''}
+              onChange={handleChange}
+              placeholder="Leave blank for open access"
+              maxLength={20}
+            />
+
             <div className="flex justify-end gap-3">
               <Button type="button" variant="secondary" onClick={() => navigate('/admin')}>
                 Cancel

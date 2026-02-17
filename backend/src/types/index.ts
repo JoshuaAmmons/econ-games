@@ -18,6 +18,7 @@ export interface Session {
   cost_max: number;
   cost_increments: number;
   bot_enabled: boolean;
+  passcode?: string | null;
   current_round: number;
   created_at: Date;
   started_at?: Date;
@@ -96,11 +97,13 @@ export interface CreateSessionRequest {
   cost_max: number;
   cost_increments: number;
   bot_enabled?: boolean;
+  passcode?: string;
 }
 
 export interface JoinSessionRequest {
   code: string;
   name?: string;
+  passcode?: string;
 }
 
 export interface SubmitBidRequest {

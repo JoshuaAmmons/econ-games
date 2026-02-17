@@ -28,6 +28,9 @@ async function applyConstraintUpdates() {
       'producer'
     ))`);
 
+    // Ensure passcode column exists on sessions table
+    await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS passcode VARCHAR(20) DEFAULT NULL`);
+
     console.log('Database constraints updated successfully');
   } catch (err) {
     console.error('Error updating database constraints:', err);
