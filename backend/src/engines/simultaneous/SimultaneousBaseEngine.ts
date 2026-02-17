@@ -151,10 +151,24 @@ export abstract class SimultaneousBaseEngine implements GameEngine {
     // Calculate results
     const results = this.calculateResults(actionData, config, activePlayers);
 
+    // Create result rows for non-submitting players (0 profit, no submission)
+    const submittedPlayerIds = new Set(results.map(r => r.playerId));
+    for (const player of activePlayers) {
+      if (!submittedPlayerIds.has(player.id)) {
+        results.push({
+          playerId: player.id,
+          profit: 0,
+          resultData: { submitted: false, reason: 'No submission received' },
+        });
+      }
+    }
+
     // Store results and update profits
     for (const result of results) {
       await GameResultModel.create(roundId, result.playerId, result.resultData, result.profit);
-      await PlayerModel.updateProfit(result.playerId, result.profit);
+      if (result.profit !== 0) {
+        await PlayerModel.updateProfit(result.playerId, result.profit);
+      }
     }
 
     // Broadcast results to all players
