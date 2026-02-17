@@ -392,6 +392,9 @@ export abstract class SequentialBaseEngine implements GameEngine {
     const session = await SessionModel.findById(round.session_id);
     if (!session) return { playerResults: [], summary: {} };
 
+    // Invalidate pairing cache so it gets rebuilt next round with any late joiners
+    this.sessionPairings.delete(session.id);
+
     // Use ALL players (not just active) so resolveRound can handle disconnects
     const allPlayers = await PlayerModel.findBySession(session.id);
     const activePlayers = await PlayerModel.findActiveBySession(session.id);
