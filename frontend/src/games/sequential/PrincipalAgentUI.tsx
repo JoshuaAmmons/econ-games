@@ -69,8 +69,8 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
       if (!isPrincipal && state.partnerAction) {
         setPartnerContract({ fixedWage: state.partnerAction.fixedWage, bonus: state.partnerAction.bonus });
       }
-      if (state.results) {
-        setResults(state.results.map ? state.results : []);
+      if (state.pairs) {
+        setResults(Array.isArray(state.pairs) ? state.pairs : []);
       }
     }));
 
@@ -98,6 +98,11 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
       }
     }));
 
+    // Rollback submitted state on server error so player can retry
+    cleanups.push(onEvent('error', () => {
+      setSubmitted(false);
+    }));
+
     return () => cleanups.forEach(fn => fn());
   }, [onEvent, playerId, refreshPlayer, isPrincipal]);
 
@@ -106,6 +111,14 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
     if (!roundId || !fixedWage || !bonus || submitted) return;
     const fw = parseFloat(fixedWage);
     const b = parseFloat(bonus);
+    if (isNaN(fw) || fw < 0 || fw > maxWage) {
+      toast.error(`Fixed wage must be between $0 and $${maxWage}`);
+      return;
+    }
+    if (isNaN(b) || b < 0 || b > maxBonus) {
+      toast.error(`Bonus must be between $0 and $${maxBonus}`);
+      return;
+    }
     submitAction({ type: 'first_move', fixedWage: fw, bonus: b });
     setSubmitted(true);
     toast.success('Contract sent!');

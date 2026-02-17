@@ -127,7 +127,7 @@ export class CournotEngine extends SimultaneousBaseEngine {
     if (quantity < 0) {
       return 'Quantity cannot be negative';
     }
-    const maxQuantity = config.maxQuantity || 100;
+    const maxQuantity = config.maxQuantity ?? 100;
     if (quantity > maxQuantity) {
       return `Quantity cannot exceed ${maxQuantity} units`;
     }

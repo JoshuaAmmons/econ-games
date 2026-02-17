@@ -106,7 +106,7 @@ export class PublicGoodsEngine extends SimultaneousBaseEngine {
     if (contribution < 0) {
       return 'Contribution cannot be negative';
     }
-    const endowment = config.endowment || 20;
+    const endowment = config.endowment ?? 20;
     if (contribution > endowment) {
       return `Contribution cannot exceed your endowment of ${endowment} tokens`;
     }

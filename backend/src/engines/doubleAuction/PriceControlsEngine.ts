@@ -90,7 +90,7 @@ export class PriceControlsEngine extends DoubleAuctionEngine {
 
     const gameConfig = session.game_config || {};
     const controlType: string = gameConfig.controlType || 'ceiling';
-    const controlPrice: number = gameConfig.controlPrice ?? 35;
+    const controlPrice: number = typeof gameConfig.controlPrice === 'number' ? gameConfig.controlPrice : 35;
 
     // Ensure price is numeric before comparison
     const numPrice = Number(price);

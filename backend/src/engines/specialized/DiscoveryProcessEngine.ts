@@ -582,6 +582,8 @@ export class DiscoveryProcessEngine implements GameEngine {
         summary: {},
       };
     }
+    // Save original phase before marking as completing (needed for check below)
+    const originalPhase = state?.phase;
     // Immediately mark as completing to prevent concurrent re-entry
     if (state) {
       state.phase = 'completing';
@@ -632,7 +634,7 @@ export class DiscoveryProcessEngine implements GameEngine {
         }
         this.roundStates.set(roundId, state);
       }
-    } else if (state.phase === 'production') {
+    } else if (originalPhase === 'production') {
       // State exists but production never transitioned — run it now
       await this.handleStartProduction(roundId, state, config, session, sessionCode, io);
     }

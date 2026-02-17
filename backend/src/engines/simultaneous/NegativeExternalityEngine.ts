@@ -151,7 +151,7 @@ export class NegativeExternalityEngine extends SimultaneousBaseEngine {
     if (production < 0) {
       return 'Production cannot be negative';
     }
-    const maxProduction = config.maxProduction || 50;
+    const maxProduction = config.maxProduction ?? 50;
     if (production > maxProduction) {
       return `Production cannot exceed ${maxProduction} units`;
     }

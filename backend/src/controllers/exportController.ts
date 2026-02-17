@@ -142,7 +142,7 @@ async function exportCSV(req: Request, res: Response) {
       // Player summary CSV
       csv = 'PlayerName,Role,Valuation,ProductionCost,TotalProfit,IsBot\n';
       for (const p of players) {
-        csv += `"${p.name || 'Anonymous'}","${p.role}",${p.valuation ?? ''},${p.production_cost ?? ''},${p.total_profit},${p.is_bot}\n`;
+        csv += `"${p.name || 'Anonymous'}","${p.role}",${p.valuation != null ? Number(p.valuation) : ''},${p.production_cost != null ? Number(p.production_cost) : ''},${Number(p.total_profit)},${p.is_bot}\n`;
       }
     } else if (type === 'rounds') {
       // Round-by-round profit CSV
@@ -203,7 +203,7 @@ async function exportCSV(req: Request, res: Response) {
 
       for (const { round, trades } of tradesByRound) {
         for (const t of trades) {
-          csv += `${round.round_number},${t.price},"${playerMap.get(t.buyer_id) || 'Unknown'}","${playerMap.get(t.seller_id) || 'Unknown'}",${t.buyer_profit},${t.seller_profit},${t.created_at}\n`;
+          csv += `${round.round_number},${Number(t.price)},"${playerMap.get(t.buyer_id) || 'Unknown'}","${playerMap.get(t.seller_id) || 'Unknown'}",${Number(t.buyer_profit)},${Number(t.seller_profit)},${t.created_at}\n`;
         }
       }
     } else if (type === 'actions' && !isDA) {

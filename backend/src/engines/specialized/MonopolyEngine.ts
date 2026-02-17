@@ -107,6 +107,10 @@ export class MonopolyEngine extends SimultaneousBaseEngine {
     if (config.demandSlope !== undefined && config.demandSlope <= 0) {
       return { valid: false, error: 'Demand slope must be positive' };
     }
+    if (config.marginalCost !== undefined && config.demandIntercept !== undefined
+        && config.marginalCost >= config.demandIntercept) {
+      return { valid: false, error: 'Marginal cost must be less than demand intercept' };
+    }
     return { valid: true };
   }
 

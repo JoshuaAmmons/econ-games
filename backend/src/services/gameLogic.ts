@@ -10,6 +10,11 @@ export function generateValuations(
   increment: number,
   count: number
 ): number[] {
+  // Guard against infinite loops from zero/negative increments
+  if (increment <= 0) {
+    increment = 1;
+  }
+
   const values: number[] = [];
 
   // Generate all possible values

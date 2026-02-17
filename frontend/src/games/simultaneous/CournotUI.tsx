@@ -90,6 +90,10 @@ const CournotUI: React.FC<GameUIProps> = ({
       toast.error('Please enter a valid quantity');
       return;
     }
+    if (qNum > maxQuantity) {
+      toast.error(`Quantity cannot exceed ${maxQuantity} units`);
+      return;
+    }
 
     setSubmitting(true);
     submitAction({ type: 'decision', quantity: qNum });

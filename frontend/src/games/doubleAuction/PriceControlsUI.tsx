@@ -32,7 +32,7 @@ const PriceControlsUI: React.FC<DAGameUIProps> = ({
   // Get price control config
   const gameConfig = session?.game_config || {};
   const controlType = gameConfig.controlType || 'ceiling';
-  const controlPrice = gameConfig.controlPrice || 35;
+  const controlPrice = gameConfig.controlPrice ?? 35;
   const isCeiling = controlType === 'ceiling';
 
   const handleSubmit = async (e: React.FormEvent) => {

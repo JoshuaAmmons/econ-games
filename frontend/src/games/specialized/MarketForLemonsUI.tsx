@@ -68,8 +68,8 @@ const MarketForLemonsUI: React.FC<GameUIProps> = ({
       if (!isSeller && state.partnerAction) {
         setPartnerPrice(state.partnerAction.price);
       }
-      if (state.results) {
-        setResults(state.results.map ? state.results : []);
+      if (state.pairs) {
+        setResults(Array.isArray(state.pairs) ? state.pairs : []);
       }
     }));
 
@@ -98,6 +98,11 @@ const MarketForLemonsUI: React.FC<GameUIProps> = ({
           toast('No trade this round.', { icon: '🚫' });
         }
       }
+    }));
+
+    // Rollback submitted state on server error so player can retry
+    cleanups.push(onEvent('error', () => {
+      setSubmitted(false);
     }));
 
     return () => cleanups.forEach(fn => fn());

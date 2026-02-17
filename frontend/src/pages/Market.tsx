@@ -40,6 +40,22 @@ export const Market: React.FC = () => {
   const playerId = localStorage.getItem('playerId') || '';
   const { connected, submitBid, submitAsk, submitAction: socketSubmitAction, requestGameState, onEvent } = useSocket(code || '', playerId);
 
+  // Determine if current game is DA-based (for order book loading)
+  const gameType = session?.game_type || 'double_auction';
+  const isDAGame = gameType.startsWith('double_auction');
+
+  const loadOrderBook = async (rId: string) => {
+    try {
+      const orderBook = await gameApi.getOrderBook(rId);
+      setBids(orderBook.bids);
+      setAsks(orderBook.asks);
+      const roundTrades = await gameApi.getTrades(rId);
+      setTrades(roundTrades);
+    } catch (err) {
+      console.error('Failed to load order book:', err);
+    }
+  };
+
   // Load player and session data
   useEffect(() => {
     if (!playerId) {
@@ -111,11 +127,38 @@ export const Market: React.FC = () => {
     }
   };
 
-  // Request game state when we recover a round on page load (reconnection support)
-  // Also request when round exists but is completed (so playerInfo etc. are populated)
+  // On (re)connect, recover the active round and request full game state.
+  // This handles both initial page load recovery and mid-round socket reconnects.
+  const prevConnectedRef = useRef(false);
   useEffect(() => {
-    if (connected && roundId) {
+    if (!connected) {
+      prevConnectedRef.current = false;
+      return;
+    }
+
+    // Always request game state for the current roundId
+    if (roundId) {
       requestGameState(roundId);
+    }
+
+    // On reconnect (was disconnected, now connected again), refresh active round
+    // in case a round started or ended while we were offline
+    if (!prevConnectedRef.current && session) {
+      prevConnectedRef.current = true;
+      sessionsApi.getRounds(session.id).then((rounds: any[]) => {
+        const activeRound = rounds.find((r: any) => r.status === 'active');
+        if (activeRound) {
+          if (activeRound.id !== roundId) {
+            setRoundId(activeRound.id);
+            setRoundNumber(activeRound.round_number);
+            setRoundActive(true);
+          }
+          // Refresh order book for DA games on reconnect
+          if (isDAGame) {
+            loadOrderBook(activeRound.id);
+          }
+        }
+      }).catch(() => { /* ignore — best effort */ });
     }
   }, [connected, roundId, requestGameState]);
 
@@ -156,10 +199,6 @@ export const Market: React.FC = () => {
     };
   }, [roundActive, roundId]);
 
-  // Determine if current game is DA-based (for order book loading)
-  const gameType = session?.game_type || 'double_auction';
-  const isDAGame = gameType.startsWith('double_auction');
-
   // Socket event handlers
   useEffect(() => {
     if (!connected) return;
@@ -168,15 +207,21 @@ export const Market: React.FC = () => {
 
     // DA-specific events
     cleanups.push(onEvent('bid-submitted', (data: { bid: Bid }) => {
-      setBids(prev => [data.bid, ...prev]);
+      setBids(prev => [{ ...data.bid, price: Number(data.bid.price) }, ...prev]);
     }));
 
     cleanups.push(onEvent('ask-submitted', (data: { ask: Ask }) => {
-      setAsks(prev => [data.ask, ...prev]);
+      setAsks(prev => [{ ...data.ask, price: Number(data.ask.price) }, ...prev]);
     }));
 
     cleanups.push(onEvent('trade-executed', (data: { trade: Trade; buyer: { id: string }; seller: { id: string } }) => {
-      setTrades(prev => [data.trade, ...prev]);
+      const normalizedTrade = {
+        ...data.trade,
+        price: Number(data.trade.price),
+        buyer_profit: Number(data.trade.buyer_profit),
+        seller_profit: Number(data.trade.seller_profit),
+      };
+      setTrades(prev => [normalizedTrade, ...prev]);
       setBids(prev => prev.filter(b => b.id !== data.trade.bid_id));
       setAsks(prev => prev.filter(a => a.id !== data.trade.ask_id));
 
@@ -191,6 +236,13 @@ export const Market: React.FC = () => {
       }
     }));
 
+    // DA game-state handler: refresh full order book on reconnect
+    cleanups.push(onEvent('game-state', (state: any) => {
+      if (state.bids) setBids(state.bids);
+      if (state.asks) setAsks(state.asks);
+      if (state.trades) setTrades(state.trades);
+    }));
+
     // Universal round events
     cleanups.push(onEvent('round-started', (data: { round: { id: string }; roundNumber: number }) => {
       setRoundId(data.round.id);
@@ -202,10 +254,19 @@ export const Market: React.FC = () => {
       toast(`Round ${data.roundNumber} started!`, { icon: '🔔' });
     }));
 
-    cleanups.push(onEvent('round-ended', () => {
-      setRoundId(null);
+    cleanups.push(onEvent('round-ended', (data?: { trades?: Trade[] }) => {
+      // Keep roundId so results can still be displayed; just mark round inactive
       setRoundActive(false);
       setTimeRemaining(0);
+      // Accept any server-sent trade data (e.g., final settlement trades)
+      if (data?.trades) {
+        setTrades(data.trades.map(t => ({
+          ...t,
+          price: Number(t.price),
+          buyer_profit: Number(t.buyer_profit),
+          seller_profit: Number(t.seller_profit),
+        })));
+      }
       toast('Round ended!', { icon: '🏁' });
     }));
 
@@ -228,18 +289,6 @@ export const Market: React.FC = () => {
       loadOrderBook(roundId);
     }
   }, [roundId, isDAGame]);
-
-  const loadOrderBook = async (rId: string) => {
-    try {
-      const orderBook = await gameApi.getOrderBook(rId);
-      setBids(orderBook.bids);
-      setAsks(orderBook.asks);
-      const roundTrades = await gameApi.getTrades(rId);
-      setTrades(roundTrades);
-    } catch (err) {
-      console.error('Failed to load order book:', err);
-    }
-  };
 
   if (loading || !session || !player) {
     return (

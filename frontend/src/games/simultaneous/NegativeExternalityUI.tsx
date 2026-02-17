@@ -98,6 +98,10 @@ const NegativeExternalityUI: React.FC<GameUIProps> = ({
       toast.error('Please enter a valid production level');
       return;
     }
+    if (pNum > maxProduction) {
+      toast.error(`Production cannot exceed ${maxProduction} units`);
+      return;
+    }
 
     setSubmitting(true);
     submitAction({ type: 'decision', production: pNum });
