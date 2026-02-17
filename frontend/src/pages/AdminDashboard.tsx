@@ -5,7 +5,8 @@ import { Card } from '../components/shared/Card';
 import { Spinner } from '../components/shared/Spinner';
 import { sessionsApi } from '../api/sessions';
 import type { Session } from '../types';
-import { Plus, Users, Clock, ArrowLeft } from 'lucide-react';
+import { Plus, Users, Clock, ArrowLeft, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -24,6 +25,30 @@ export const AdminDashboard: React.FC = () => {
       console.error('Failed to load sessions:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!window.confirm(`Delete all ${sessions.length} sessions? This cannot be undone.`)) return;
+    try {
+      await sessionsApi.deleteAll();
+      setSessions([]);
+      toast.success('All sessions deleted');
+    } catch (error) {
+      console.error('Failed to delete sessions:', error);
+      toast.error('Failed to delete sessions');
+    }
+  };
+
+  const handleDelete = async (id: string, code: string) => {
+    if (!window.confirm(`Delete session ${code}? This cannot be undone.`)) return;
+    try {
+      await sessionsApi.delete(id);
+      setSessions(prev => prev.filter(s => s.id !== id));
+      toast.success(`Session ${code} deleted`);
+    } catch (error) {
+      console.error('Failed to delete session:', error);
+      toast.error('Failed to delete session');
     }
   };
 
@@ -48,10 +73,18 @@ export const AdminDashboard: React.FC = () => {
 
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <Button onClick={() => navigate('/admin/create')}>
-            <Plus className="w-4 h-4 inline mr-2" />
-            Create Session
-          </Button>
+          <div className="flex gap-2">
+            {sessions.length > 0 && (
+              <Button variant="danger" onClick={handleDeleteAll}>
+                <Trash2 className="w-4 h-4 inline mr-2" />
+                Delete All
+              </Button>
+            )}
+            <Button onClick={() => navigate('/admin/create')}>
+              <Plus className="w-4 h-4 inline mr-2" />
+              Create Session
+            </Button>
+          </div>
         </div>
 
         {loading ? (
@@ -103,6 +136,13 @@ export const AdminDashboard: React.FC = () => {
                       onClick={() => navigate(`/session/${session.code}/monitor`)}
                     >
                       View
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => handleDelete(session.id, session.code)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>
                 </div>

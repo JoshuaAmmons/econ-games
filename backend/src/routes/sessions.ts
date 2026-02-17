@@ -27,4 +27,10 @@ router.post('/:id/start', SessionController.start);
 // End session
 router.post('/:id/end', SessionController.end);
 
+// Delete session
+router.delete('/:id', SessionController.delete);
+
+// Delete all sessions
+router.delete('/', SessionController.deleteAll);
+
 export default router;
