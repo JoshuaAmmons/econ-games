@@ -324,6 +324,7 @@ export const Market: React.FC = () => {
             onEvent={onEvent}
             submitAction={submitAction}
             refreshPlayer={refreshPlayer}
+            requestGameState={requestGameState}
             bids={bids}
             asks={asks}
             trades={trades}

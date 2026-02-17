@@ -18,6 +18,7 @@ export interface GameUIProps {
   onEvent: (event: string, handler: (...args: any[]) => void) => () => void;
   submitAction: (action: Record<string, any>) => void;
   refreshPlayer: () => Promise<void>;
+  requestGameState: (roundId: string) => void;
 }
 
 /**
