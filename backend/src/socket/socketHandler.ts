@@ -24,6 +24,9 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
   // Cache session game types to avoid repeated DB lookups
   const sessionGameTypeCache: Map<string, string> = new Map();
 
+  // Cache verified admin sessions to avoid DB lookups on every timer tick (~1/sec)
+  const adminAuthCache: Map<string, { adminPassword: string | undefined }> = new Map();
+
   // Guard against concurrent end-round processing (timer + manual click race)
   const endingRounds = new Set<string>();
 
@@ -204,6 +207,9 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
         const session = await verifyAdminAuth(sessionCode, adminPassword, socket);
         if (!session) return;
 
+        // Cache the admin password so timer-update can skip DB lookups
+        adminAuthCache.set(sessionCode, { adminPassword: session.admin_password || undefined });
+
         const round = await RoundModel.findBySessionAndNumber(session.id, roundNumber);
         if (!round) throw new Error('Round not found');
 
@@ -242,6 +248,9 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
         // Verify admin authorization
         const session = await verifyAdminAuth(sessionCode, adminPassword, socket);
         if (!session) return;
+
+        // Cache the admin password so timer-update can skip DB lookups
+        adminAuthCache.set(sessionCode, { adminPassword: session.admin_password || undefined });
 
         // Guard against concurrent end-round processing (timer + manual click race)
         if (endingRounds.has(roundId)) {
@@ -288,9 +297,10 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
 
           console.log(`Round ended for session ${sessionCode}`);
 
-          // Clear cached game type to prevent unbounded memory growth.
-          // It will be re-populated on the next lookup if needed.
+          // Clear caches to prevent unbounded memory growth.
+          // They will be re-populated on the next lookup if needed.
           sessionGameTypeCache.delete(sessionCode);
+          adminAuthCache.delete(sessionCode);
         } finally {
           endingRounds.delete(roundId);
         }
@@ -305,9 +315,20 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
       try {
         if (!data?.sessionCode || data.secondsRemaining == null) return;
 
-        // Verify admin authorization
-        const session = await verifyAdminAuth(data.sessionCode, data.adminPassword, socket);
-        if (!session) return;
+        // Lightweight admin auth check using cache (avoid DB query every second)
+        const cached = adminAuthCache.get(data.sessionCode);
+        if (cached) {
+          // Verify password matches cached value
+          if (cached.adminPassword && (!data.adminPassword || data.adminPassword !== cached.adminPassword)) {
+            socket.emit('error', { message: 'Unauthorized: invalid admin password' });
+            return;
+          }
+        } else {
+          // First time: do full DB check and cache the result
+          const session = await verifyAdminAuth(data.sessionCode, data.adminPassword, socket);
+          if (!session) return;
+          adminAuthCache.set(data.sessionCode, { adminPassword: session.admin_password || undefined });
+        }
 
         io.to(`market-${data.sessionCode}`).emit('timer-update', {
           seconds_remaining: data.secondsRemaining,
