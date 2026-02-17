@@ -145,6 +145,18 @@ export class PrincipalAgentEngine extends SequentialBaseEngine {
     if (config.lowOutput !== undefined && config.lowOutput < 0) {
       return { valid: false, error: 'Low output cannot be negative' };
     }
+    if (config.highOutput !== undefined && config.lowOutput !== undefined
+        && config.highOutput <= config.lowOutput) {
+      return { valid: false, error: 'High output must be greater than low output' };
+    }
+    if (config.highEffortProb !== undefined
+        && (config.highEffortProb < 0 || config.highEffortProb > 1)) {
+      return { valid: false, error: 'High effort probability must be between 0 and 1' };
+    }
+    if (config.lowEffortProb !== undefined
+        && (config.lowEffortProb < 0 || config.lowEffortProb > 1)) {
+      return { valid: false, error: 'Low effort probability must be between 0 and 1' };
+    }
     return { valid: true };
   }
 

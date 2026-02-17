@@ -24,6 +24,9 @@ import {
 export class DoubleAuctionEngine implements GameEngine {
   readonly gameType: GameType = 'double_auction';
 
+  /** Serialize trade matching per round to prevent duplicate trades */
+  private tradeMatchLocks = new Map<string, Promise<void>>();
+
   getUIConfig(): UIConfig {
     return {
       name: 'Double Auction',
@@ -218,15 +221,23 @@ export class DoubleAuctionEngine implements GameEngine {
       },
     ]);
 
+    // Normalize DECIMAL fields (pg driver returns strings)
+    const normalizedTrades = trades.map(t => ({
+      ...t,
+      price: Number(t.price),
+      buyer_profit: Number(t.buyer_profit),
+      seller_profit: Number(t.seller_profit),
+    }));
+
     return {
       playerResults,
       summary: {
-        totalTrades: trades.length,
+        totalTrades: normalizedTrades.length,
         averagePrice:
-          trades.length > 0
-            ? trades.reduce((sum, t) => sum + Number(t.price), 0) / trades.length
+          normalizedTrades.length > 0
+            ? normalizedTrades.reduce((sum, t) => sum + t.price, 0) / normalizedTrades.length
             : 0,
-        trades,
+        trades: normalizedTrades,
       },
     };
   }
@@ -237,11 +248,19 @@ export class DoubleAuctionEngine implements GameEngine {
   ): Promise<Record<string, any>> {
     const bids = await BidModel.findActiveByRound(roundId);
     const asks = await AskModel.findActiveByRound(roundId);
-    const trades = await TradeModel.findByRound(roundId);
+    const rawTrades = await TradeModel.findByRound(roundId);
+
+    // Normalize DECIMAL fields
+    const trades = rawTrades.map(t => ({
+      ...t,
+      price: Number(t.price),
+      buyer_profit: Number(t.buyer_profit),
+      seller_profit: Number(t.seller_profit),
+    }));
 
     return {
-      bids,
-      asks,
+      bids: bids.map(b => ({ ...b, price: Number(b.price) })),
+      asks: asks.map(a => ({ ...a, price: Number(a.price) })),
       trades,
     };
   }
@@ -251,6 +270,18 @@ export class DoubleAuctionEngine implements GameEngine {
    * This is the core DA matching logic, extracted from the old socketHandler.
    */
   protected async checkAndExecuteTrades(
+    roundId: string,
+    sessionCode: string,
+    io: Server
+  ): Promise<void> {
+    // Serialize: wait for any in-flight match to finish before starting a new one
+    const prevLock = this.tradeMatchLocks.get(roundId) || Promise.resolve();
+    const currentLock = prevLock.then(() => this.executeTradeMatching(roundId, sessionCode, io));
+    this.tradeMatchLocks.set(roundId, currentLock.catch(() => {}));
+    await currentLock;
+  }
+
+  private async executeTradeMatching(
     roundId: string,
     sessionCode: string,
     io: Server

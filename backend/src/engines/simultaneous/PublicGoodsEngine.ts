@@ -121,6 +121,8 @@ export class PublicGoodsEngine extends SimultaneousBaseEngine {
     const endowment = config.endowment ?? 20;
     const mpcr = config.mpcr ?? 0.4;
 
+    if (actions.length === 0) return [];
+
     const contributions = actions.map((a) => ({
       playerId: a.playerId,
       contribution: a.action.contribution as number,

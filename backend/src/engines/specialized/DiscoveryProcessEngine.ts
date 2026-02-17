@@ -35,7 +35,7 @@ interface PlayerTypeConfig {
 }
 
 interface RoundState {
-  phase: 'production' | 'move' | 'complete';
+  phase: 'production' | 'move' | 'complete' | 'transitioning_to_move' | 'completing';
   inventories: Map<string, PlayerInventory>;
   productionSettings: Map<string, number[]>; // playerId → % allocation per good
   playerTypes: Map<string, number>;          // playerId → type index
@@ -365,6 +365,8 @@ export class DiscoveryProcessEngine implements GameEngine {
     if (state.phase !== 'production') {
       return { success: false, error: 'Not in production phase' };
     }
+    // Immediately transition to prevent concurrent re-entry
+    state.phase = 'transitioning_to_move';
 
     // Cancel the auto-transition timer if it exists
     const existingTimer = this.productionTimers.get(roundId);
@@ -447,8 +449,12 @@ export class DiscoveryProcessEngine implements GameEngine {
 
     const { good, amount, fromLocation, fromPlayerId, toPlayerId } = action;
 
-    if (!good || !amount || amount < 1) {
-      return { success: false, error: 'Invalid good or amount' };
+    if (!good || typeof amount !== 'number' || !Number.isInteger(amount) || amount < 1) {
+      return { success: false, error: 'Invalid good or amount (must be a positive integer)' };
+    }
+
+    if (fromLocation !== 'field' && fromLocation !== 'house') {
+      return { success: false, error: 'fromLocation must be "field" or "house"' };
     }
 
     // Validate: can only move from own inventory (unless stealing is enabled)
@@ -532,10 +538,12 @@ export class DiscoveryProcessEngine implements GameEngine {
     if (recipients === 'all') {
       io.to(`market-${sessionCode}`).emit('chat-message', chatMsg);
     } else {
-      // Private message: send to specific players + sender
+      // Private message: send only to intended recipients + sender
       const recipientList = Array.isArray(recipients) ? recipients : [recipients];
-      // Emit to all in market room but include recipients list so client can filter
-      io.to(`market-${sessionCode}`).emit('chat-message', chatMsg);
+      const targets = new Set([...recipientList, playerId]);
+      for (const targetId of targets) {
+        io.to(`player-${targetId}`).emit('chat-message', chatMsg);
+      }
     }
 
     return { success: true };
@@ -561,8 +569,8 @@ export class DiscoveryProcessEngine implements GameEngine {
     const activePlayers = await PlayerModel.findActiveBySession(session.id);
 
     // Guard against double processing (auto-timer + manual end-round)
-    if (state && state.phase === 'complete') {
-      console.log(`[DiscoveryProcess] Round ${roundId} already completed, skipping duplicate processRoundEnd`);
+    if (state && (state.phase === 'complete' || state.phase === 'completing')) {
+      console.log(`[DiscoveryProcess] Round ${roundId} already completed/completing, skipping duplicate processRoundEnd`);
       // Return existing results from DB
       const existingResults = await GameResultModel.findByRound(roundId);
       return {
@@ -573,6 +581,10 @@ export class DiscoveryProcessEngine implements GameEngine {
         })),
         summary: {},
       };
+    }
+    // Immediately mark as completing to prevent concurrent re-entry
+    if (state) {
+      state.phase = 'completing';
     }
 
     // If no in-memory state (server restarted), check DB for production actions

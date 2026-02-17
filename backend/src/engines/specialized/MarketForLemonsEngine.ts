@@ -145,12 +145,10 @@ export class MarketForLemonsEngine extends SequentialBaseEngine {
     sessionCode: string,
     io: Server
   ): Promise<ActionResult> {
-    // For sellers, include quality in the action data
-    // Quality is randomly assigned when they submit
-    if (action.type === 'first_move' && !action.quality) {
+    // For sellers, always assign a random quality (ignore any client-supplied value)
+    if (action.type === 'first_move') {
       const qualities = [10, 20, 30, 40, 50, 60, 70, 80, 90];
-      const randomQuality = qualities[Math.floor(Math.random() * qualities.length)];
-      action.quality = randomQuality;
+      action.quality = qualities[Math.floor(Math.random() * qualities.length)];
     }
 
     return super.handleAction(roundId, playerId, action, sessionCode, io);

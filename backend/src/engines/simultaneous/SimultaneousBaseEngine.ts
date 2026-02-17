@@ -28,6 +28,9 @@ import { SessionModel } from '../../models/Session';
  */
 export abstract class SimultaneousBaseEngine implements GameEngine {
   abstract readonly gameType: GameType;
+
+  /** Guard against concurrent resolveRound calls (double-profit bug) */
+  private resolvingRounds = new Set<string>();
   abstract getUIConfig(): UIConfig;
   abstract validateConfig(config: Record<string, any>): ValidationResult;
 
@@ -126,6 +129,15 @@ export abstract class SimultaneousBaseEngine implements GameEngine {
     session: any,
     activePlayers: any[]
   ): Promise<void> {
+    // Prevent concurrent resolution (race between last-submit and timer-end)
+    if (this.resolvingRounds.has(roundId)) return;
+    this.resolvingRounds.add(roundId);
+
+    try {
+      // Double-check: if results already exist, skip
+      const existingResults = await GameResultModel.findByRound(roundId);
+      if (existingResults.length > 0) return;
+
     const config = session.game_config || {};
 
     // Get all actions for this round
@@ -154,6 +166,9 @@ export abstract class SimultaneousBaseEngine implements GameEngine {
       })),
       actions: actionData,
     });
+    } finally {
+      this.resolvingRounds.delete(roundId);
+    }
   }
 
   async processRoundEnd(

@@ -24,6 +24,9 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
   // Cache session game types to avoid repeated DB lookups
   const sessionGameTypeCache: Map<string, string> = new Map();
 
+  // Guard against concurrent end-round processing (timer + manual click race)
+  const endingRounds = new Set<string>();
+
   async function getSessionGameType(sessionCode: string): Promise<string> {
     const cached = sessionGameTypeCache.get(sessionCode);
     if (cached) return cached;
@@ -39,23 +42,34 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
 
     // Join session room
     socket.on('join-session', async (data: { sessionCode: string; playerId: string }) => {
-      const { sessionCode, playerId } = data;
-      socket.join(`session-${sessionCode}`);
+      try {
+        const { sessionCode, playerId } = data || {};
+        if (!sessionCode || !playerId) return;
+        socket.join(`session-${sessionCode}`);
 
-      // Emit player joined event
-      io.to(`session-${sessionCode}`).emit('player-joined', {
-        playerId,
-        timestamp: new Date().toISOString(),
-      });
+        // Emit player joined event
+        io.to(`session-${sessionCode}`).emit('player-joined', {
+          playerId,
+          timestamp: new Date().toISOString(),
+        });
 
-      console.log(`Player ${playerId} joined session ${sessionCode}`);
+        console.log(`Player ${playerId} joined session ${sessionCode}`);
+      } catch (error) {
+        console.error('Error joining session:', error);
+      }
     });
 
     // Join market room
     socket.on('join-market', async (data: { sessionCode: string; playerId: string }) => {
-      const { sessionCode, playerId } = data;
-      socket.join(`market-${sessionCode}`);
-      console.log(`Player ${playerId} joined market ${sessionCode}`);
+      try {
+        const { sessionCode, playerId } = data || {};
+        if (!sessionCode || !playerId) return;
+        socket.join(`market-${sessionCode}`);
+        socket.join(`player-${playerId}`);
+        console.log(`Player ${playerId} joined market ${sessionCode}`);
+      } catch (error) {
+        console.error('Error joining market:', error);
+      }
     });
 
     // =========================================================================
@@ -195,36 +209,53 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
       try {
         const { sessionCode, roundId } = data;
 
-        // Guard against double-ending (timer auto-end + manual click)
-        const round = await RoundModel.findById(roundId);
-        if (!round || round.status === 'completed') {
-          console.log(`Round ${roundId} already ended, skipping duplicate end-round`);
+        // Guard against concurrent end-round processing (timer + manual click race)
+        if (endingRounds.has(roundId)) {
+          console.log(`Round ${roundId} already being processed, skipping`);
           return;
         }
+        endingRounds.add(roundId);
 
-        // Let the engine process end-of-round logic
-        const gameType = await getSessionGameType(sessionCode);
-        const engine = GameRegistry.get(gameType);
+        try {
+          // Guard against double-ending (timer auto-end + manual click)
+          const round = await RoundModel.findById(roundId);
+          if (!round || round.status === 'completed') {
+            console.log(`Round ${roundId} already ended, skipping duplicate end-round`);
+            return;
+          }
 
-        await RoundModel.end(roundId);
-        const roundResult = await engine.processRoundEnd(roundId, sessionCode, io);
+          // Let the engine process end-of-round logic
+          const gameType = await getSessionGameType(sessionCode);
+          const engine = GameRegistry.get(gameType);
 
-        // Get trades for DA games (backward compat)
-        const trades = await TradeModel.findByRound(roundId);
+          await RoundModel.end(roundId);
+          const roundResult = await engine.processRoundEnd(roundId, sessionCode, io);
 
-        io.to(`session-${sessionCode}`).emit('round-ended', {
-          roundId,
-          trades,
-          results: roundResult,
-        });
+          // Get trades for DA games (backward compat) — normalize DECIMAL strings
+          const rawTrades = await TradeModel.findByRound(roundId);
+          const trades = rawTrades.map(t => ({
+            ...t,
+            price: Number(t.price),
+            buyer_profit: Number(t.buyer_profit),
+            seller_profit: Number(t.seller_profit),
+          }));
 
-        io.to(`market-${sessionCode}`).emit('round-ended', {
-          roundId,
-          trades,
-          results: roundResult,
-        });
+          io.to(`session-${sessionCode}`).emit('round-ended', {
+            roundId,
+            trades,
+            results: roundResult,
+          });
 
-        console.log(`Round ended for session ${sessionCode}`);
+          io.to(`market-${sessionCode}`).emit('round-ended', {
+            roundId,
+            trades,
+            results: roundResult,
+          });
+
+          console.log(`Round ended for session ${sessionCode}`);
+        } finally {
+          endingRounds.delete(roundId);
+        }
       } catch (error) {
         console.error('Error ending round:', error);
         socket.emit('error', { message: 'Failed to end round' });
@@ -233,9 +264,14 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
 
     // Timer update
     socket.on('timer-update', (data: { sessionCode: string; secondsRemaining: number }) => {
-      io.to(`market-${data.sessionCode}`).emit('timer-update', {
-        seconds_remaining: data.secondsRemaining,
-      });
+      try {
+        if (!data?.sessionCode || data.secondsRemaining == null) return;
+        io.to(`market-${data.sessionCode}`).emit('timer-update', {
+          seconds_remaining: data.secondsRemaining,
+        });
+      } catch (error) {
+        console.error('Error in timer-update:', error);
+      }
     });
 
     // Get game state (for reconnection/page load)
