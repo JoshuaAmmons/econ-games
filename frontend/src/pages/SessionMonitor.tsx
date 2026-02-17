@@ -27,6 +27,59 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   comparative_advantage: 'Comparative Advantage',
   monopoly: 'Monopoly',
   market_for_lemons: 'Market for Lemons',
+  discovery_process: 'Exchange & Specialization',
+};
+
+/** Friendly labels for game config fields displayed on the monitor */
+const CONFIG_LABELS: Record<string, string> = {
+  // Common
+  market_size: 'Market Size',
+  num_rounds: 'Number of Rounds',
+  time_per_round: 'Time per Round (s)',
+  // Discovery Process
+  numGoods: 'Goods Count',
+  productionLength: 'Production Phase (s)',
+  allowChat: 'Chat Enabled',
+  allowPrivateChat: 'Private Chat',
+  allowStealing: 'Allow Stealing',
+  good1Name: 'Good 1 Name',
+  good2Name: 'Good 2 Name',
+  good3Name: 'Good 3 Name',
+  good1Color: 'Good 1 Color',
+  good2Color: 'Good 2 Color',
+  good3Color: 'Good 3 Color',
+  // Simultaneous games
+  marginalCost: 'Marginal Cost',
+  marketDemand: 'Market Demand',
+  maxPrice: 'Max Price',
+  demandIntercept: 'Demand Intercept (a)',
+  demandSlope: 'Demand Slope (b)',
+  maxQuantity: 'Max Quantity',
+  revenuePerUnit: 'Revenue per Unit',
+  costPerUnit: 'Cost per Unit',
+  damageRate: 'Damage Rate',
+  maxProduction: 'Max Production',
+  taxEnabled: 'Tax Enabled',
+  taxRate: 'Tax Rate',
+  mpcr: 'MPCR',
+  // Sequential games
+  endowment: 'Endowment',
+  maxWage: 'Max Wage',
+  maxEffort: 'Max Effort',
+  productivityMultiplier: 'Productivity Multiplier',
+  maxEffortCost: 'Max Effort Cost',
+  highOutput: 'High Output',
+  lowOutput: 'Low Output',
+  highEffortProb: 'High Effort Prob',
+  lowEffortProb: 'Low Effort Prob',
+  effortCost: 'Effort Cost',
+  maxBonus: 'Max Bonus',
+  minOffer: 'Min Offer',
+  // Specialized
+  laborUnits: 'Labor Units',
+  sellerCostFraction: 'Seller Cost Fraction',
+  buyerValueFraction: 'Buyer Value Fraction',
+  fixedCost: 'Fixed Cost',
 };
 
 export const SessionMonitor: React.FC = () => {
@@ -406,14 +459,15 @@ export const SessionMonitor: React.FC = () => {
         {!isDA && session.game_config && Object.keys(session.game_config).length > 0 && (
           <Card title="Game Configuration" className="mb-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {Object.entries(session.game_config).map(([key, value]) => (
-                <div key={key} className="text-center bg-gray-50 rounded p-3">
-                  <p className="text-xs text-gray-500 mb-1">
-                    {key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}
-                  </p>
-                  <p className="text-lg font-bold">{typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value}</p>
-                </div>
-              ))}
+              {Object.entries(session.game_config).map(([key, value]) => {
+                const label = CONFIG_LABELS[key] || key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim();
+                return (
+                  <div key={key} className="text-center bg-gray-50 rounded p-3">
+                    <p className="text-xs text-gray-500 mb-1">{label}</p>
+                    <p className="text-lg font-bold">{typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)}</p>
+                  </div>
+                );
+              })}
             </div>
           </Card>
         )}
