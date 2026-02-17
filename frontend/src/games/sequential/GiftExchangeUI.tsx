@@ -260,7 +260,7 @@ const GiftExchangeUI: React.FC<GameUIProps> = ({
                         </span>
                       </div>
                       <div className="text-xs text-gray-500">
-                        Wage: ${Number(pair.firstMoveAction.wage).toFixed(2)} | Output: ${pair.firstMoverResultData.output}
+                        Wage: ${Number(pair.firstMoveAction?.wage ?? 0).toFixed(2)} | Output: ${pair.firstMoverResultData?.output ?? "N/A"}
                       </div>
                       <div className="flex justify-between mt-1">
                         <span className="font-medium">{pair.secondMoverName || 'Worker'}</span>
@@ -269,7 +269,7 @@ const GiftExchangeUI: React.FC<GameUIProps> = ({
                         </span>
                       </div>
                       <div className="text-xs text-gray-500">
-                        Effort: {pair.secondMoveAction.effort} | Cost: ${Number(pair.secondMoverResultData.costOfEffort).toFixed(2)}
+                        Effort: {pair.secondMoveAction?.effort ?? "N/A"} | Cost: ${Number(pair.secondMoverResultData?.costOfEffort ?? 0).toFixed(2)}
                       </div>
                     </div>
                   </div>

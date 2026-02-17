@@ -65,11 +65,22 @@ export class SessionController {
       // Get players
       const players = await PlayerModel.findBySession(session.id);
 
+      // Strip secrets from response
+      const { passcode, admin_password, ...sessionData } = session;
+      const normalizedPlayers = players.map((p: any) => ({
+        ...p,
+        total_profit: p.total_profit != null ? Number(p.total_profit) : p.total_profit,
+        valuation: p.valuation != null ? Number(p.valuation) : p.valuation,
+        production_cost: p.production_cost != null ? Number(p.production_cost) : p.production_cost,
+      }));
+
       res.json({
         success: true,
         data: {
-          ...session,
-          players
+          ...sessionData,
+          has_passcode: !!passcode,
+          has_admin_password: !!admin_password,
+          players: normalizedPlayers
         }
       } as ApiResponse);
 
@@ -124,9 +135,19 @@ export class SessionController {
 
       const sessions = await SessionModel.findAll(limit, offset);
 
+      // Strip secrets from each session
+      const sanitizedSessions = sessions.map((s: any) => {
+        const { passcode, admin_password, ...sessionData } = s;
+        return {
+          ...sessionData,
+          has_passcode: !!passcode,
+          has_admin_password: !!admin_password,
+        };
+      });
+
       res.json({
         success: true,
-        data: sessions
+        data: sanitizedSessions
       } as ApiResponse);
 
     } catch (error) {
@@ -200,9 +221,17 @@ export class SessionController {
 
       const players = await PlayerModel.findBySession(session.id);
 
+      // Normalize DECIMAL fields from string to number
+      const normalizedPlayers = players.map((p: any) => ({
+        ...p,
+        total_profit: p.total_profit != null ? Number(p.total_profit) : p.total_profit,
+        valuation: p.valuation != null ? Number(p.valuation) : p.valuation,
+        production_cost: p.production_cost != null ? Number(p.production_cost) : p.production_cost,
+      }));
+
       res.json({
         success: true,
-        data: players
+        data: normalizedPlayers
       } as ApiResponse);
 
     } catch (error) {

@@ -76,8 +76,22 @@ export class TaxSubsidyEngine extends DoubleAuctionEngine {
    * Override trade execution to apply tax/subsidy to profits.
    * The trade price in the order book is the same as standard DA,
    * but buyer/seller profits are adjusted by the tax.
+   *
+   * Uses the same tradeMatchLocks serialization as the base class
+   * to prevent duplicate trades from concurrent bid/ask submissions.
    */
   protected async checkAndExecuteTrades(
+    roundId: string,
+    sessionCode: string,
+    io: Server
+  ): Promise<void> {
+    const prevLock = this.tradeMatchLocks.get(roundId) || Promise.resolve();
+    const currentLock = prevLock.then(() => this.executeTaxTradeMatching(roundId, sessionCode, io));
+    this.tradeMatchLocks.set(roundId, currentLock.catch(() => {}));
+    await currentLock;
+  }
+
+  private async executeTaxTradeMatching(
     roundId: string,
     sessionCode: string,
     io: Server

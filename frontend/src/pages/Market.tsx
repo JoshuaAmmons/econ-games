@@ -59,7 +59,7 @@ export const Market: React.FC = () => {
       const fullSession = await sessionsApi.getByCode(code || '');
       setSession(fullSession);
 
-      if (s.status !== 'active') {
+      if (s.status !== 'active' && s.status !== 'completed') {
         navigate(`/session/${code}/lobby`);
         return;
       }

@@ -158,11 +158,21 @@ export class GameController {
       const bids = await BidModel.findActiveByRound(roundId);
       const asks = await AskModel.findActiveByRound(roundId);
 
+      // Normalize DECIMAL fields from string to number (pg returns DECIMAL as string)
+      const normalizedBids = bids.map((b: any) => ({
+        ...b,
+        price: b.price != null ? Number(b.price) : b.price,
+      }));
+      const normalizedAsks = asks.map((a: any) => ({
+        ...a,
+        price: a.price != null ? Number(a.price) : a.price,
+      }));
+
       res.json({
         success: true,
         data: {
-          bids,
-          asks
+          bids: normalizedBids,
+          asks: normalizedAsks
         }
       } as ApiResponse);
 
@@ -182,9 +192,17 @@ export class GameController {
 
       const trades = await TradeModel.findByRound(roundId);
 
+      // Normalize DECIMAL fields from string to number
+      const normalizedTrades = trades.map((t: any) => ({
+        ...t,
+        price: t.price != null ? Number(t.price) : t.price,
+        buyer_profit: t.buyer_profit != null ? Number(t.buyer_profit) : t.buyer_profit,
+        seller_profit: t.seller_profit != null ? Number(t.seller_profit) : t.seller_profit,
+      }));
+
       res.json({
         success: true,
-        data: trades
+        data: normalizedTrades
       } as ApiResponse);
 
     } catch (error) {

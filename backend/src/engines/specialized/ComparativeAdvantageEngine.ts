@@ -132,14 +132,18 @@ export class ComparativeAdvantageEngine extends SimultaneousBaseEngine {
     const good1Name = config.good1Name ?? 'Food';
     const good2Name = config.good2Name ?? 'Clothing';
 
-    // Assign random but distinct productivities to each country
-    // Use player index to seed deterministic productivities
-    const results = actions.map((a, idx) => {
+    // Sort actions by playerId so productivity assignments are stable
+    // regardless of submission order. This ensures the same player always
+    // gets the same productivity across rounds.
+    const sortedActions = [...actions].sort((a, b) => a.playerId.localeCompare(b.playerId));
+
+    const results = sortedActions.map((a, idx) => {
       const laborGood1 = a.action.laborGood1 as number;
       const laborGood2 = laborUnits - laborGood1;
 
       // Each country has different productivities
       // Country 0: good at good1, Country 1: good at good2, etc.
+      // Stable because actions are sorted by playerId
       const prod1 = idx % 2 === 0 ? 2 : 1;    // Productivity for good 1
       const prod2 = idx % 2 === 0 ? 1 : 2;    // Productivity for good 2
 

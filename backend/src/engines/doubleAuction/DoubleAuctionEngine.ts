@@ -25,7 +25,7 @@ export class DoubleAuctionEngine implements GameEngine {
   readonly gameType: GameType = 'double_auction';
 
   /** Serialize trade matching per round to prevent duplicate trades */
-  private tradeMatchLocks = new Map<string, Promise<void>>();
+  protected tradeMatchLocks = new Map<string, Promise<void>>();
 
   getUIConfig(): UIConfig {
     return {
