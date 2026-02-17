@@ -70,8 +70,8 @@ export abstract class SimultaneousBaseEngine implements GameEngine {
     sessionCode: string,
     io: Server
   ): Promise<ActionResult> {
-    // Check if player already submitted this round
-    const alreadyActed = await GameActionModel.hasPlayerActed(roundId, playerId);
+    // Check if player already submitted a decision this round
+    const alreadyActed = await GameActionModel.hasPlayerActed(roundId, playerId, 'decision');
     if (alreadyActed) {
       return { success: false, error: 'You have already submitted your decision this round' };
     }
@@ -243,7 +243,7 @@ export abstract class SimultaneousBaseEngine implements GameEngine {
     const totalSubmitted = await GameActionModel.countByRound(roundId, 'decision');
 
     const hasSubmitted = playerId
-      ? await GameActionModel.hasPlayerActed(roundId, playerId)
+      ? await GameActionModel.hasPlayerActed(roundId, playerId, 'decision')
       : false;
 
     // Get results if available

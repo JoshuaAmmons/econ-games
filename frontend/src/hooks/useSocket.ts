@@ -70,27 +70,6 @@ export function useSocket(sessionCode: string, playerId: string) {
     });
   }, [playerId, sessionCode]);
 
-  const startRound = useCallback((roundNumber: number) => {
-    socketRef.current?.emit('start-round', {
-      sessionCode,
-      roundNumber,
-    });
-  }, [sessionCode]);
-
-  const endRound = useCallback((roundId: string) => {
-    socketRef.current?.emit('end-round', {
-      sessionCode,
-      roundId,
-    });
-  }, [sessionCode]);
-
-  const sendTimerUpdate = useCallback((secondsRemaining: number) => {
-    socketRef.current?.emit('timer-update', {
-      sessionCode,
-      secondsRemaining,
-    });
-  }, [sessionCode]);
-
   const requestGameState = useCallback((roundId: string) => {
     socketRef.current?.emit('get-game-state', {
       sessionCode,
@@ -115,9 +94,6 @@ export function useSocket(sessionCode: string, playerId: string) {
     submitBid,
     submitAsk,
     submitAction,
-    startRound,
-    endRound,
-    sendTimerUpdate,
     requestGameState,
     onEvent,
   };

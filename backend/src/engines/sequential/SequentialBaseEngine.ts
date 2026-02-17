@@ -22,6 +22,11 @@ import { SessionModel } from '../../models/Session';
  * 3. Stage 2: Second movers see the first mover's action and respond.
  * 4. After both stages complete, payoffs are calculated.
  *
+ * Pairing stability:
+ * Pairings are computed once per session from ALL players (including inactive)
+ * sorted by player ID within each role group. This ensures pairings remain
+ * stable even when players disconnect between rounds — indices never shift.
+ *
  * Subclasses must implement:
  * - gameType, getUIConfig(), validateConfig()
  * - roles() — returns [firstMoverRole, secondMoverRole]
@@ -35,6 +40,12 @@ export abstract class SequentialBaseEngine implements GameEngine {
 
   /** Guard against concurrent resolveRound calls (double-profit bug) */
   private resolvingRounds = new Set<string>();
+
+  /**
+   * Stable pairing map: sessionId -> Map<playerId, partnerId>
+   * Built once from ALL players (including inactive) sorted by ID.
+   */
+  private sessionPairings = new Map<string, Map<string, string>>();
 
   /** Return [firstMoverRole, secondMoverRole] */
   protected abstract roles(): [string, string];
@@ -64,6 +75,46 @@ export abstract class SequentialBaseEngine implements GameEngine {
     secondMoverResultData: Record<string, any>;
   };
 
+  /**
+   * Build (or retrieve cached) stable pairings for a session.
+   * Uses ALL players (including inactive) sorted by ID within each role group
+   * so that pairings never shift when a player disconnects.
+   */
+  private async getOrBuildPairings(sessionId: string): Promise<Map<string, string>> {
+    const existing = this.sessionPairings.get(sessionId);
+    if (existing) return existing;
+
+    const [firstMoverRole, secondMoverRole] = this.roles();
+
+    // Use findBySession (ALL players, not just active) for stability
+    const allPlayers = await PlayerModel.findBySession(sessionId);
+    const firstMovers = allPlayers
+      .filter(p => p.role === firstMoverRole)
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const secondMovers = allPlayers
+      .filter(p => p.role === secondMoverRole)
+      .sort((a, b) => a.id.localeCompare(b.id));
+
+    const pairMap = new Map<string, string>();
+    const numPairs = Math.min(firstMovers.length, secondMovers.length);
+    for (let i = 0; i < numPairs; i++) {
+      pairMap.set(firstMovers[i].id, secondMovers[i].id);
+      pairMap.set(secondMovers[i].id, firstMovers[i].id);
+    }
+
+    this.sessionPairings.set(sessionId, pairMap);
+    return pairMap;
+  }
+
+  /**
+   * Find the stable partner for a given player.
+   * Returns the partner's ID or undefined if unpaired (odd player out).
+   */
+  private async findPartner(sessionId: string, playerId: string): Promise<string | undefined> {
+    const pairMap = await this.getOrBuildPairings(sessionId);
+    return pairMap.get(playerId);
+  }
+
   async setupPlayers(
     _sessionId: string,
     _playerCount: number,
@@ -91,8 +142,9 @@ export abstract class SequentialBaseEngine implements GameEngine {
     const [firstMoverRole, secondMoverRole] = this.roles();
     const isFirstMover = player.role === firstMoverRole;
 
-    // Check if already submitted
-    const alreadyActed = await GameActionModel.hasPlayerActed(roundId, playerId);
+    // Check if already submitted (filter by the player's specific action type)
+    const actionType = isFirstMover ? 'first_move' : 'second_move';
+    const alreadyActed = await GameActionModel.hasPlayerActed(roundId, playerId, actionType);
     if (alreadyActed) {
       return { success: false, error: 'You have already submitted your decision this round' };
     }
@@ -104,46 +156,38 @@ export abstract class SequentialBaseEngine implements GameEngine {
 
       await GameActionModel.create(roundId, playerId, 'first_move', action);
 
-      // Find this player's partner
+      // Find this player's stable partner
+      const partnerId = await this.findPartner(session.id, playerId);
+
+      // Get counts for broadcast
       const allPlayers = await PlayerModel.findActiveBySession(session.id);
       const firstMovers = allPlayers.filter(p => p.role === firstMoverRole);
-      const secondMovers = allPlayers.filter(p => p.role === secondMoverRole);
-
-      // Find partner index (paired by join order)
-      const myIndex = firstMovers.findIndex(p => p.id === playerId);
-      const partner = secondMovers[myIndex];
-
-      // Broadcast to room — partner can now see the first move
       const firstMoveActions = await GameActionModel.findByRoundAndType(roundId, 'first_move');
 
+      // Broadcast to room — partner can now see the first move
       io.to(`market-${sessionCode}`).emit('first-move-submitted', {
         playerId,
         playerName: player.name,
         action,
         totalFirstMoves: firstMoveActions.length,
         totalFirstMovers: firstMovers.length,
-        partnerId: partner?.id,
+        partnerId: partnerId,
       });
 
-      // Check if all pairs are complete
-      await this.checkAllComplete(roundId, sessionCode, io, session, allPlayers);
+      // Check if all active pairs are complete
+      await this.checkAllComplete(roundId, sessionCode, io, session);
 
       return { success: true };
     } else {
       // Second mover responds — they need to see their partner's first move
-      const allPlayers = await PlayerModel.findActiveBySession(session.id);
-      const firstMovers = allPlayers.filter(p => p.role === firstMoverRole);
-      const secondMovers = allPlayers.filter(p => p.role === secondMoverRole);
+      const partnerId = await this.findPartner(session.id, playerId);
 
-      const myIndex = secondMovers.findIndex(p => p.id === playerId);
-      const partner = firstMovers[myIndex];
-
-      if (!partner) {
+      if (!partnerId) {
         return { success: false, error: 'No partner assigned yet' };
       }
 
       // Get partner's first move
-      const partnerActions = await GameActionModel.findByRoundAndPlayer(roundId, partner.id);
+      const partnerActions = await GameActionModel.findByRoundAndPlayer(roundId, partnerId);
       const firstMoveAction = partnerActions.find(a => a.action_type === 'first_move');
 
       if (!firstMoveAction) {
@@ -155,20 +199,23 @@ export abstract class SequentialBaseEngine implements GameEngine {
 
       await GameActionModel.create(roundId, playerId, 'second_move', action);
 
-      // Broadcast
+      // Get counts for broadcast
+      const allPlayers = await PlayerModel.findActiveBySession(session.id);
+      const secondMovers = allPlayers.filter(p => p.role === secondMoverRole);
       const secondMoveActions = await GameActionModel.findByRoundAndType(roundId, 'second_move');
 
+      // Broadcast
       io.to(`market-${sessionCode}`).emit('second-move-submitted', {
         playerId,
         playerName: player.name,
         action,
         totalSecondMoves: secondMoveActions.length,
         totalSecondMovers: secondMovers.length,
-        partnerId: partner.id,
+        partnerId,
       });
 
-      // Check if all pairs are complete
-      await this.checkAllComplete(roundId, sessionCode, io, session, allPlayers);
+      // Check if all active pairs are complete
+      await this.checkAllComplete(roundId, sessionCode, io, session);
 
       return { success: true };
     }
@@ -178,21 +225,28 @@ export abstract class SequentialBaseEngine implements GameEngine {
     roundId: string,
     sessionCode: string,
     io: Server,
-    session: any,
-    allPlayers: any[]
+    session: any
   ): Promise<void> {
-    const [firstMoverRole, secondMoverRole] = this.roles();
-    const firstMovers = allPlayers.filter(p => p.role === firstMoverRole);
-    const secondMovers = allPlayers.filter(p => p.role === secondMoverRole);
+    const [firstMoverRole] = this.roles();
+    const activePlayers = await PlayerModel.findActiveBySession(session.id);
+    const pairMap = await this.getOrBuildPairings(session.id);
+
+    // Count active pairs: both partners must still be active
+    const activeFirstMovers = activePlayers.filter(p => p.role === firstMoverRole);
+    let activePairCount = 0;
+    for (const fm of activeFirstMovers) {
+      const partnerId = pairMap.get(fm.id);
+      if (partnerId && activePlayers.some(p => p.id === partnerId)) {
+        activePairCount++;
+      }
+    }
 
     const firstMoveActions = await GameActionModel.findByRoundAndType(roundId, 'first_move');
     const secondMoveActions = await GameActionModel.findByRoundAndType(roundId, 'second_move');
 
-    const numPairs = Math.min(firstMovers.length, secondMovers.length);
-
-    if (firstMoveActions.length >= numPairs && secondMoveActions.length >= numPairs) {
-      // All pairs complete — calculate results
-      await this.resolveRound(roundId, sessionCode, io, session, allPlayers);
+    if (activePairCount > 0 && firstMoveActions.length >= activePairCount && secondMoveActions.length >= activePairCount) {
+      // All active pairs complete — calculate results
+      await this.resolveRound(roundId, sessionCode, io, session);
     }
   }
 
@@ -200,8 +254,7 @@ export abstract class SequentialBaseEngine implements GameEngine {
     roundId: string,
     sessionCode: string,
     io: Server,
-    session: any,
-    allPlayers: any[]
+    session: any
   ): Promise<void> {
     // Prevent concurrent resolution (race between last-submit and timer-end)
     if (this.resolvingRounds.has(roundId)) return;
@@ -212,69 +265,117 @@ export abstract class SequentialBaseEngine implements GameEngine {
       const existingResults = await GameResultModel.findByRound(roundId);
       if (existingResults.length > 0) return;
 
-    const config = session.game_config || {};
-    const [firstMoverRole, secondMoverRole] = this.roles();
+      const config = session.game_config || {};
+      const [firstMoverRole, secondMoverRole] = this.roles();
+      const pairMap = await this.getOrBuildPairings(session.id);
 
-    const firstMovers = allPlayers.filter(p => p.role === firstMoverRole);
-    const secondMovers = allPlayers.filter(p => p.role === secondMoverRole);
+      // Use ALL players (including inactive) so we can resolve for disconnected partners
+      const allPlayersEver = await PlayerModel.findBySession(session.id);
+      const activePlayers = await PlayerModel.findActiveBySession(session.id);
+      const firstMovers = allPlayersEver
+        .filter(p => p.role === firstMoverRole)
+        .sort((a, b) => a.id.localeCompare(b.id));
 
-    const firstMoveActions = await GameActionModel.findByRoundAndType(roundId, 'first_move');
-    const secondMoveActions = await GameActionModel.findByRoundAndType(roundId, 'second_move');
+      const firstMoveActions = await GameActionModel.findByRoundAndType(roundId, 'first_move');
+      const secondMoveActions = await GameActionModel.findByRoundAndType(roundId, 'second_move');
 
-    const pairResults: Array<{
-      firstMover: any;
-      secondMover: any;
-      firstMoveAction: any;
-      secondMoveAction: any;
-      result: ReturnType<SequentialBaseEngine['calculatePairResult']>;
-    }> = [];
+      const pairResults: Array<{
+        firstMover: any;
+        secondMover: any;
+        firstMoveAction: any;
+        secondMoveAction: any;
+        result: ReturnType<SequentialBaseEngine['calculatePairResult']>;
+        partnerDisconnected?: boolean;
+      }> = [];
 
-    const numPairs = Math.min(firstMovers.length, secondMovers.length);
-    for (let i = 0; i < numPairs; i++) {
-      const fm = firstMovers[i];
-      const sm = secondMovers[i];
+      for (const fm of firstMovers) {
+        const partnerId = pairMap.get(fm.id);
+        if (!partnerId) continue; // Unpaired (odd player) — handled in processRoundEnd
 
-      const fmAction = firstMoveActions.find(a => a.player_id === fm.id);
-      const smAction = secondMoveActions.find(a => a.player_id === sm.id);
+        const sm = allPlayersEver.find(p => p.id === partnerId);
+        if (!sm) continue;
 
-      if (fmAction && smAction) {
-        const result = this.calculatePairResult(
-          fmAction.action_data,
-          smAction.action_data,
-          config
-        );
+        const fmAction = firstMoveActions.find(a => a.player_id === fm.id);
+        const smAction = secondMoveActions.find(a => a.player_id === sm.id);
 
-        await GameResultModel.create(roundId, fm.id, result.firstMoverResultData, result.firstMoverProfit);
-        await GameResultModel.create(roundId, sm.id, result.secondMoverResultData, result.secondMoverProfit);
-        await PlayerModel.updateProfit(fm.id, result.firstMoverProfit);
-        await PlayerModel.updateProfit(sm.id, result.secondMoverProfit);
+        const fmIsActive = activePlayers.some(p => p.id === fm.id);
+        const smIsActive = activePlayers.some(p => p.id === sm.id);
 
-        pairResults.push({
-          firstMover: fm,
-          secondMover: sm,
-          firstMoveAction: fmAction.action_data,
-          secondMoveAction: smAction.action_data,
-          result,
-        });
+        if (fmAction && smAction) {
+          // Normal case: both submitted
+          const result = this.calculatePairResult(
+            fmAction.action_data,
+            smAction.action_data,
+            config
+          );
+
+          await GameResultModel.create(roundId, fm.id, result.firstMoverResultData, result.firstMoverProfit);
+          await GameResultModel.create(roundId, sm.id, result.secondMoverResultData, result.secondMoverProfit);
+          await PlayerModel.updateProfit(fm.id, result.firstMoverProfit);
+          await PlayerModel.updateProfit(sm.id, result.secondMoverProfit);
+
+          pairResults.push({
+            firstMover: fm,
+            secondMover: sm,
+            firstMoveAction: fmAction.action_data,
+            secondMoveAction: smAction.action_data,
+            result,
+          });
+        } else if (!fmIsActive || !smIsActive) {
+          // One partner disconnected — give the remaining active player a default result
+          const disconnectedRole = !fmIsActive ? firstMoverRole : secondMoverRole;
+          const defaultResult = {
+            firstMoverProfit: 0,
+            secondMoverProfit: 0,
+            firstMoverResultData: {
+              role: firstMoverRole,
+              partnerDisconnected: true,
+              disconnectedRole,
+            } as Record<string, any>,
+            secondMoverResultData: {
+              role: secondMoverRole,
+              partnerDisconnected: true,
+              disconnectedRole,
+            } as Record<string, any>,
+          };
+
+          // Only create results for players who are still active
+          if (fmIsActive) {
+            await GameResultModel.create(roundId, fm.id, defaultResult.firstMoverResultData, 0);
+          }
+          if (smIsActive) {
+            await GameResultModel.create(roundId, sm.id, defaultResult.secondMoverResultData, 0);
+          }
+
+          pairResults.push({
+            firstMover: fm,
+            secondMover: sm,
+            firstMoveAction: fmAction?.action_data || null,
+            secondMoveAction: smAction?.action_data || null,
+            result: defaultResult,
+            partnerDisconnected: true,
+          });
+        }
+        // If both are active but one hasn't submitted yet, skip (timer will eventually resolve)
       }
-    }
 
-    // Broadcast all results
-    io.to(`market-${sessionCode}`).emit('round-results', {
-      roundId,
-      pairs: pairResults.map(pr => ({
-        firstMoverId: pr.firstMover.id,
-        firstMoverName: pr.firstMover.name,
-        secondMoverId: pr.secondMover.id,
-        secondMoverName: pr.secondMover.name,
-        firstMoveAction: pr.firstMoveAction,
-        secondMoveAction: pr.secondMoveAction,
-        firstMoverProfit: pr.result.firstMoverProfit,
-        secondMoverProfit: pr.result.secondMoverProfit,
-        firstMoverResultData: pr.result.firstMoverResultData,
-        secondMoverResultData: pr.result.secondMoverResultData,
-      })),
-    });
+      // Broadcast all results
+      io.to(`market-${sessionCode}`).emit('round-results', {
+        roundId,
+        pairs: pairResults.map(pr => ({
+          firstMoverId: pr.firstMover.id,
+          firstMoverName: pr.firstMover.name,
+          secondMoverId: pr.secondMover.id,
+          secondMoverName: pr.secondMover.name,
+          firstMoveAction: pr.firstMoveAction,
+          secondMoveAction: pr.secondMoveAction,
+          firstMoverProfit: pr.result.firstMoverProfit,
+          secondMoverProfit: pr.result.secondMoverProfit,
+          firstMoverResultData: pr.result.firstMoverResultData,
+          secondMoverResultData: pr.result.secondMoverResultData,
+          partnerDisconnected: pr.partnerDisconnected || false,
+        })),
+      });
     } finally {
       this.resolvingRounds.delete(roundId);
     }
@@ -291,12 +392,89 @@ export abstract class SequentialBaseEngine implements GameEngine {
     const session = await SessionModel.findById(round.session_id);
     if (!session) return { playerResults: [], summary: {} };
 
-    const allPlayers = await PlayerModel.findActiveBySession(session.id);
+    // Use ALL players (not just active) so resolveRound can handle disconnects
+    const allPlayers = await PlayerModel.findBySession(session.id);
+    const activePlayers = await PlayerModel.findActiveBySession(session.id);
 
-    // Check if results already exist
+    // Check if results already exist (from auto-resolve when all pairs completed)
     const existingResults = await GameResultModel.findByRound(roundId);
     if (existingResults.length === 0) {
-      await this.resolveRound(roundId, sessionCode, io, session, allPlayers);
+      await this.resolveRound(roundId, sessionCode, io, session);
+    }
+
+    // --- Handle unpaired / incomplete players at round end ---
+    // After resolveRound, some active players may still have no result:
+    //   1. Unpaired first-movers (no matching second-mover exists)
+    //   2. Paired players whose partner never submitted their action
+    //   3. Unpaired second-movers (no matching first-mover exists)
+    // Give each of them a GameResult with profit=0 so they receive feedback.
+    const resultsAfterResolve = await GameResultModel.findByRound(roundId);
+    const playerIdsWithResults = new Set(resultsAfterResolve.map(r => r.player_id));
+
+    const [firstMoverRole, secondMoverRole] = this.roles();
+    const pairMap = await this.getOrBuildPairings(session.id);
+
+    const unpairedResults: Array<{
+      playerId: string;
+      playerName: string;
+      role: string;
+      profit: number;
+      resultData: Record<string, any>;
+    }> = [];
+
+    for (const player of activePlayers) {
+      if (playerIdsWithResults.has(player.id)) continue;
+
+      const isFirstMover = player.role === firstMoverRole;
+      const isSecondMover = player.role === secondMoverRole;
+      if (!isFirstMover && !isSecondMover) continue;
+
+      // Check whether this player submitted an action
+      const playerActions = await GameActionModel.findByRoundAndPlayer(roundId, player.id);
+      const submitted = playerActions.length > 0;
+
+      // Use stable pairing to determine reason
+      const partnerId = pairMap.get(player.id);
+      let reason: string;
+
+      if (!partnerId) {
+        reason = 'unpaired';
+      } else {
+        const partnerIsActive = activePlayers.some(p => p.id === partnerId);
+        if (!partnerIsActive) {
+          reason = 'partner_disconnected';
+        } else if (!submitted) {
+          reason = 'did_not_submit';
+        } else {
+          reason = isFirstMover ? 'partner_did_not_respond' : 'partner_did_not_submit';
+        }
+      }
+
+      const resultData: Record<string, any> = {
+        unpaired: true,
+        reason,
+        role: player.role,
+        submitted,
+      };
+
+      await GameResultModel.create(roundId, player.id, resultData, 0);
+      await PlayerModel.updateProfit(player.id, 0);
+
+      unpairedResults.push({
+        playerId: player.id,
+        playerName: player.name || 'Unknown',
+        role: player.role || (isFirstMover ? firstMoverRole : secondMoverRole),
+        profit: 0,
+        resultData,
+      });
+    }
+
+    // If we created unpaired results, broadcast them so clients get feedback
+    if (unpairedResults.length > 0) {
+      io.to(`market-${sessionCode}`).emit('unpaired-results', {
+        roundId,
+        unpairedPlayers: unpairedResults,
+      });
     }
 
     const results = await GameResultModel.findByRound(roundId);
@@ -308,7 +486,10 @@ export abstract class SequentialBaseEngine implements GameEngine {
         resultData: r.result_data,
       })),
       summary: {
-        totalPairs: Math.floor(results.length / 2),
+        totalPairs: Math.floor(
+          results.filter(r => !r.result_data?.unpaired).length / 2
+        ),
+        unpairedPlayers: unpairedResults.length,
         results: results.map(r => ({
           playerId: r.player_id,
           playerName: allPlayers.find(p => p.id === r.player_id)?.name || 'Unknown',
@@ -341,6 +522,7 @@ export abstract class SequentialBaseEngine implements GameEngine {
     let myAction = null;
     let partnerAction = null;
     let myRole = null;
+    let partnerDisconnected = false;
 
     if (playerId) {
       const player = allPlayers.find(p => p.id === playerId);
@@ -349,18 +531,19 @@ export abstract class SequentialBaseEngine implements GameEngine {
       const myActions = await GameActionModel.findByRoundAndPlayer(roundId, playerId);
       myAction = myActions.length > 0 ? myActions[0].action_data : null;
 
-      // Find partner
-      const isFirst = player?.role === firstMoverRole;
-      const myGroup = isFirst ? firstMovers : secondMovers;
-      const partnerGroup = isFirst ? secondMovers : firstMovers;
-      const myIndex = myGroup.findIndex(p => p.id === playerId);
-      const partner = partnerGroup[myIndex];
+      // Find partner via stable pairing map
+      const partnerId = await this.findPartner(session.id, playerId);
+      if (partnerId) {
+        const partnerIsActive = allPlayers.some(p => p.id === partnerId);
+        partnerDisconnected = !partnerIsActive;
 
-      if (partner) {
-        const partnerActions = await GameActionModel.findByRoundAndPlayer(roundId, partner.id);
-        // Second mover can see first mover's action
-        if (!isFirst && partnerActions.length > 0) {
-          partnerAction = partnerActions[0].action_data;
+        if (partnerIsActive) {
+          const partnerActions = await GameActionModel.findByRoundAndPlayer(roundId, partnerId);
+          // Second mover can see first mover's action
+          const isFirst = player?.role === firstMoverRole;
+          if (!isFirst && partnerActions.length > 0) {
+            partnerAction = partnerActions[0].action_data;
+          }
         }
       }
     }
@@ -369,6 +552,7 @@ export abstract class SequentialBaseEngine implements GameEngine {
       myRole,
       myAction,
       partnerAction,
+      partnerDisconnected,
       firstMovesSubmitted: firstMoveActions.length,
       totalFirstMovers: firstMovers.length,
       secondMovesSubmitted: secondMoveActions.length,
