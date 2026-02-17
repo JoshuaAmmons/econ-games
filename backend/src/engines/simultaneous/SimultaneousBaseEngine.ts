@@ -172,10 +172,13 @@ export abstract class SimultaneousBaseEngine implements GameEngine {
     }
 
     // Broadcast results to all players
+    // Flatten resultData so UIs can read fields directly (e.g. result.price, result.isWinner)
     io.to(`market-${sessionCode}`).emit('round-results', {
       roundId,
       results: results.map((r) => ({
-        ...r,
+        playerId: r.playerId,
+        profit: r.profit,
+        ...r.resultData,
         playerName: activePlayers.find((p) => p.id === r.playerId)?.name || 'Unknown',
       })),
       actions: actionData,

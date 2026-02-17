@@ -92,7 +92,7 @@ const MarketForLemonsUI: React.FC<GameUIProps> = ({
       const myPair = data.pairs.find(p => p.firstMoverId === playerId || p.secondMoverId === playerId);
       if (myPair) {
         const myProfit = myPair.firstMoverId === playerId ? myPair.firstMoverProfit : myPair.secondMoverProfit;
-        if (myPair.secondMoveAction.accept) {
+        if (myPair.secondMoveAction?.accept) {
           toast.success(`Trade completed! Profit: $${Number(myProfit).toFixed(2)}`);
         } else {
           toast('No trade this round.', { icon: '🚫' });
@@ -249,7 +249,7 @@ const MarketForLemonsUI: React.FC<GameUIProps> = ({
             <div className="space-y-3">
               {results.map((pair, i) => {
                 const isMyPair = pair.firstMoverId === playerId || pair.secondMoverId === playerId;
-                const traded = pair.secondMoveAction.accept;
+                const traded = pair.secondMoveAction?.accept;
                 return (
                   <div key={i} className={`rounded-lg p-4 ${isMyPair ? 'bg-sky-50 border border-sky-200' : 'bg-gray-50'}`}>
                     <div className="flex items-center justify-between mb-2">
@@ -257,13 +257,13 @@ const MarketForLemonsUI: React.FC<GameUIProps> = ({
                         {traded ? 'Traded' : 'No Trade'}
                       </span>
                       <span className="text-sm text-gray-500">
-                        Price: ${Number(pair.firstMoveAction.price).toFixed(2)}
+                        Price: ${Number(pair.firstMoveAction?.price ?? 0).toFixed(2)}
                       </span>
                     </div>
                     <div className="text-sm space-y-1">
                       <div className="flex justify-between">
-                        <span>Quality: {pair.firstMoverResultData.quality}</span>
-                        <span>Value to buyer: ${Number(pair.firstMoverResultData.buyerValue).toFixed(2)}</span>
+                        <span>Quality: {pair.firstMoverResultData?.quality ?? "N/A"}</span>
+                        <span>Value to buyer: ${Number(pair.firstMoverResultData?.buyerValue ?? 0).toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-xs">
                         <span>Seller: ${Number(pair.firstMoverProfit).toFixed(2)}</span>

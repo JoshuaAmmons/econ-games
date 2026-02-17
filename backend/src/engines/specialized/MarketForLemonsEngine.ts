@@ -136,7 +136,7 @@ export class MarketForLemonsEngine extends SequentialBaseEngine {
   }
 
   /**
-   * Override handleAction to assign quality to seller at start of round.
+   * Override handleAction to validate seller-submitted quality.
    */
   async handleAction(
     roundId: string,
@@ -145,10 +145,13 @@ export class MarketForLemonsEngine extends SequentialBaseEngine {
     sessionCode: string,
     io: Server
   ): Promise<ActionResult> {
-    // For sellers, always assign a random quality (ignore any client-supplied value)
+    // Use the quality submitted by the seller (assigned on the frontend).
+    // Only assign a random fallback if the submitted quality is invalid.
     if (action.type === 'first_move') {
       const qualities = [10, 20, 30, 40, 50, 60, 70, 80, 90];
-      action.quality = qualities[Math.floor(Math.random() * qualities.length)];
+      if (!action.quality || !qualities.includes(action.quality)) {
+        action.quality = qualities[Math.floor(Math.random() * qualities.length)];
+      }
     }
 
     return super.handleAction(roundId, playerId, action, sessionCode, io);

@@ -84,7 +84,7 @@ const UltimatumUI: React.FC<GameUIProps> = ({
       const myPair = data.pairs.find(p => p.firstMoverId === playerId || p.secondMoverId === playerId);
       if (myPair) {
         const myProfit = myPair.firstMoverId === playerId ? myPair.firstMoverProfit : myPair.secondMoverProfit;
-        if (myPair.secondMoveAction.accept) {
+        if (myPair.secondMoveAction?.accept) {
           toast.success(`Offer accepted! Your profit: $${Number(myProfit).toFixed(2)}`);
         } else {
           toast(`Offer rejected. Both earn $0.`, { icon: '❌' });
@@ -248,9 +248,9 @@ const UltimatumUI: React.FC<GameUIProps> = ({
                       </span>
                     </div>
                     <div className="text-sm text-gray-600 space-y-1">
-                      <div>Offer: ${Number(pair.firstMoveAction.offer).toFixed(2)} / ${endowment.toFixed(2)}</div>
+                      <div>Offer: ${Number(pair.firstMoveAction?.offer ?? 0).toFixed(2)} / ${endowment.toFixed(2)}</div>
                       <div className="flex items-center gap-1">
-                        {pair.secondMoveAction.accept ? (
+                        {pair.secondMoveAction?.accept ? (
                           <><Check className="w-3 h-3 text-green-600" /> <span className="text-green-600">Accepted</span></>
                         ) : (
                           <><X className="w-3 h-3 text-red-600" /> <span className="text-red-600">Rejected</span></>

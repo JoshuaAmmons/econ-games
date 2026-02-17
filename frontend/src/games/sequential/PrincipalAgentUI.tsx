@@ -93,8 +93,8 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
       const myPair = data.pairs.find(p => p.firstMoverId === playerId || p.secondMoverId === playerId);
       if (myPair) {
         const myProfit = myPair.firstMoverId === playerId ? myPair.firstMoverProfit : myPair.secondMoverProfit;
-        const outputStr = myPair.firstMoverResultData.isHighOutput ? 'HIGH' : 'LOW';
-        toast.success(`Output: ${outputStr} ($${myPair.firstMoverResultData.output}) | Profit: $${Number(myProfit).toFixed(2)}`);
+        const outputStr = myPair.firstMoverResultData?.isHighOutput ? 'HIGH' : 'LOW';
+        toast.success(`Output: ${outputStr} ($${myPair.firstMoverResultData?.output ?? "?"}) | Profit: $${Number(myProfit).toFixed(2)}`);
       }
     }));
 
@@ -268,11 +268,11 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
             <div className="space-y-3">
               {results.map((pair, i) => {
                 const isMyPair = pair.firstMoverId === playerId || pair.secondMoverId === playerId;
-                const isHigh = pair.firstMoverResultData.isHighOutput;
+                const isHigh = pair.firstMoverResultData?.isHighOutput;
                 return (
                   <div key={i} className={`rounded-lg p-4 ${isMyPair ? 'bg-sky-50 border border-sky-200' : 'bg-gray-50'}`}>
                     <div className={`text-center mb-2 px-2 py-1 rounded text-sm font-medium ${isHigh ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      Output: {isHigh ? 'HIGH' : 'LOW'} (${pair.firstMoverResultData.output})
+                      Output: {isHigh ? 'HIGH' : 'LOW'} (${pair.firstMoverResultData?.output ?? "?"})
                     </div>
                     <div className="text-sm space-y-2">
                       <div className="flex justify-between">
@@ -288,8 +288,8 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
                         </span>
                       </div>
                       <div className="text-xs text-gray-500">
-                        Wage: ${pair.firstMoveAction.fixedWage} | Bonus: ${pair.firstMoverResultData.bonusPaid} |
-                        Effort: {pair.secondMoveAction.highEffort ? 'High' : 'Low'}
+                        Wage: ${pair.firstMoveAction?.fixedWage ?? "N/A"} | Bonus: ${pair.firstMoverResultData?.bonusPaid ?? "N/A"} |
+                        Effort: {pair.secondMoveAction?.highEffort ? 'High' : 'Low'}
                       </div>
                     </div>
                   </div>

@@ -196,8 +196,8 @@ export const Lobby: React.FC = () => {
       const fullSession = await sessionsApi.getByCode(code || '');
       setSession(fullSession);
 
-      // If session started, redirect to market
-      if (s.status === 'active') {
+      // If session started or completed, redirect to market
+      if (s.status === 'active' || s.status === 'completed') {
         navigate(`/session/${code}/market`);
       }
     } catch (error) {
