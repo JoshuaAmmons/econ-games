@@ -71,8 +71,8 @@ const GiftExchangeUI: React.FC<GameUIProps> = ({
       if (!isEmployer && state.partnerAction) {
         setPartnerWage(state.partnerAction.wage);
       }
-      if (state.results) {
-        setResults(state.results.map ? state.results : []);
+      if (state.pairs) {
+        setResults(Array.isArray(state.pairs) ? state.pairs : []);
       }
     }));
 
@@ -97,6 +97,11 @@ const GiftExchangeUI: React.FC<GameUIProps> = ({
         const myProfit = myPair.firstMoverId === playerId ? myPair.firstMoverProfit : myPair.secondMoverProfit;
         toast.success(`Profit: $${Number(myProfit).toFixed(2)}`);
       }
+    }));
+
+    // Rollback submitted state on server error so player can retry
+    cleanups.push(onEvent('error', () => {
+      setSubmitted(false);
     }));
 
     return () => cleanups.forEach(fn => fn());

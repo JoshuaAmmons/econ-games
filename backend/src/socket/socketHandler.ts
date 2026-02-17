@@ -214,6 +214,10 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
         if (!round) throw new Error('Round not found');
 
         const updatedRound = await RoundModel.start(round.id);
+        if (!updatedRound) {
+          socket.emit('error', { message: 'Failed to start round' });
+          return;
+        }
         await SessionModel.updateCurrentRound(session.id, roundNumber);
 
         // Let the engine initialize round state (timers, inventories, etc.)

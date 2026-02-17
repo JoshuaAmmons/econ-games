@@ -306,6 +306,63 @@ export const CreateSession: React.FC = () => {
               </>
             )}
 
+            {/* DA variant config fields (tax/subsidy, price controls) */}
+            {showValuationCost && selectedGame && (() => {
+              const variantFields = selectedGame.configFields.filter(
+                (f: any) => !['market_size', 'num_rounds', 'time_per_round'].includes(f.name)
+              );
+              if (variantFields.length === 0) return null;
+              return (
+                <div className="border-t pt-4">
+                  <h3 className="font-semibold mb-3">Variant Settings</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {variantFields.map((field: any) => {
+                      if (field.type === 'select' && field.options) {
+                        return (
+                          <div key={field.name}>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {field.label}
+                            </label>
+                            <select
+                              value={gameConfig[field.name] ?? field.default}
+                              onChange={(e) => handleConfigChange(field.name, e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                            >
+                              {field.options.map((opt: any) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </select>
+                            {field.description && (
+                              <p className="text-xs text-gray-400 mt-0.5">{field.description}</p>
+                            )}
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={field.name}>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            {field.label}
+                          </label>
+                          <input
+                            type="number"
+                            value={gameConfig[field.name] ?? field.default}
+                            onChange={(e) => handleConfigChange(field.name, Number(e.target.value))}
+                            min={field.min}
+                            max={field.max}
+                            step={field.step || 1}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                          />
+                          {field.description && (
+                            <p className="text-xs text-gray-400 mt-0.5">{field.description}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Non-DA Game Config Fields (from engine's getUIConfig) */}
             {!showValuationCost && selectedGame && selectedGame.configFields.length > 0 && (
               <div className="border-t pt-4">

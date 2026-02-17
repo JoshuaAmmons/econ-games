@@ -96,6 +96,10 @@ const BertrandUI: React.FC<GameUIProps> = ({
       toast.error('Please enter a valid price');
       return;
     }
+    if (priceNum > maxPrice) {
+      toast.error(`Price cannot exceed $${maxPrice}`);
+      return;
+    }
 
     setSubmitting(true);
     submitAction({ type: 'decision', price: priceNum });

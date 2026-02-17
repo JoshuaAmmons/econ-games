@@ -132,20 +132,21 @@ export class ComparativeAdvantageEngine extends SimultaneousBaseEngine {
     const good1Name = config.good1Name ?? 'Food';
     const good2Name = config.good2Name ?? 'Clothing';
 
-    // Sort actions by playerId so productivity assignments are stable
-    // regardless of submission order. This ensures the same player always
-    // gets the same productivity across rounds.
-    const sortedActions = [...actions].sort((a, b) => a.playerId.localeCompare(b.playerId));
+    // Build a stable player index from ALL players (sorted by ID) so
+    // productivity assignments don't shift when some players don't submit.
+    const sortedAllPlayers = [...allPlayers].sort((a, b) => a.id.localeCompare(b.id));
+    const playerIndexMap = new Map<string, number>();
+    sortedAllPlayers.forEach((p, i) => playerIndexMap.set(p.id, i));
 
-    const results = sortedActions.map((a, idx) => {
+    const results = actions.map((a) => {
       const laborGood1 = a.action.laborGood1 as number;
       const laborGood2 = laborUnits - laborGood1;
 
-      // Each country has different productivities
-      // Country 0: good at good1, Country 1: good at good2, etc.
-      // Stable because actions are sorted by playerId
-      const prod1 = idx % 2 === 0 ? 2 : 1;    // Productivity for good 1
-      const prod2 = idx % 2 === 0 ? 1 : 2;    // Productivity for good 2
+      // Each country has different productivities based on stable player index
+      // (uses allPlayers index, not actions index, so it doesn't shift)
+      const stableIdx = playerIndexMap.get(a.playerId) ?? 0;
+      const prod1 = stableIdx % 2 === 0 ? 2 : 1;    // Productivity for good 1
+      const prod2 = stableIdx % 2 === 0 ? 1 : 2;    // Productivity for good 2
 
       const good1Produced = laborGood1 * prod1;
       const good2Produced = laborGood2 * prod2;

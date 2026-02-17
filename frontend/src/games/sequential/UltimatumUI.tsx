@@ -60,8 +60,8 @@ const UltimatumUI: React.FC<GameUIProps> = ({
       if (!isProposer && state.partnerAction) {
         setPartnerOffer(state.partnerAction.offer);
       }
-      if (state.results) {
-        setResults(state.results.map ? state.results : []);
+      if (state.pairs) {
+        setResults(Array.isArray(state.pairs) ? state.pairs : []);
       }
     }));
 
@@ -90,6 +90,11 @@ const UltimatumUI: React.FC<GameUIProps> = ({
           toast(`Offer rejected. Both earn $0.`, { icon: '❌' });
         }
       }
+    }));
+
+    // Rollback submitted state on server error so player can retry
+    cleanups.push(onEvent('error', () => {
+      setSubmitted(false);
     }));
 
     return () => cleanups.forEach(fn => fn());

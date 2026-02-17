@@ -115,7 +115,7 @@ export class BertrandEngine extends SimultaneousBaseEngine {
     if (price < 0) {
       return 'Price cannot be negative';
     }
-    const maxPrice = config.maxPrice || 100;
+    const maxPrice = config.maxPrice ?? 100;
     if (price > maxPrice) {
       return `Price cannot exceed $${maxPrice}`;
     }
