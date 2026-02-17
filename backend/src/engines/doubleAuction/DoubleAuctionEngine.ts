@@ -11,6 +11,7 @@ import { BidModel } from '../../models/Bid';
 import { AskModel } from '../../models/Ask';
 import { TradeModel } from '../../models/Trade';
 import { PlayerModel } from '../../models/Player';
+import { RoundModel } from '../../models/Round';
 import {
   validateBid,
   validateAsk,
@@ -137,6 +138,12 @@ export class DoubleAuctionEngine implements GameEngine {
   ): Promise<ActionResult> {
     const { type, price } = action;
 
+    // Guard: only accept bids/asks while the round is active
+    const round = await RoundModel.findById(roundId);
+    if (!round || round.status !== 'active') {
+      return { success: false, error: 'Round is not active' };
+    }
+
     // Get player
     const player = await PlayerModel.findById(playerId);
     if (!player) {
@@ -201,6 +208,9 @@ export class DoubleAuctionEngine implements GameEngine {
     sessionCode: string,
     io: Server
   ): Promise<RoundResult> {
+    // Clean up trade match lock for this round to prevent memory leak
+    this.tradeMatchLocks.delete(roundId);
+
     // Deactivate all remaining bids and asks
     await BidModel.deactivateAllForRound(roundId);
     await AskModel.deactivateAllForRound(roundId);

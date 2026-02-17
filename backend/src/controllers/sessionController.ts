@@ -33,9 +33,15 @@ export class SessionController {
         await RoundModel.create(session.id, i);
       }
 
+      // Strip secrets from response
+      const { passcode: _pc, admin_password: _ap, ...safeSession } = session as any;
       res.status(201).json({
         success: true,
-        data: session,
+        data: {
+          ...safeSession,
+          has_passcode: !!_pc,
+          has_admin_password: !!_ap,
+        },
         message: 'Session created successfully'
       } as ApiResponse);
 

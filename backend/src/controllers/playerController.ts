@@ -225,11 +225,17 @@ export class PlayerController {
         production_cost: player.production_cost != null ? Number(player.production_cost) : null,
       };
 
+      // Strip secrets from session before sending to player
+      const { passcode, admin_password, ...safeSession } = session as any;
       res.json({
         success: true,
         data: {
           player: sanitizedPlayer,
-          session
+          session: {
+            ...safeSession,
+            has_passcode: !!passcode,
+            has_admin_password: !!admin_password,
+          }
         }
       } as ApiResponse);
 

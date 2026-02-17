@@ -211,7 +211,8 @@ const PublicGoodsUI: React.FC<GameUIProps> = ({
 
               {/* Individual Results */}
               {[...results]
-                .sort((a, b) => b.contribution - a.contribution)
+                .filter(r => r.contribution != null)
+                .sort((a, b) => (b.contribution || 0) - (a.contribution || 0))
                 .map((r, i) => (
                   <div
                     key={r.playerId}
@@ -236,6 +237,11 @@ const PublicGoodsUI: React.FC<GameUIProps> = ({
                     </div>
                   </div>
                 ))}
+              {results.filter(r => r.contribution == null).length > 0 && (
+                <div className="text-xs text-gray-400 italic mt-2">
+                  {results.filter(r => r.contribution == null).length} player(s) did not submit
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center text-gray-400 py-8">
