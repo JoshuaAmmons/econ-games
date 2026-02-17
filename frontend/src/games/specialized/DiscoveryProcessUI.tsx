@@ -76,6 +76,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
   onEvent,
   submitAction,
   refreshPlayer,
+  requestGameState,
 }) => {
   // State
   const [phase, setPhase] = useState<'production' | 'move' | 'complete' | 'waiting'>('waiting');
@@ -187,6 +188,14 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
 
     return () => cleanups.forEach((fn) => fn());
   }, [onEvent, playerId, refreshPlayer]);
+
+  // Re-request game state after listeners are registered to avoid race condition
+  // where Market.tsx fires requestGameState before this component mounts its listeners
+  useEffect(() => {
+    if (roundId && requestGameState) {
+      requestGameState(roundId);
+    }
+  }, [roundId, requestGameState]);
 
   // Initialize config from session
   useEffect(() => {

@@ -982,10 +982,40 @@ export class DiscoveryProcessEngine implements GameEngine {
       }
     }
 
+    // For completed rounds with no in-memory state, reconstruct inventories from DB
+    let reconstructedInventories: Record<string, PlayerInventory> = {};
+    if (round.status === 'completed') {
+      const allActions = await GameActionModel.findByRound(roundId);
+      const productionActions = allActions.filter(a => a.action_type === 'production');
+      const moveActions = allActions.filter(a => a.action_type === 'move');
+
+      for (const pa of productionActions) {
+        const produced = pa.action_data?.produced || {};
+        reconstructedInventories[pa.player_id] = {
+          field: { ...produced },
+          house: {},
+        };
+        for (const gn of goodNames) {
+          reconstructedInventories[pa.player_id].house[gn] = 0;
+        }
+      }
+      // Replay move actions
+      for (const ma of moveActions) {
+        const { good, amount, fromLocation, fromPlayerId, toPlayerId } = ma.action_data;
+        const fromInv = reconstructedInventories[fromPlayerId];
+        const toInv = reconstructedInventories[toPlayerId];
+        if (fromInv && toInv) {
+          const fromStore = fromLocation === 'field' ? fromInv.field : fromInv.house;
+          fromStore[good] = (fromStore[good] || 0) - amount;
+          toInv.house[good] = (toInv.house[good] || 0) + amount;
+        }
+      }
+    }
+
     return {
       phase: existingResults.length > 0 ? 'complete' : 'waiting',
       timeRemaining: 0,
-      inventories: {},
+      inventories: reconstructedInventories,
       productionSettings: {},
       chatMessages: [],
       goodNames,
