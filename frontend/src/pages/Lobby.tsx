@@ -23,6 +23,7 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   comparative_advantage: 'Comparative Advantage',
   monopoly: 'Monopoly',
   market_for_lemons: 'Market for Lemons',
+  discovery_process: 'Exchange & Specialization',
 };
 
 /** Short descriptions of what each role does in each game */
@@ -151,6 +152,13 @@ const ROLE_INFO: Record<string, Record<string, string[]>> = {
       'You are a <strong>buyer</strong> looking for a car',
       'You see the price but <strong>not</strong> the quality',
       'Decide whether to buy or pass',
+    ],
+  },
+  discovery_process: {
+    producer: [
+      'You are a <strong>producer</strong> in a small economy',
+      'Each round: produce goods, then move them between houses',
+      'Earnings depend on the combination of goods in your house',
     ],
   },
 };

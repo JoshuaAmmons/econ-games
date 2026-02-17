@@ -10,8 +10,8 @@ export class SessionModel {
       `INSERT INTO sessions (
         code, game_type, game_config, market_size, num_rounds, time_per_round,
         valuation_min, valuation_max, valuation_increments,
-        cost_min, cost_max, cost_increments, bot_enabled
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        cost_min, cost_max, cost_increments, bot_enabled, passcode
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *`,
       [
         code,
@@ -26,7 +26,8 @@ export class SessionModel {
         data.cost_min,
         data.cost_max,
         data.cost_increments,
-        data.bot_enabled || false
+        data.bot_enabled || false,
+        data.passcode || null
       ]
     );
 

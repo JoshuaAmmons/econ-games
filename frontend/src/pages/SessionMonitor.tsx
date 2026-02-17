@@ -413,6 +413,11 @@ export const SessionMonitor: React.FC = () => {
             <p className="text-sm text-gray-400 mt-2">
               Students can join at the home page by clicking &quot;Join Session as Student&quot;
             </p>
+            {session.has_passcode && (
+              <p className="text-sm text-amber-600 mt-2 font-medium">
+                This session is passcode-protected
+              </p>
+            )}
           </Card>
         )}
 
