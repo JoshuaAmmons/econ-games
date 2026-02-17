@@ -254,7 +254,7 @@ export class DiscoveryProcessEngine implements GameEngine {
     }
 
     const configBlock = {
-      numGoods: parseInt(config.numGoods) || 2,
+      numGoods: parseInt(config.numGoods, 10) || 2,
       good1Name: config.good1Name || 'Orange',
       good1Color: config.good1Color || '#FF5733',
       good2Name: config.good2Name || 'Blue',
@@ -798,7 +798,7 @@ export class DiscoveryProcessEngine implements GameEngine {
         goodNames,
         playerInfo,
         config: {
-          numGoods: parseInt(config.numGoods) || 2,
+          numGoods: parseInt(config.numGoods, 10) || 2,
           good1Name: config.good1Name || 'Orange',
           good1Color: config.good1Color || '#FF5733',
           good2Name: config.good2Name || 'Blue',
@@ -824,7 +824,7 @@ export class DiscoveryProcessEngine implements GameEngine {
 
     // No active in-memory state — try to reconstruct from database
     const configBlock = {
-      numGoods: parseInt(config.numGoods) || 2,
+      numGoods: parseInt(config.numGoods, 10) || 2,
       good1Name: config.good1Name || 'Orange',
       good1Color: config.good1Color || '#FF5733',
       good2Name: config.good2Name || 'Blue',
@@ -1158,7 +1158,7 @@ export class DiscoveryProcessEngine implements GameEngine {
   }
 
   private getGoodNames(config: Record<string, any>): string[] {
-    const numGoods = parseInt(config.numGoods) || 2;
+    const numGoods = parseInt(config.numGoods, 10) || 2;
     const names = [
       config.good1Name || 'Orange',
       config.good2Name || 'Blue',

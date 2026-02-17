@@ -153,7 +153,7 @@ export class SessionController {
       }
 
       if (session.status !== 'waiting') {
-        res.status(400).json({
+        res.status(409).json({
           success: false,
           error: 'Session already started'
         } as ApiResponse);

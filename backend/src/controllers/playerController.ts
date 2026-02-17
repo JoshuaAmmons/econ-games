@@ -30,11 +30,19 @@ const PAIRED_ROLES: Record<string, [string, string]> = {
   market_for_lemons: ['seller', 'buyer'],
 };
 
+// Sanitize player name: strip HTML tags, limit length
+function sanitizeName(raw: string | undefined): string {
+  if (!raw) return 'Anonymous';
+  const cleaned = raw.replace(/<[^>]*>/g, '').trim();
+  return cleaned.slice(0, 50) || 'Anonymous';
+}
+
 export class PlayerController {
   // Join session
   static async joinSession(req: Request, res: Response) {
     try {
-      const { code, name, passcode }: JoinSessionRequest = req.body;
+      const { code, name: rawName, passcode }: JoinSessionRequest = req.body;
+      const name = sanitizeName(rawName);
 
       // Find session
       const session = await SessionModel.findByCode(code.toUpperCase());
@@ -47,7 +55,7 @@ export class PlayerController {
       }
 
       if (session.status !== 'waiting') {
-        res.status(400).json({
+        res.status(409).json({
           success: false,
           error: 'Session already started'
         } as ApiResponse);
@@ -65,18 +73,11 @@ export class PlayerController {
         }
       }
 
-      // Check if session is full
+      // Get existing players for role assignment (capacity is enforced atomically below)
       const existingPlayers = await PlayerModel.findBySession(session.id);
-      if (existingPlayers.length >= session.market_size) {
-        res.status(400).json({
-          success: false,
-          error: 'Session is full'
-        } as ApiResponse);
-        return;
-      }
 
       const gameType = session.game_type || 'double_auction';
-      let player;
+      let player: import('../types').Player | null = null;
 
       if (DA_GAME_TYPES.includes(gameType)) {
         // DA games: assign buyer/seller roles with valuations/costs
@@ -103,7 +104,10 @@ export class PlayerController {
           value = costs[0];
         }
 
-        player = await PlayerModel.create(session.id, role, value, name);
+        const valueColumn = role === 'buyer' ? 'valuation' as const : 'production_cost' as const;
+        player = await PlayerModel.createWithCapacityCheck(
+          session.id, session.market_size, role, name, false, valueColumn, value
+        );
       } else if (PAIRED_ROLES[gameType]) {
         // Paired games: alternate between two roles
         const [role1, role2] = PAIRED_ROLES[gameType];
@@ -111,11 +115,24 @@ export class PlayerController {
         const role2Count = existingPlayers.filter(p => p.role === role2).length;
         const role = role1Count <= role2Count ? role1 : role2;
 
-        player = await PlayerModel.createGeneric(session.id, role, name);
+        player = await PlayerModel.createWithCapacityCheck(
+          session.id, session.market_size, role, name
+        );
       } else {
         // Uniform-role games (Bertrand, Cournot, Public Goods, etc.)
         const role = GAME_ROLES[gameType] || 'player';
-        player = await PlayerModel.createGeneric(session.id, role, name);
+        player = await PlayerModel.createWithCapacityCheck(
+          session.id, session.market_size, role, name
+        );
+      }
+
+      // Atomic capacity check returned null — session is full
+      if (!player) {
+        res.status(409).json({
+          success: false,
+          error: 'Session is full'
+        } as ApiResponse);
+        return;
       }
 
       // Convert DECIMAL columns from strings to numbers (pg driver returns DECIMAL as string)
