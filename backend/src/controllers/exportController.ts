@@ -37,11 +37,11 @@ async function getResults(req: Request, res: Response) {
             startedAt: round.started_at,
             endedAt: round.ended_at,
             trades: trades.map((t) => ({
-              price: t.price,
+              price: Number(t.price),
               buyerId: t.buyer_id,
               sellerId: t.seller_id,
-              buyerProfit: t.buyer_profit,
-              sellerProfit: t.seller_profit,
+              buyerProfit: Number(t.buyer_profit),
+              sellerProfit: Number(t.seller_profit),
               time: t.created_at,
             })),
           };
@@ -64,7 +64,7 @@ async function getResults(req: Request, res: Response) {
             })),
             results: results.map((r) => ({
               playerId: r.player_id,
-              profit: r.profit,
+              profit: Number(r.profit),
               resultData: r.result_data,
             })),
           };
@@ -77,14 +77,14 @@ async function getResults(req: Request, res: Response) {
       id: p.id,
       name: p.name,
       role: p.role,
-      valuation: p.valuation,
-      productionCost: p.production_cost,
-      totalProfit: p.total_profit,
+      valuation: p.valuation != null ? Number(p.valuation) : null,
+      productionCost: p.production_cost != null ? Number(p.production_cost) : null,
+      totalProfit: Number(p.total_profit),
       isBot: p.is_bot,
     }));
 
-    // Calculate aggregate stats
-    const profits = players.map((p) => p.total_profit);
+    // Calculate aggregate stats (Number() wrap needed — pg returns DECIMAL as string)
+    const profits = players.map((p) => Number(p.total_profit));
     const avgProfit = profits.length > 0 ? profits.reduce((a, b) => a + b, 0) / profits.length : 0;
     const maxProfit = profits.length > 0 ? Math.max(...profits) : 0;
     const minProfit = profits.length > 0 ? Math.min(...profits) : 0;
@@ -164,17 +164,17 @@ async function exportCSV(req: Request, res: Response) {
             const trades = await TradeModel.findByRound(round.id);
             let roundProfit = 0;
             for (const t of trades) {
-              if (t.buyer_id === player.id) roundProfit += t.buyer_profit;
-              if (t.seller_id === player.id) roundProfit += t.seller_profit;
+              if (t.buyer_id === player.id) roundProfit += Number(t.buyer_profit);
+              if (t.seller_id === player.id) roundProfit += Number(t.seller_profit);
             }
             row.push(roundProfit.toFixed(2));
           } else {
             const result = await GameResultModel.findByRoundAndPlayer(round.id, player.id);
-            row.push(result ? result.profit.toFixed(2) : '0.00');
+            row.push(result ? Number(result.profit).toFixed(2) : '0.00');
           }
         }
 
-        row.push(player.total_profit.toFixed(2));
+        row.push(Number(player.total_profit).toFixed(2));
         csv += row.join(',') + '\n';
       }
     } else if (type === 'trades' && isDA) {

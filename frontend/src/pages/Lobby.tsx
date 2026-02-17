@@ -192,11 +192,9 @@ export const Lobby: React.FC = () => {
       const { player, session: s } = await playersApi.getStatus(playerId);
       setPlayer(player);
 
-      // Load full session for game_type
-      if (!session) {
-        const fullSession = await sessionsApi.getByCode(code || '');
-        setSession(fullSession);
-      }
+      // Load full session for game_type (always update to avoid stale reference)
+      const fullSession = await sessionsApi.getByCode(code || '');
+      setSession(fullSession);
 
       // If session started, redirect to market
       if (s.status === 'active') {
@@ -255,12 +253,12 @@ export const Lobby: React.FC = () => {
                 {/* Show DA-specific values */}
                 {isDA && player?.role === 'buyer' && player.valuation != null && (
                   <p className="mt-2 text-base font-medium text-green-700">
-                    Your valuation: ${player.valuation}
+                    Your valuation: ${Number(player.valuation).toFixed(2)}
                   </p>
                 )}
                 {isDA && player?.role === 'seller' && player.production_cost != null && (
                   <p className="mt-2 text-base font-medium text-red-700">
-                    Your cost: ${player.production_cost}
+                    Your cost: ${Number(player.production_cost).toFixed(2)}
                   </p>
                 )}
               </div>

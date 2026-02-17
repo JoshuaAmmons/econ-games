@@ -94,7 +94,7 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
       if (myPair) {
         const myProfit = myPair.firstMoverId === playerId ? myPair.firstMoverProfit : myPair.secondMoverProfit;
         const outputStr = myPair.firstMoverResultData.isHighOutput ? 'HIGH' : 'LOW';
-        toast.success(`Output: ${outputStr} ($${myPair.firstMoverResultData.output}) | Profit: $${myProfit.toFixed(2)}`);
+        toast.success(`Output: ${outputStr} ($${myPair.firstMoverResultData.output}) | Profit: $${Number(myProfit).toFixed(2)}`);
       }
     }));
 
@@ -277,14 +277,14 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
                     <div className="text-sm space-y-2">
                       <div className="flex justify-between">
                         <span>{pair.firstMoverName || 'Principal'}</span>
-                        <span className={`font-bold ${pair.firstMoverProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          ${pair.firstMoverProfit.toFixed(2)}
+                        <span className={`font-bold ${Number(pair.firstMoverProfit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          ${Number(pair.firstMoverProfit).toFixed(2)}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span>{pair.secondMoverName || 'Agent'}</span>
-                        <span className={`font-bold ${pair.secondMoverProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          ${pair.secondMoverProfit.toFixed(2)}
+                        <span className={`font-bold ${Number(pair.secondMoverProfit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          ${Number(pair.secondMoverProfit).toFixed(2)}
                         </span>
                       </div>
                       <div className="text-xs text-gray-500">

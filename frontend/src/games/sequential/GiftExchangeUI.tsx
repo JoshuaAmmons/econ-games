@@ -79,7 +79,7 @@ const GiftExchangeUI: React.FC<GameUIProps> = ({
     cleanups.push(onEvent('first-move-submitted', (data: { partnerId: string; action: { wage: number } }) => {
       if (data.partnerId === playerId) {
         setPartnerWage(data.action.wage);
-        toast(`Your employer offered $${data.action.wage.toFixed(2)} wage`, { icon: '💼' });
+        toast(`Your employer offered $${Number(data.action.wage).toFixed(2)} wage`, { icon: '💼' });
       }
     }));
 
@@ -95,7 +95,7 @@ const GiftExchangeUI: React.FC<GameUIProps> = ({
       const myPair = data.pairs.find(p => p.firstMoverId === playerId || p.secondMoverId === playerId);
       if (myPair) {
         const myProfit = myPair.firstMoverId === playerId ? myPair.firstMoverProfit : myPair.secondMoverProfit;
-        toast.success(`Profit: $${myProfit.toFixed(2)}`);
+        toast.success(`Profit: $${Number(myProfit).toFixed(2)}`);
       }
     }));
 
@@ -194,7 +194,7 @@ const GiftExchangeUI: React.FC<GameUIProps> = ({
                 <form onSubmit={handleWorkerSubmit} className="space-y-3">
                   <div className="bg-amber-50 rounded p-3 text-center">
                     <p className="text-sm text-gray-500">Your employer offered:</p>
-                    <p className="text-2xl font-bold text-amber-700">${partnerWage.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-amber-700">${Number(partnerWage).toFixed(2)}</p>
                   </div>
                   <Input
                     label={`Effort Level (1 - ${maxEffort})`}
@@ -255,21 +255,21 @@ const GiftExchangeUI: React.FC<GameUIProps> = ({
                     <div className="text-sm space-y-1">
                       <div className="flex justify-between">
                         <span className="font-medium">{pair.firstMoverName || 'Employer'}</span>
-                        <span className={`font-bold ${pair.firstMoverProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          ${pair.firstMoverProfit.toFixed(2)}
+                        <span className={`font-bold ${Number(pair.firstMoverProfit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          ${Number(pair.firstMoverProfit).toFixed(2)}
                         </span>
                       </div>
                       <div className="text-xs text-gray-500">
-                        Wage: ${pair.firstMoveAction.wage.toFixed(2)} | Output: ${pair.firstMoverResultData.output}
+                        Wage: ${Number(pair.firstMoveAction.wage).toFixed(2)} | Output: ${pair.firstMoverResultData.output}
                       </div>
                       <div className="flex justify-between mt-1">
                         <span className="font-medium">{pair.secondMoverName || 'Worker'}</span>
-                        <span className={`font-bold ${pair.secondMoverProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          ${pair.secondMoverProfit.toFixed(2)}
+                        <span className={`font-bold ${Number(pair.secondMoverProfit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          ${Number(pair.secondMoverProfit).toFixed(2)}
                         </span>
                       </div>
                       <div className="text-xs text-gray-500">
-                        Effort: {pair.secondMoveAction.effort} | Cost: ${pair.secondMoverResultData.costOfEffort.toFixed(2)}
+                        Effort: {pair.secondMoveAction.effort} | Cost: ${Number(pair.secondMoverResultData.costOfEffort).toFixed(2)}
                       </div>
                     </div>
                   </div>

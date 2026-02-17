@@ -95,7 +95,7 @@ const TaxSubsidyUI: React.FC<DAGameUIProps> = ({
             <p className="text-sm text-gray-500 mb-1">
               Your {isBuyer ? 'Valuation' : 'Production Cost'}
             </p>
-            <p className="text-3xl font-bold text-sky-700">${privateValue}</p>
+            <p className="text-3xl font-bold text-sky-700">${privateValue != null ? Number(privateValue).toFixed(2) : '—'}</p>
             <p className="text-xs text-gray-400 mt-1">
               {isBuyer
                 ? `Max you should pay${taxType === 'buyer' ? ` (before $${absAmount} ${taxLabel.toLowerCase()})` : ''}`
