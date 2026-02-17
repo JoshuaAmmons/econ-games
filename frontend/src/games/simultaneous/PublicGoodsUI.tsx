@@ -59,8 +59,8 @@ const PublicGoodsUI: React.FC<GameUIProps> = ({
     // Recover game state on reconnect
     cleanups.push(onEvent('game-state', (state: any) => {
       if (state.myAction) setSubmitted(true);
-      if (state.submitted !== undefined && state.total !== undefined) {
-        setWaitingCount({ submitted: state.submitted, total: state.total });
+      if (state.totalSubmitted !== undefined && state.totalPlayers !== undefined) {
+        setWaitingCount({ submitted: state.totalSubmitted, total: state.totalPlayers });
       }
       if (state.results) setResults(state.results);
     }));
