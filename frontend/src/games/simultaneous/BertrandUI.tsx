@@ -185,6 +185,7 @@ const BertrandUI: React.FC<GameUIProps> = ({
           {results ? (
             <div className="space-y-3">
               {[...results]
+                .filter(r => r.price != null)
                 .sort((a, b) => Number(a.price) - Number(b.price))
                 .map((r, i) => (
                   <div
@@ -204,7 +205,7 @@ const BertrandUI: React.FC<GameUIProps> = ({
                           {r.playerId === playerId ? 'You' : r.playerName || `Firm ${i + 1}`}
                         </span>
                         <div className="text-xs text-gray-500">
-                          Price: ${Number(r.price).toFixed(2)} | Qty: {Number(r.quantity).toFixed(0)}
+                          Price: ${Number(r.price).toFixed(2)} | Qty: {Number(r.quantity || 0).toFixed(0)}
                         </div>
                       </div>
                     </div>
@@ -216,7 +217,13 @@ const BertrandUI: React.FC<GameUIProps> = ({
                     </div>
                   </div>
                 ))}
-              {myResult && (
+              {/* Non-submitting players */}
+              {results.filter(r => r.price == null).length > 0 && (
+                <div className="text-xs text-gray-400 italic mt-2">
+                  {results.filter(r => r.price == null).length} player(s) did not submit
+                </div>
+              )}
+              {myResult && myResult.price != null && (
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm">
                   <div className="flex items-center gap-2 mb-1">
                     <BarChart3 className="w-4 h-4 text-blue-600" />
@@ -227,6 +234,11 @@ const BertrandUI: React.FC<GameUIProps> = ({
                       ? `You won with the lowest price of $${Number(myResult.price).toFixed(2)} (${myResult.numWinners > 1 ? `tied with ${myResult.numWinners - 1} other(s)` : 'sole winner'})`
                       : `The winning price was $${Number(myResult.minPrice).toFixed(2)}. Your price of $${Number(myResult.price).toFixed(2)} was too high.`}
                   </p>
+                </div>
+              )}
+              {myResult && myResult.price == null && (
+                <div className="mt-4 p-3 bg-amber-50 rounded-lg text-sm">
+                  <p className="text-amber-700">You did not submit a price this round. Profit: $0.00</p>
                 </div>
               )}
             </div>

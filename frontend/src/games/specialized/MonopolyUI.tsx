@@ -55,6 +55,14 @@ const MonopolyUI: React.FC<GameUIProps> = ({
 
   useEffect(() => {
     const cleanups: (() => void)[] = [];
+    // Recover game state on reconnect
+    cleanups.push(onEvent('game-state', (state: any) => {
+      if (state.myAction) setSubmitted(true);
+      if (state.totalSubmitted !== undefined && state.totalPlayers !== undefined) {
+        setWaitingCount({ submitted: state.totalSubmitted, total: state.totalPlayers });
+      }
+      if (state.results) setResults(state.results);
+    }));
     cleanups.push(onEvent('action-submitted', (data: { submitted: number; total: number }) => {
       setWaitingCount({ submitted: data.submitted, total: data.total });
     }));
@@ -196,7 +204,10 @@ const MonopolyUI: React.FC<GameUIProps> = ({
                 </div>
               )}
 
-              {[...results].sort((a, b) => Number(b.profit) - Number(a.profit)).map((r, i) => (
+              {[...results]
+                .filter(r => r.price != null)
+                .sort((a, b) => Number(b.profit) - Number(a.profit))
+                .map((r, i) => (
                 <div key={r.playerId} className={`rounded-lg p-4 ${r.playerId === playerId ? 'bg-sky-50 border border-sky-200' : 'bg-gray-50'}`}>
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-medium">{r.playerId === playerId ? 'You' : r.playerName || `Monopolist ${i + 1}`}</span>
@@ -207,11 +218,16 @@ const MonopolyUI: React.FC<GameUIProps> = ({
                   <div className="text-sm text-gray-500 grid grid-cols-4 gap-2">
                     <div>P: ${Number(r.price).toFixed(2)}</div>
                     <div>Q: {Number(r.quantity).toFixed(1)}</div>
-                    <div>CS: ${Number(r.consumerSurplus).toFixed(2)}</div>
-                    <div>DWL: ${Number(r.deadweightLoss).toFixed(2)}</div>
+                    <div>CS: ${Number(r.consumerSurplus || 0).toFixed(2)}</div>
+                    <div>DWL: ${Number(r.deadweightLoss || 0).toFixed(2)}</div>
                   </div>
                 </div>
               ))}
+              {results.filter(r => r.price == null).length > 0 && (
+                <div className="text-xs text-gray-400 italic mt-2">
+                  {results.filter(r => r.price == null).length} monopolist(s) did not submit
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center text-gray-400 py-8">

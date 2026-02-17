@@ -166,6 +166,11 @@ const SessionMonitorContent: React.FC = () => {
     };
   }, [connected, onEvent, session?.id]);
 
+  // Refs for stale closure prevention — initialized below after callbacks are defined
+  const sendTimerUpdateRef = useRef(sendTimerUpdate);
+  sendTimerUpdateRef.current = sendTimerUpdate;
+  const handleEndRoundRef = useRef<() => void>(() => {});
+
   // Timer countdown effect
   useEffect(() => {
     if (timerIntervalRef.current) {
@@ -179,7 +184,7 @@ const SessionMonitorContent: React.FC = () => {
           const next = prev - 1;
           // Broadcast timer to players every 5 seconds
           if (next > 0 && next % 5 === 0) {
-            sendTimerUpdate(next);
+            sendTimerUpdateRef.current(next);
           }
           if (next <= 0) {
             if (timerIntervalRef.current) {
@@ -187,7 +192,7 @@ const SessionMonitorContent: React.FC = () => {
               timerIntervalRef.current = null;
             }
             // Auto-end round when timer expires
-            handleEndRound();
+            handleEndRoundRef.current();
             return 0;
           }
           return next;
@@ -279,6 +284,9 @@ const SessionMonitorContent: React.FC = () => {
     endRound(currentRound.id);
     setTimeRemaining(0);
   }, [currentRound, endRound]);
+
+  // Keep handleEndRoundRef in sync after definition
+  handleEndRoundRef.current = handleEndRound;
 
   const handleNextRound = useCallback(() => {
     if (!session || !rounds.length) return;

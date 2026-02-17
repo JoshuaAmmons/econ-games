@@ -200,6 +200,7 @@ const CournotUI: React.FC<GameUIProps> = ({
 
               {/* Individual Results */}
               {[...results]
+                .filter(r => r.quantity != null)
                 .sort((a, b) => Number(b.profit) - Number(a.profit))
                 .map((r, i) => (
                   <div
@@ -215,7 +216,7 @@ const CournotUI: React.FC<GameUIProps> = ({
                           {r.playerId === playerId ? 'You' : r.playerName || `Firm ${i + 1}`}
                         </span>
                         <div className="text-xs text-gray-500">
-                          Qty: {r.quantity} | Rev: ${Number(r.revenue).toFixed(2)} | Cost: ${Number(r.cost).toFixed(2)}
+                          Qty: {r.quantity} | Rev: ${Number(r.revenue || 0).toFixed(2)} | Cost: ${Number(r.cost || 0).toFixed(2)}
                         </div>
                       </div>
                     </div>
@@ -224,6 +225,11 @@ const CournotUI: React.FC<GameUIProps> = ({
                     </div>
                   </div>
                 ))}
+              {results.filter(r => r.quantity == null).length > 0 && (
+                <div className="text-xs text-gray-400 italic mt-2">
+                  {results.filter(r => r.quantity == null).length} firm(s) did not submit
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center text-gray-400 py-8">

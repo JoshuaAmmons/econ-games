@@ -76,6 +76,15 @@ export abstract class SequentialBaseEngine implements GameEngine {
   };
 
   /**
+   * Sanitize the first-move action before broadcasting to all players.
+   * Subclasses can override to strip hidden information (e.g., quality in Market for Lemons).
+   * By default, returns the full action.
+   */
+  protected sanitizeFirstMoveForBroadcast(action: Record<string, any>): Record<string, any> {
+    return action;
+  }
+
+  /**
    * Build (or retrieve cached) stable pairings for a session.
    * Uses ALL players (including inactive) sorted by ID within each role group
    * so that pairings never shift when a player disconnects.
@@ -165,10 +174,11 @@ export abstract class SequentialBaseEngine implements GameEngine {
       const firstMoveActions = await GameActionModel.findByRoundAndType(roundId, 'first_move');
 
       // Broadcast to room — partner can now see the first move
+      // Use sanitized action to avoid leaking hidden info (e.g., quality in Market for Lemons)
       io.to(`market-${sessionCode}`).emit('first-move-submitted', {
         playerId,
         playerName: player.name,
-        action,
+        action: this.sanitizeFirstMoveForBroadcast(action),
         totalFirstMoves: firstMoveActions.length,
         totalFirstMovers: firstMovers.length,
         partnerId: partnerId,
@@ -542,12 +552,54 @@ export abstract class SequentialBaseEngine implements GameEngine {
 
         if (partnerIsActive) {
           const partnerActions = await GameActionModel.findByRoundAndPlayer(roundId, partnerId);
-          // Second mover can see first mover's action
+          // Second mover can see first mover's action (sanitized to strip hidden info)
           const isFirst = player?.role === firstMoverRole;
           if (!isFirst && partnerActions.length > 0) {
-            partnerAction = partnerActions[0].action_data;
+            partnerAction = this.sanitizeFirstMoveForBroadcast(partnerActions[0].action_data);
           }
         }
+      }
+    }
+
+    // Build pairs structure matching round-results broadcast shape so UIs
+    // display correctly on page reload / reconnect.
+    let pairsData: any[] | null = null;
+    if (results.length > 0) {
+      const [fmRole] = this.roles();
+      const pairMap = await this.getOrBuildPairings(session.id);
+      const allPlayersEver = await PlayerModel.findBySession(session.id);
+      const firstMoverResults = results.filter(r => {
+        const p = allPlayersEver.find(pl => pl.id === r.player_id);
+        return p?.role === fmRole;
+      });
+
+      pairsData = [];
+      for (const fmResult of firstMoverResults) {
+        const partnerId = pairMap.get(fmResult.player_id);
+        if (!partnerId) continue;
+        const smResult = results.find(r => r.player_id === partnerId);
+        if (!smResult) continue;
+
+        const fm = allPlayersEver.find(p => p.id === fmResult.player_id);
+        const sm = allPlayersEver.find(p => p.id === partnerId);
+
+        // Reconstruct the original actions for the pair
+        const fmActions = await GameActionModel.findByRoundAndPlayer(roundId, fmResult.player_id);
+        const smActions = await GameActionModel.findByRoundAndPlayer(roundId, partnerId);
+
+        pairsData.push({
+          firstMoverId: fmResult.player_id,
+          firstMoverName: fm?.name || 'Unknown',
+          secondMoverId: partnerId,
+          secondMoverName: sm?.name || 'Unknown',
+          firstMoveAction: fmActions.find(a => a.action_type === 'first_move')?.action_data || null,
+          secondMoveAction: smActions.find(a => a.action_type === 'second_move')?.action_data || null,
+          firstMoverProfit: Number(fmResult.profit),
+          secondMoverProfit: Number(smResult.profit),
+          firstMoverResultData: fmResult.result_data,
+          secondMoverResultData: smResult.result_data,
+          partnerDisconnected: !!(fmResult.result_data?.partnerDisconnected || smResult.result_data?.partnerDisconnected),
+        });
       }
     }
 
@@ -560,14 +612,7 @@ export abstract class SequentialBaseEngine implements GameEngine {
       totalFirstMovers: firstMovers.length,
       secondMovesSubmitted: secondMoveActions.length,
       totalSecondMovers: secondMovers.length,
-      results: results.length > 0
-        ? results.map(r => ({
-            playerId: r.player_id,
-            playerName: allPlayers.find(p => p.id === r.player_id)?.name || 'Unknown',
-            profit: Number(r.profit),
-            ...r.result_data,
-          }))
-        : null,
+      pairs: pairsData,
       config: session.game_config || {},
     };
   }

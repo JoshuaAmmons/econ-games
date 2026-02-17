@@ -95,10 +95,10 @@ export function validateBid(bidPrice: number, player: Player): {
     return { valid: false, error: 'Bid must be positive' };
   }
 
-  if (bidPrice > player.valuation) {
+  if (bidPrice > Number(player.valuation)) {
     return {
       valid: false,
-      error: `Bid (${bidPrice}) cannot exceed your valuation (${player.valuation})`
+      error: `Bid (${bidPrice}) cannot exceed your valuation (${Number(player.valuation)})`
     };
   }
 
@@ -125,10 +125,10 @@ export function validateAsk(askPrice: number, player: Player): {
     return { valid: false, error: 'Ask must be positive' };
   }
 
-  if (askPrice < player.production_cost) {
+  if (askPrice < Number(player.production_cost)) {
     return {
       valid: false,
-      error: `Ask (${askPrice}) cannot be below your cost (${player.production_cost})`
+      error: `Ask (${askPrice}) cannot be below your cost (${Number(player.production_cost)})`
     };
   }
 

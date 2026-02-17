@@ -231,6 +231,7 @@ const NegativeExternalityUI: React.FC<GameUIProps> = ({
 
               {/* Individual Results */}
               {[...results]
+                .filter(r => r.production != null)
                 .sort((a, b) => Number(b.profit) - Number(a.profit))
                 .map((r, i) => (
                   <div
@@ -246,8 +247,8 @@ const NegativeExternalityUI: React.FC<GameUIProps> = ({
                           {r.playerId === playerId ? 'You' : r.playerName || `Firm ${i + 1}`}
                         </span>
                         <div className="text-xs text-gray-500">
-                          Produced: {r.production} | Private: ${Number(r.privateProfit).toFixed(2)} | Damage: -${Number(r.damagePerFirm).toFixed(2)}
-                          {r.taxEnabled && ` | Tax: -$${Number(r.taxPaid).toFixed(2)} | Rebate: +$${Number(r.taxRedistribution).toFixed(2)}`}
+                          Produced: {r.production} | Private: ${Number(r.privateProfit || 0).toFixed(2)} | Damage: -${Number(r.damagePerFirm || 0).toFixed(2)}
+                          {r.taxEnabled && ` | Tax: -$${Number(r.taxPaid || 0).toFixed(2)} | Rebate: +$${Number(r.taxRedistribution || 0).toFixed(2)}`}
                         </div>
                       </div>
                     </div>
@@ -256,6 +257,11 @@ const NegativeExternalityUI: React.FC<GameUIProps> = ({
                     </div>
                   </div>
                 ))}
+              {results.filter(r => r.production == null).length > 0 && (
+                <div className="text-xs text-gray-400 italic mt-2">
+                  {results.filter(r => r.production == null).length} firm(s) did not submit
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center text-gray-400 py-8">

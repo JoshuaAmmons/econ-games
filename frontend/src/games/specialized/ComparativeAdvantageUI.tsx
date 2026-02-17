@@ -55,6 +55,14 @@ const ComparativeAdvantageUI: React.FC<GameUIProps> = ({
 
   useEffect(() => {
     const cleanups: (() => void)[] = [];
+    // Recover game state on reconnect
+    cleanups.push(onEvent('game-state', (state: any) => {
+      if (state.myAction) setSubmitted(true);
+      if (state.totalSubmitted !== undefined && state.totalPlayers !== undefined) {
+        setWaitingCount({ submitted: state.totalSubmitted, total: state.totalPlayers });
+      }
+      if (state.results) setResults(state.results);
+    }));
     cleanups.push(onEvent('action-submitted', (data: { submitted: number; total: number }) => {
       setWaitingCount({ submitted: data.submitted, total: data.total });
     }));
@@ -160,7 +168,10 @@ const ComparativeAdvantageUI: React.FC<GameUIProps> = ({
         <Card title="Round Results">
           {results ? (
             <div className="space-y-3">
-              {[...results].sort((a, b) => Number(b.utility) - Number(a.utility)).map((r, i) => (
+              {[...results]
+                .filter(r => r.utility != null)
+                .sort((a, b) => Number(b.utility) - Number(a.utility))
+                .map((r, i) => (
                 <div key={r.playerId} className={`rounded-lg p-4 ${r.playerId === playerId ? 'bg-sky-50 border border-sky-200' : 'bg-gray-50'}`}>
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-medium">{r.playerId === playerId ? 'You' : r.playerName || `Country ${i + 1}`}</span>
@@ -172,6 +183,11 @@ const ComparativeAdvantageUI: React.FC<GameUIProps> = ({
                   </div>
                 </div>
               ))}
+              {results.filter(r => r.utility == null).length > 0 && (
+                <div className="text-xs text-gray-400 italic mt-2">
+                  {results.filter(r => r.utility == null).length} country(s) did not submit
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center text-gray-400 py-8">

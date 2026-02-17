@@ -200,7 +200,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
   // Initialize config from session
   useEffect(() => {
     const cfg = session?.game_config || {};
-    const numGoods = parseInt(cfg.numGoods) || 2;
+    const numGoods = parseInt(cfg.numGoods, 10) || 2;
     setGameConfig({
       numGoods,
       good1Name: cfg.good1Name || 'Orange',
@@ -498,7 +498,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
                     min="0"
                     max="100"
                     value={allocation[0]}
-                    onChange={(e) => handleSliderChange(0, parseInt(e.target.value))}
+                    onChange={(e) => handleSliderChange(0, parseInt(e.target.value, 10))}
                     className="w-full"
                     disabled={productionStarted}
                   />
@@ -519,7 +519,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
                       min="0"
                       max="100"
                       value={allocation[i]}
-                      onChange={(e) => handleSliderChange(i, parseInt(e.target.value))}
+                      onChange={(e) => handleSliderChange(i, parseInt(e.target.value, 10))}
                       className="w-full"
                       disabled={productionStarted}
                     />

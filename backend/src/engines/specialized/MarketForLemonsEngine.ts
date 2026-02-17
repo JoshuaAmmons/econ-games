@@ -157,6 +157,14 @@ export class MarketForLemonsEngine extends SequentialBaseEngine {
     return super.handleAction(roundId, playerId, action, sessionCode, io);
   }
 
+  /**
+   * Strip quality from the broadcast so buyers can't see it via socket events.
+   */
+  protected sanitizeFirstMoveForBroadcast(action: Record<string, any>): Record<string, any> {
+    const { quality, ...safe } = action;
+    return safe;
+  }
+
   protected calculatePairResult(
     firstMoveAction: Record<string, any>,
     secondMoveAction: Record<string, any>,
