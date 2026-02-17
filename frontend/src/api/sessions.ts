@@ -60,6 +60,16 @@ export const sessionsApi = {
     return response.data.data!;
   },
 
+  // Delete session
+  delete: async (id: string): Promise<void> => {
+    await apiClient.delete(`/sessions/${id}`);
+  },
+
+  // Delete all sessions
+  deleteAll: async (): Promise<void> => {
+    await apiClient.delete('/sessions');
+  },
+
   // Get CSV export URL
   getExportUrl: (id: string, type: string): string => {
     const baseUrl = apiClient.defaults.baseURL || '';

@@ -260,4 +260,46 @@ export class SessionController {
       } as ApiResponse);
     }
   }
+
+  // Delete session
+  static async delete(req: Request, res: Response) {
+    try {
+      const id = req.params.id as string;
+      await SessionModel.delete(id);
+
+      res.json({
+        success: true,
+        message: 'Session deleted'
+      } as ApiResponse);
+
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to delete session'
+      } as ApiResponse);
+    }
+  }
+
+  // Delete all sessions
+  static async deleteAll(req: Request, res: Response) {
+    try {
+      const sessions = await SessionModel.findAll(1000, 0);
+      for (const session of sessions) {
+        await SessionModel.delete(session.id);
+      }
+
+      res.json({
+        success: true,
+        message: `Deleted ${sessions.length} sessions`
+      } as ApiResponse);
+
+    } catch (error) {
+      console.error('Error deleting all sessions:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to delete all sessions'
+      } as ApiResponse);
+    }
+  }
 }
