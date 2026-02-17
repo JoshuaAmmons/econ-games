@@ -118,10 +118,18 @@ export class PlayerController {
         player = await PlayerModel.createGeneric(session.id, role, name);
       }
 
+      // Convert DECIMAL columns from strings to numbers (pg driver returns DECIMAL as string)
+      const sanitizedPlayer = {
+        ...player,
+        total_profit: Number(player.total_profit || 0),
+        valuation: player.valuation != null ? Number(player.valuation) : null,
+        production_cost: player.production_cost != null ? Number(player.production_cost) : null,
+      };
+
       res.status(201).json({
         success: true,
         data: {
-          player,
+          player: sanitizedPlayer,
           session: {
             id: session.id,
             code: session.code,
@@ -154,9 +162,17 @@ export class PlayerController {
         return;
       }
 
+      // Convert DECIMAL columns from strings to numbers (pg driver returns DECIMAL as string)
+      const sanitizedPlayer = {
+        ...player,
+        total_profit: Number(player.total_profit || 0),
+        valuation: player.valuation != null ? Number(player.valuation) : null,
+        production_cost: player.production_cost != null ? Number(player.production_cost) : null,
+      };
+
       res.json({
         success: true,
-        data: player
+        data: sanitizedPlayer
       } as ApiResponse);
 
     } catch (error) {
@@ -184,10 +200,18 @@ export class PlayerController {
 
       const session = await SessionModel.findById(player.session_id);
 
+      // Convert DECIMAL columns from strings to numbers (pg driver returns DECIMAL as string)
+      const sanitizedPlayer = {
+        ...player,
+        total_profit: Number(player.total_profit || 0),
+        valuation: player.valuation != null ? Number(player.valuation) : null,
+        production_cost: player.production_cost != null ? Number(player.production_cost) : null,
+      };
+
       res.json({
         success: true,
         data: {
-          player,
+          player: sanitizedPlayer,
           session
         }
       } as ApiResponse);

@@ -63,7 +63,7 @@ const ComparativeAdvantageUI: React.FC<GameUIProps> = ({
       refreshPlayer();
       const myResult = data.results.find(r => r.playerId === playerId);
       if (myResult) {
-        toast.success(`Utility: ${myResult.utility.toFixed(1)} (autarky optimal: ${myResult.autarkyUtility.toFixed(1)})`);
+        toast.success(`Utility: ${Number(myResult.utility).toFixed(1)} (autarky optimal: ${Number(myResult.autarkyUtility).toFixed(1)})`);
       }
     }));
     return () => cleanups.forEach(fn => fn());
@@ -160,11 +160,11 @@ const ComparativeAdvantageUI: React.FC<GameUIProps> = ({
         <Card title="Round Results">
           {results ? (
             <div className="space-y-3">
-              {results.sort((a, b) => b.utility - a.utility).map((r, i) => (
+              {[...results].sort((a, b) => Number(b.utility) - Number(a.utility)).map((r, i) => (
                 <div key={r.playerId} className={`rounded-lg p-4 ${r.playerId === playerId ? 'bg-sky-50 border border-sky-200' : 'bg-gray-50'}`}>
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-medium">{r.playerId === playerId ? 'You' : r.playerName || `Country ${i + 1}`}</span>
-                    <span className="font-bold text-green-600">Utility: {r.utility.toFixed(1)}</span>
+                    <span className="font-bold text-green-600">Utility: {Number(r.utility).toFixed(1)}</span>
                   </div>
                   <div className="text-sm text-gray-500 grid grid-cols-2 gap-2">
                     <div>{good1Name}: {r.good1Produced} (labor: {r.laborGood1})</div>

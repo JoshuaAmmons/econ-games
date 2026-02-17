@@ -82,7 +82,7 @@ const NegativeExternalityUI: React.FC<GameUIProps> = ({
       refreshPlayer();
       const myResult = data.results.find(r => r.playerId === playerId);
       if (myResult) {
-        toast.success(`Net profit: $${myResult.profit.toFixed(2)} (damage: -$${myResult.damagePerFirm.toFixed(2)})`);
+        toast.success(`Net profit: $${Number(myResult.profit).toFixed(2)} (damage: -$${Number(myResult.damagePerFirm).toFixed(2)})`);
       }
     }));
 
@@ -217,21 +217,21 @@ const NegativeExternalityUI: React.FC<GameUIProps> = ({
                   <div>
                     <div className="text-sm text-gray-500">Total Damage</div>
                     <div className="text-xl font-bold text-red-600">
-                      ${myResult?.totalDamage?.toFixed(2) || '0'}
+                      ${myResult?.totalDamage != null ? Number(myResult.totalDamage).toFixed(2) : '0'}
                     </div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-500">Damage per Firm</div>
                     <div className="text-xl font-bold text-red-600">
-                      ${myResult?.damagePerFirm?.toFixed(2) || '0'}
+                      ${myResult?.damagePerFirm != null ? Number(myResult.damagePerFirm).toFixed(2) : '0'}
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Individual Results */}
-              {results
-                .sort((a, b) => b.profit - a.profit)
+              {[...results]
+                .sort((a, b) => Number(b.profit) - Number(a.profit))
                 .map((r, i) => (
                   <div
                     key={r.playerId}
@@ -246,13 +246,13 @@ const NegativeExternalityUI: React.FC<GameUIProps> = ({
                           {r.playerId === playerId ? 'You' : r.playerName || `Firm ${i + 1}`}
                         </span>
                         <div className="text-xs text-gray-500">
-                          Produced: {r.production} | Private: ${r.privateProfit.toFixed(2)} | Damage: -${r.damagePerFirm.toFixed(2)}
-                          {r.taxEnabled && ` | Tax: -$${r.taxPaid.toFixed(2)} | Rebate: +$${r.taxRedistribution.toFixed(2)}`}
+                          Produced: {r.production} | Private: ${Number(r.privateProfit).toFixed(2)} | Damage: -${Number(r.damagePerFirm).toFixed(2)}
+                          {r.taxEnabled && ` | Tax: -$${Number(r.taxPaid).toFixed(2)} | Rebate: +$${Number(r.taxRedistribution).toFixed(2)}`}
                         </div>
                       </div>
                     </div>
-                    <div className={`font-bold text-lg ${r.profit > 0 ? 'text-green-600' : r.profit < 0 ? 'text-red-600' : 'text-gray-500'}`}>
-                      ${r.profit.toFixed(2)}
+                    <div className={`font-bold text-lg ${Number(r.profit) > 0 ? 'text-green-600' : Number(r.profit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                      ${Number(r.profit).toFixed(2)}
                     </div>
                   </div>
                 ))}

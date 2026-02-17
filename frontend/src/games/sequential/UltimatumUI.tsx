@@ -68,7 +68,7 @@ const UltimatumUI: React.FC<GameUIProps> = ({
     cleanups.push(onEvent('first-move-submitted', (data: { partnerId: string; action: { offer: number } }) => {
       if (data.partnerId === playerId) {
         setPartnerOffer(data.action.offer);
-        toast(`Your partner offered $${data.action.offer.toFixed(2)}`, { icon: '💰' });
+        toast(`Your partner offered $${Number(data.action.offer).toFixed(2)}`, { icon: '💰' });
       }
     }));
 
@@ -85,7 +85,7 @@ const UltimatumUI: React.FC<GameUIProps> = ({
       if (myPair) {
         const myProfit = myPair.firstMoverId === playerId ? myPair.firstMoverProfit : myPair.secondMoverProfit;
         if (myPair.secondMoveAction.accept) {
-          toast.success(`Offer accepted! Your profit: $${myProfit.toFixed(2)}`);
+          toast.success(`Offer accepted! Your profit: $${Number(myProfit).toFixed(2)}`);
         } else {
           toast(`Offer rejected. Both earn $0.`, { icon: '❌' });
         }
@@ -178,9 +178,9 @@ const UltimatumUI: React.FC<GameUIProps> = ({
                 <div className="space-y-4">
                   <div className="bg-amber-50 rounded-lg p-4 text-center">
                     <p className="text-sm text-gray-500 mb-1">Your partner offers you:</p>
-                    <p className="text-3xl font-bold text-amber-700">${partnerOffer.toFixed(2)}</p>
+                    <p className="text-3xl font-bold text-amber-700">${Number(partnerOffer).toFixed(2)}</p>
                     <p className="text-xs text-gray-400 mt-1">
-                      (They keep ${(endowment - partnerOffer).toFixed(2)})
+                      (They keep ${(endowment - Number(partnerOffer)).toFixed(2)})
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -198,7 +198,7 @@ const UltimatumUI: React.FC<GameUIProps> = ({
                     </Button>
                   </div>
                   <p className="text-xs text-gray-400 text-center">
-                    Reject = both get $0. Accept = you get ${partnerOffer.toFixed(2)}.
+                    Reject = both get $0. Accept = you get ${Number(partnerOffer).toFixed(2)}.
                   </p>
                 </div>
               ) : (
@@ -248,7 +248,7 @@ const UltimatumUI: React.FC<GameUIProps> = ({
                       </span>
                     </div>
                     <div className="text-sm text-gray-600 space-y-1">
-                      <div>Offer: ${pair.firstMoveAction.offer.toFixed(2)} / ${endowment.toFixed(2)}</div>
+                      <div>Offer: ${Number(pair.firstMoveAction.offer).toFixed(2)} / ${endowment.toFixed(2)}</div>
                       <div className="flex items-center gap-1">
                         {pair.secondMoveAction.accept ? (
                           <><Check className="w-3 h-3 text-green-600" /> <span className="text-green-600">Accepted</span></>
@@ -257,8 +257,8 @@ const UltimatumUI: React.FC<GameUIProps> = ({
                         )}
                       </div>
                       <div className="flex justify-between text-xs mt-1">
-                        <span>Proposer: ${pair.firstMoverProfit.toFixed(2)}</span>
-                        <span>Responder: ${pair.secondMoverProfit.toFixed(2)}</span>
+                        <span>Proposer: ${Number(pair.firstMoverProfit).toFixed(2)}</span>
+                        <span>Responder: ${Number(pair.secondMoverProfit).toFixed(2)}</span>
                       </div>
                     </div>
                   </div>

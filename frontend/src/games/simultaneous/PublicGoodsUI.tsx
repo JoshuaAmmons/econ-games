@@ -74,7 +74,7 @@ const PublicGoodsUI: React.FC<GameUIProps> = ({
       refreshPlayer();
       const myResult = data.results.find(r => r.playerId === playerId);
       if (myResult) {
-        toast.success(`Earnings: $${myResult.profit.toFixed(2)}`);
+        toast.success(`Earnings: $${Number(myResult.profit).toFixed(2)}`);
       }
     }));
 
@@ -197,20 +197,20 @@ const PublicGoodsUI: React.FC<GameUIProps> = ({
                   <div>
                     <div className="text-sm text-gray-500">Avg. Contribution</div>
                     <div className="text-xl font-bold text-green-700">
-                      {myResult?.avgContribution?.toFixed(1) || 0}
+                      {myResult?.avgContribution != null ? Number(myResult.avgContribution).toFixed(1) : 0}
                     </div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-500">Public Good Return</div>
                     <div className="text-xl font-bold text-green-700">
-                      {myResult?.publicGoodReturn?.toFixed(2) || 0}
+                      {myResult?.publicGoodReturn != null ? Number(myResult.publicGoodReturn).toFixed(2) : 0}
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Individual Results */}
-              {results
+              {[...results]
                 .sort((a, b) => b.contribution - a.contribution)
                 .map((r, i) => (
                   <div
@@ -231,7 +231,7 @@ const PublicGoodsUI: React.FC<GameUIProps> = ({
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-green-600">${r.profit.toFixed(2)}</div>
+                      <div className="font-bold text-green-600">${Number(r.profit).toFixed(2)}</div>
                       <div className="text-xs text-gray-400">earnings</div>
                     </div>
                   </div>

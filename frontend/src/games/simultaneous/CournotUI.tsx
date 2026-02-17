@@ -74,7 +74,7 @@ const CournotUI: React.FC<GameUIProps> = ({
       refreshPlayer();
       const myResult = data.results.find(r => r.playerId === playerId);
       if (myResult) {
-        toast.success(`Market price: $${myResult.marketPrice.toFixed(2)} | Your profit: $${myResult.profit.toFixed(2)}`);
+        toast.success(`Market price: $${Number(myResult.marketPrice).toFixed(2)} | Your profit: $${Number(myResult.profit).toFixed(2)}`);
       }
     }));
 
@@ -186,7 +186,7 @@ const CournotUI: React.FC<GameUIProps> = ({
                   <div>
                     <div className="text-sm text-gray-500">Market Price</div>
                     <div className="text-2xl font-bold text-sky-700">
-                      ${myResult?.marketPrice?.toFixed(2) || '0'}
+                      ${myResult?.marketPrice != null ? Number(myResult.marketPrice).toFixed(2) : '0'}
                     </div>
                   </div>
                   <div>
@@ -199,8 +199,8 @@ const CournotUI: React.FC<GameUIProps> = ({
               </div>
 
               {/* Individual Results */}
-              {results
-                .sort((a, b) => b.profit - a.profit)
+              {[...results]
+                .sort((a, b) => Number(b.profit) - Number(a.profit))
                 .map((r, i) => (
                   <div
                     key={r.playerId}
@@ -215,12 +215,12 @@ const CournotUI: React.FC<GameUIProps> = ({
                           {r.playerId === playerId ? 'You' : r.playerName || `Firm ${i + 1}`}
                         </span>
                         <div className="text-xs text-gray-500">
-                          Qty: {r.quantity} | Rev: ${r.revenue.toFixed(2)} | Cost: ${r.cost.toFixed(2)}
+                          Qty: {r.quantity} | Rev: ${Number(r.revenue).toFixed(2)} | Cost: ${Number(r.cost).toFixed(2)}
                         </div>
                       </div>
                     </div>
-                    <div className={`font-bold text-lg ${r.profit > 0 ? 'text-green-600' : r.profit < 0 ? 'text-red-600' : 'text-gray-500'}`}>
-                      ${r.profit.toFixed(2)}
+                    <div className={`font-bold text-lg ${Number(r.profit) > 0 ? 'text-green-600' : Number(r.profit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                      ${Number(r.profit).toFixed(2)}
                     </div>
                   </div>
                 ))}

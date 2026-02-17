@@ -77,7 +77,7 @@ const BertrandUI: React.FC<GameUIProps> = ({
       const myResult = data.results.find(r => r.playerId === playerId);
       if (myResult) {
         if (myResult.isWinner) {
-          toast.success(`You won! Profit: $${myResult.profit.toFixed(2)}`);
+          toast.success(`You won! Profit: $${Number(myResult.profit).toFixed(2)}`);
         } else {
           toast(`You didn't have the lowest price. Profit: $0`, { icon: '😞' });
         }
@@ -184,8 +184,8 @@ const BertrandUI: React.FC<GameUIProps> = ({
         <Card title="Round Results">
           {results ? (
             <div className="space-y-3">
-              {results
-                .sort((a, b) => a.price - b.price)
+              {[...results]
+                .sort((a, b) => Number(a.price) - Number(b.price))
                 .map((r, i) => (
                   <div
                     key={r.playerId}
@@ -204,13 +204,13 @@ const BertrandUI: React.FC<GameUIProps> = ({
                           {r.playerId === playerId ? 'You' : r.playerName || `Firm ${i + 1}`}
                         </span>
                         <div className="text-xs text-gray-500">
-                          Price: ${r.price.toFixed(2)} | Qty: {r.quantity.toFixed(0)}
+                          Price: ${Number(r.price).toFixed(2)} | Qty: {Number(r.quantity).toFixed(0)}
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className={`font-bold ${r.profit > 0 ? 'text-green-600' : r.profit < 0 ? 'text-red-600' : 'text-gray-500'}`}>
-                        ${r.profit.toFixed(2)}
+                      <div className={`font-bold ${Number(r.profit) > 0 ? 'text-green-600' : Number(r.profit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                        ${Number(r.profit).toFixed(2)}
                       </div>
                       <div className="text-xs text-gray-400">profit</div>
                     </div>
@@ -224,8 +224,8 @@ const BertrandUI: React.FC<GameUIProps> = ({
                   </div>
                   <p className="text-blue-600">
                     {myResult.isWinner
-                      ? `You won with the lowest price of $${myResult.price.toFixed(2)} (${myResult.numWinners > 1 ? `tied with ${myResult.numWinners - 1} other(s)` : 'sole winner'})`
-                      : `The winning price was $${myResult.minPrice.toFixed(2)}. Your price of $${myResult.price.toFixed(2)} was too high.`}
+                      ? `You won with the lowest price of $${Number(myResult.price).toFixed(2)} (${myResult.numWinners > 1 ? `tied with ${myResult.numWinners - 1} other(s)` : 'sole winner'})`
+                      : `The winning price was $${Number(myResult.minPrice).toFixed(2)}. Your price of $${Number(myResult.price).toFixed(2)} was too high.`}
                   </p>
                 </div>
               )}

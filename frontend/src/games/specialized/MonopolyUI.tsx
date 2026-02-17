@@ -63,7 +63,7 @@ const MonopolyUI: React.FC<GameUIProps> = ({
       refreshPlayer();
       const myResult = data.results.find(r => r.playerId === playerId);
       if (myResult) {
-        toast.success(`Profit: $${myResult.profit.toFixed(2)} (optimal: $${myResult.optimalProfit.toFixed(2)})`);
+        toast.success(`Profit: $${Number(myResult.profit).toFixed(2)} (optimal: $${Number(myResult.optimalProfit).toFixed(2)})`);
       }
     }));
     return () => cleanups.forEach(fn => fn());
@@ -182,33 +182,33 @@ const MonopolyUI: React.FC<GameUIProps> = ({
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div>
                       <div className="text-gray-500">Optimal Price</div>
-                      <div className="font-bold">${myResult.optimalPrice.toFixed(2)}</div>
+                      <div className="font-bold">${Number(myResult.optimalPrice).toFixed(2)}</div>
                     </div>
                     <div>
                       <div className="text-gray-500">Optimal Qty</div>
-                      <div className="font-bold">{myResult.optimalQuantity.toFixed(1)}</div>
+                      <div className="font-bold">{Number(myResult.optimalQuantity).toFixed(1)}</div>
                     </div>
                     <div>
                       <div className="text-gray-500">Max Profit</div>
-                      <div className="font-bold">${myResult.optimalProfit.toFixed(2)}</div>
+                      <div className="font-bold">${Number(myResult.optimalProfit).toFixed(2)}</div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {results.sort((a, b) => b.profit - a.profit).map((r, i) => (
+              {[...results].sort((a, b) => Number(b.profit) - Number(a.profit)).map((r, i) => (
                 <div key={r.playerId} className={`rounded-lg p-4 ${r.playerId === playerId ? 'bg-sky-50 border border-sky-200' : 'bg-gray-50'}`}>
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-medium">{r.playerId === playerId ? 'You' : r.playerName || `Monopolist ${i + 1}`}</span>
-                    <span className={`font-bold text-lg ${r.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      ${r.profit.toFixed(2)}
+                    <span className={`font-bold text-lg ${Number(r.profit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ${Number(r.profit).toFixed(2)}
                     </span>
                   </div>
                   <div className="text-sm text-gray-500 grid grid-cols-4 gap-2">
-                    <div>P: ${r.price.toFixed(2)}</div>
-                    <div>Q: {r.quantity.toFixed(1)}</div>
-                    <div>CS: ${r.consumerSurplus.toFixed(2)}</div>
-                    <div>DWL: ${r.deadweightLoss.toFixed(2)}</div>
+                    <div>P: ${Number(r.price).toFixed(2)}</div>
+                    <div>Q: {Number(r.quantity).toFixed(1)}</div>
+                    <div>CS: ${Number(r.consumerSurplus).toFixed(2)}</div>
+                    <div>DWL: ${Number(r.deadweightLoss).toFixed(2)}</div>
                   </div>
                 </div>
               ))}
