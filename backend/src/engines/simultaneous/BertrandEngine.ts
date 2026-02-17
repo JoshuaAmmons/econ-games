@@ -127,6 +127,8 @@ export class BertrandEngine extends SimultaneousBaseEngine {
     config: Record<string, any>,
     _allPlayers: any[]
   ): Array<{ playerId: string; profit: number; resultData: Record<string, any> }> {
+    if (actions.length === 0) return [];
+
     const marginalCost = config.marginalCost ?? 10;
     const marketDemand = config.marketDemand ?? 100;
 

@@ -90,19 +90,25 @@ export class PriceControlsEngine extends DoubleAuctionEngine {
 
     const gameConfig = session.game_config || {};
     const controlType: string = gameConfig.controlType || 'ceiling';
-    const controlPrice: number = gameConfig.controlPrice || 35;
+    const controlPrice: number = gameConfig.controlPrice ?? 35;
+
+    // Ensure price is numeric before comparison
+    const numPrice = Number(price);
+    if (!Number.isFinite(numPrice) || numPrice <= 0) {
+      return { success: false, error: 'Price must be a positive number' };
+    }
 
     // Enforce price controls
-    if (controlType === 'ceiling' && price > controlPrice) {
+    if (controlType === 'ceiling' && numPrice > controlPrice) {
       return {
         success: false,
-        error: `Price $${price.toFixed(2)} exceeds the price ceiling of $${controlPrice.toFixed(2)}`,
+        error: `Price $${numPrice.toFixed(2)} exceeds the price ceiling of $${controlPrice.toFixed(2)}`,
       };
     }
-    if (controlType === 'floor' && price < controlPrice) {
+    if (controlType === 'floor' && numPrice < controlPrice) {
       return {
         success: false,
-        error: `Price $${price.toFixed(2)} is below the price floor of $${controlPrice.toFixed(2)}`,
+        error: `Price $${numPrice.toFixed(2)} is below the price floor of $${controlPrice.toFixed(2)}`,
       };
     }
 
@@ -126,7 +132,7 @@ export class PriceControlsEngine extends DoubleAuctionEngine {
         const gameConfig = session.game_config || {};
         baseState.priceControl = {
           controlType: gameConfig.controlType || 'ceiling',
-          controlPrice: gameConfig.controlPrice || 35,
+          controlPrice: gameConfig.controlPrice ?? 35,
         };
       }
     }

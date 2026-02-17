@@ -159,14 +159,17 @@ export function matchTrades(
   }> = [];
 
   // Sort bids descending (highest first)
+  // Note: bid.price and ask.price are DECIMAL columns returned as strings by pg driver
   const sortedBids = [...bids].sort((a, b) => {
-    if (b.price !== a.price) return b.price - a.price;
+    const priceDiff = Number(b.price) - Number(a.price);
+    if (priceDiff !== 0) return priceDiff;
     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   });
 
   // Sort asks ascending (lowest first)
   const sortedAsks = [...asks].sort((a, b) => {
-    if (a.price !== b.price) return a.price - b.price;
+    const priceDiff = Number(a.price) - Number(b.price);
+    if (priceDiff !== 0) return priceDiff;
     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   });
 
@@ -178,14 +181,17 @@ export function matchTrades(
     const bid = sortedBids[bidIdx];
     const ask = sortedAsks[askIdx];
 
+    const bidPrice = Number(bid.price);
+    const askPrice = Number(ask.price);
+
     // Can only trade if bid >= ask
-    if (bid.price >= ask.price) {
+    if (bidPrice >= askPrice) {
       // Trade price is midpoint
-      const tradePrice = (bid.price + ask.price) / 2;
+      const tradePrice = (bidPrice + askPrice) / 2;
 
       // Calculate profits
-      const buyerProfit = (bid.player.valuation || 0) - tradePrice;
-      const sellerProfit = tradePrice - (ask.player.production_cost || 0);
+      const buyerProfit = Number(bid.player.valuation || 0) - tradePrice;
+      const sellerProfit = tradePrice - Number(ask.player.production_cost || 0);
 
       trades.push({
         bid,
@@ -220,8 +226,8 @@ export function calculateMarketStats(trades: any[]) {
   }
 
   const totalTrades = trades.length;
-  const averagePrice = trades.reduce((sum: number, t: any) => sum + t.price, 0) / totalTrades;
-  const totalVolume = trades.reduce((sum: number, t: any) => sum + t.price, 0);
+  const averagePrice = trades.reduce((sum: number, t: any) => sum + Number(t.price), 0) / totalTrades;
+  const totalVolume = trades.reduce((sum: number, t: any) => sum + Number(t.price), 0);
 
   // Efficiency = (total actual gains) / (total possible gains)
   // This requires more context about all players, so placeholder for now

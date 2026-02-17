@@ -33,6 +33,9 @@ export abstract class SequentialBaseEngine implements GameEngine {
   abstract getUIConfig(): UIConfig;
   abstract validateConfig(config: Record<string, any>): ValidationResult;
 
+  /** Guard against concurrent resolveRound calls (double-profit bug) */
+  private resolvingRounds = new Set<string>();
+
   /** Return [firstMoverRole, secondMoverRole] */
   protected abstract roles(): [string, string];
 
@@ -200,6 +203,15 @@ export abstract class SequentialBaseEngine implements GameEngine {
     session: any,
     allPlayers: any[]
   ): Promise<void> {
+    // Prevent concurrent resolution (race between last-submit and timer-end)
+    if (this.resolvingRounds.has(roundId)) return;
+    this.resolvingRounds.add(roundId);
+
+    try {
+      // Double-check: if results already exist, skip
+      const existingResults = await GameResultModel.findByRound(roundId);
+      if (existingResults.length > 0) return;
+
     const config = session.game_config || {};
     const [firstMoverRole, secondMoverRole] = this.roles();
 
@@ -263,6 +275,9 @@ export abstract class SequentialBaseEngine implements GameEngine {
         secondMoverResultData: pr.result.secondMoverResultData,
       })),
     });
+    } finally {
+      this.resolvingRounds.delete(roundId);
+    }
   }
 
   async processRoundEnd(

@@ -163,6 +163,8 @@ export class NegativeExternalityEngine extends SimultaneousBaseEngine {
     config: Record<string, any>,
     _allPlayers: any[]
   ): Array<{ playerId: string; profit: number; resultData: Record<string, any> }> {
+    if (actions.length === 0) return [];
+
     const revenuePerUnit = config.revenuePerUnit ?? 20;
     const costPerUnit = config.costPerUnit ?? 5;
     const damageRate = config.damageRate ?? 0.1;

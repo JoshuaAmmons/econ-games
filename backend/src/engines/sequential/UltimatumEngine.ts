@@ -92,6 +92,10 @@ export class UltimatumEngine extends SequentialBaseEngine {
     if (config.minOffer !== undefined && config.minOffer < 0) {
       return { valid: false, error: 'Minimum offer cannot be negative' };
     }
+    if (config.minOffer !== undefined && config.endowment !== undefined
+        && config.minOffer > config.endowment) {
+      return { valid: false, error: 'Minimum offer cannot exceed the endowment' };
+    }
     return { valid: true };
   }
 
