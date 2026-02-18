@@ -42,7 +42,7 @@ const DAAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) => {
       if (round.trades) {
         for (const trade of round.trades) {
           seq++;
-          points.push({ seq, price: trade.price, round: round.roundNumber });
+          points.push({ seq, price: Number(trade.price), round: round.roundNumber });
         }
       }
     }
@@ -70,7 +70,7 @@ const DAAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) => {
     if (!equilibrium) return [];
     return completedRounds.map(round => {
       const realized = round.trades
-        ? round.trades.reduce((s, t) => s + t.buyerProfit + t.sellerProfit, 0)
+        ? round.trades.reduce((s, t) => s + Number(t.buyerProfit) + Number(t.sellerProfit), 0)
         : 0;
       const efficiency = equilibrium.maxSurplus > 0 ? (realized / equilibrium.maxSurplus) * 100 : 0;
       return {
@@ -85,7 +85,7 @@ const DAAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) => {
   // Price convergence
   const convergenceData = useMemo(() => {
     return completedRounds.map(round => {
-      const prices = round.trades?.map(t => t.price) || [];
+      const prices = round.trades?.map(t => Number(t.price)) || [];
       const avg = prices.length > 0 ? prices.reduce((s, p) => s + p, 0) / prices.length : null;
       return {
         round: round.roundNumber,
@@ -182,7 +182,7 @@ const DAAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) => {
         <ChartCard title="Trade Price Range by Round" description="Min, max, and average trade prices per round">
           <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
             <ComposedChart data={completedRounds.map(round => {
-              const prices = round.trades?.map(t => t.price) || [];
+              const prices = round.trades?.map(t => Number(t.price)) || [];
               if (prices.length === 0) return null;
               return {
                 round: round.roundNumber,
@@ -215,8 +215,8 @@ const DAAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) => {
             <BarChart data={completedRounds.map(round => {
               const trades = round.trades || [];
               if (trades.length === 0) return null;
-              const avgPrice = trades.reduce((s, t) => s + t.price, 0) / trades.length;
-              const taxAmount = gameConfig.taxAmount || 0;
+              const avgPrice = trades.reduce((s, t) => s + Number(t.price), 0) / trades.length;
+              const taxAmount = Number(gameConfig.taxAmount ?? 0);
               const taxType = gameConfig.taxType || 'buyer';
               return {
                 round: `R${round.roundNumber}`,

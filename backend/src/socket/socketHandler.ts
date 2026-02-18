@@ -133,7 +133,14 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
       action: Record<string, any>;
     }) => {
       try {
-        const { roundId, playerId, sessionCode, action } = data;
+        const { roundId, playerId, sessionCode, action } = data || {};
+        if (!roundId || typeof roundId !== 'string' ||
+            !playerId || typeof playerId !== 'string' ||
+            !sessionCode || typeof sessionCode !== 'string' ||
+            !action || typeof action !== 'object') {
+          socket.emit('error', { message: 'Invalid action data' });
+          return;
+        }
         const gameType = await getSessionGameType(sessionCode);
         const engine = GameRegistry.get(gameType);
 
@@ -164,7 +171,13 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
       sessionCode: string;
     }) => {
       try {
-        const { roundId, playerId, price, sessionCode } = data;
+        const { roundId, playerId, price, sessionCode } = data || {};
+        if (!roundId || typeof roundId !== 'string' ||
+            !playerId || typeof playerId !== 'string' ||
+            !sessionCode || typeof sessionCode !== 'string') {
+          socket.emit('error', { message: 'Invalid bid data' });
+          return;
+        }
         const gameType = await getSessionGameType(sessionCode);
         const engine = GameRegistry.get(gameType);
 
@@ -192,7 +205,13 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
       sessionCode: string;
     }) => {
       try {
-        const { roundId, playerId, price, sessionCode } = data;
+        const { roundId, playerId, price, sessionCode } = data || {};
+        if (!roundId || typeof roundId !== 'string' ||
+            !playerId || typeof playerId !== 'string' ||
+            !sessionCode || typeof sessionCode !== 'string') {
+          socket.emit('error', { message: 'Invalid ask data' });
+          return;
+        }
         const gameType = await getSessionGameType(sessionCode);
         const engine = GameRegistry.get(gameType);
 
@@ -374,7 +393,13 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
       playerId: string;
     }) => {
       try {
-        const { sessionCode, roundId, playerId } = data;
+        const { sessionCode, roundId, playerId } = data || {};
+        if (!sessionCode || typeof sessionCode !== 'string' ||
+            !roundId || typeof roundId !== 'string' ||
+            !playerId || typeof playerId !== 'string') {
+          socket.emit('error', { message: 'Invalid game state request' });
+          return;
+        }
         const gameType = await getSessionGameType(sessionCode);
         const engine = GameRegistry.get(gameType);
 

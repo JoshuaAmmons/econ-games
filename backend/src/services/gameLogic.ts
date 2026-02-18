@@ -200,8 +200,8 @@ export function matchTrades(
       const tradePrice = (bidPrice + askPrice) / 2;
 
       // Calculate profits
-      const buyerProfit = Number(bid.player.valuation || 0) - tradePrice;
-      const sellerProfit = tradePrice - Number(ask.player.production_cost || 0);
+      const buyerProfit = Number(bid.player.valuation ?? 0) - tradePrice;
+      const sellerProfit = tradePrice - Number(ask.player.production_cost ?? 0);
 
       trades.push({
         bid,

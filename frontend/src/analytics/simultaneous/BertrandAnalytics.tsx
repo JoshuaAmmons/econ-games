@@ -21,7 +21,7 @@ const BertrandAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) 
         const rd = r.resultData || {};
         points.push({
           round: round.roundNumber,
-          price: rd.price ?? 0,
+          price: Number(rd.price ?? 0),
           player: data.players.find(p => p.id === r.playerId)?.name || 'Unknown',
           isWinner: rd.isWinner ?? false,
         });
@@ -33,7 +33,7 @@ const BertrandAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) 
   // Average price per round (Nash convergence)
   const convergenceData = useMemo(() => {
     return completedRounds.map(round => {
-      const prices = (round.results || []).map(r => r.resultData?.price ?? 0);
+      const prices = (round.results || []).map(r => Number(r.resultData?.price ?? 0));
       const avg = prices.length > 0 ? prices.reduce((s, p) => s + p, 0) / prices.length : 0;
       const min = prices.length > 0 ? Math.min(...prices) : 0;
       return {

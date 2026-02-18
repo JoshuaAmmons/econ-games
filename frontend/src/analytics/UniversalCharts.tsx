@@ -176,10 +176,10 @@ export const RoundSummaryChart: React.FC<Props> = ({ data, completedRounds }) =>
       if (isDA && round.trades) {
         row.trades = round.trades.length;
         row.avgPrice = round.trades.length > 0
-          ? parseFloat((round.trades.reduce((s, t) => s + t.price, 0) / round.trades.length).toFixed(2))
+          ? parseFloat((round.trades.reduce((s, t) => s + Number(t.price), 0) / round.trades.length).toFixed(2))
           : 0;
         row.totalSurplus = parseFloat(
-          round.trades.reduce((s, t) => s + t.buyerProfit + t.sellerProfit, 0).toFixed(2)
+          round.trades.reduce((s, t) => s + Number(t.buyerProfit) + Number(t.sellerProfit), 0).toFixed(2)
         );
       } else if (round.results) {
         row.players = round.results.length;

@@ -209,9 +209,9 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
       good2Color: cfg.good2Color || '#6495ED',
       good3Name: cfg.good3Name || 'Pink',
       good3Color: cfg.good3Color || '#FF1493',
-      productionLength: cfg.productionLength || 10,
-      moveLength: cfg.time_per_round || 90,
-      allowStealing: cfg.allowStealing || false,
+      productionLength: cfg.productionLength ?? 10,
+      moveLength: cfg.time_per_round ?? 90,
+      allowStealing: cfg.allowStealing ?? false,
       allowChat: cfg.allowChat !== false,
       allowPrivateChat: cfg.allowPrivateChat !== false,
     });
@@ -301,7 +301,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
     // Simple preview based on allocation
     const preview = goods.map((good, i) => {
       const pct = allocation[i];
-      const time = (pct / 100) * (gameConfig.productionLength || 10);
+      const time = (pct / 100) * (gameConfig.productionLength ?? 10);
       return `${good.name}: ~${Math.floor(time)} units (${pct}% time)`;
     });
     toast(`Production preview:\n${preview.join('\n')}`, { duration: 4000 });
@@ -495,7 +495,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
           {phase === 'production' && roundActive ? (
             <div className="space-y-3">
               <p className="text-sm text-gray-600">
-                Your {gameConfig?.productionLength || 10} seconds of growth time split between producing {goods.length} goods:
+                Your {gameConfig?.productionLength ?? 10} seconds of growth time split between producing {goods.length} goods:
               </p>
               {goods.length === 2 ? (
                 <div>

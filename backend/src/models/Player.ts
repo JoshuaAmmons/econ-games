@@ -98,6 +98,72 @@ export class PlayerModel {
     }
   }
 
+  /**
+   * Atomically assign a role (based on existing players) and create a player
+   * inside a single transaction. The roleAssigner callback receives the list
+   * of existing players (fetched under a row lock) and returns the role and
+   * optional valuation/cost.  This prevents the race condition where two
+   * concurrent joins both read the same player list and pick the same role.
+   */
+  static async createWithRoleAssignment(
+    sessionId: string,
+    marketSize: number,
+    name: string | undefined,
+    isBot: boolean,
+    roleAssigner: (existingPlayers: Player[]) => {
+      role: string;
+      valueColumn?: 'valuation' | 'production_cost';
+      value?: number;
+    }
+  ): Promise<Player | null> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      // Lock the session row to serialize concurrent join attempts
+      await client.query('SELECT id FROM sessions WHERE id = $1 FOR UPDATE', [sessionId]);
+
+      // Fetch existing players INSIDE the transaction
+      const existingResult = await client.query<Player>(
+        'SELECT * FROM players WHERE session_id = $1 ORDER BY created_at',
+        [sessionId]
+      );
+      const existingPlayers = existingResult.rows;
+
+      if (existingPlayers.length >= marketSize) {
+        await client.query('ROLLBACK');
+        return null; // Session is full
+      }
+
+      // Let the caller decide the role based on the locked player list
+      const { role, valueColumn, value } = roleAssigner(existingPlayers);
+
+      let result;
+      if (valueColumn && value !== undefined) {
+        result = await client.query<Player>(
+          `INSERT INTO players (session_id, name, role, ${valueColumn}, is_bot)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING *`,
+          [sessionId, name, role, value, isBot]
+        );
+      } else {
+        result = await client.query<Player>(
+          `INSERT INTO players (session_id, name, role, is_bot)
+           VALUES ($1, $2, $3, $4)
+           RETURNING *`,
+          [sessionId, name, role, isBot]
+        );
+      }
+
+      await client.query('COMMIT');
+      return result.rows[0];
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
   // Get player by ID
   static async findById(id: string): Promise<Player | null> {
     const result = await pool.query<Player>(
