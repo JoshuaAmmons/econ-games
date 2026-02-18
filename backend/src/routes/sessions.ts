@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { SessionController } from '../controllers/sessionController';
+import { requireAdmin, requireDeleteAllConfirmation } from '../middleware/adminAuth';
 
 const router = Router();
 
@@ -24,16 +25,16 @@ router.get('/:id/players', SessionController.getPlayers);
 // Get rounds for session
 router.get('/:id/rounds', SessionController.getRounds);
 
-// Start session
-router.post('/:id/start', SessionController.start);
+// Start session (admin only)
+router.post('/:id/start', requireAdmin, SessionController.start);
 
-// End session
-router.post('/:id/end', SessionController.end);
+// End session (admin only)
+router.post('/:id/end', requireAdmin, SessionController.end);
 
-// Delete session
-router.delete('/:id', SessionController.delete);
+// Delete session (admin only)
+router.delete('/:id', requireAdmin, SessionController.delete);
 
-// Delete all sessions
-router.delete('/', SessionController.deleteAll);
+// Delete all sessions (requires confirmation header)
+router.delete('/', requireDeleteAllConfirmation, SessionController.deleteAll);
 
 export default router;

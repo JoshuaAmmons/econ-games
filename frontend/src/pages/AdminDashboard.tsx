@@ -43,7 +43,8 @@ export const AdminDashboard: React.FC = () => {
   const handleDelete = async (id: string, code: string) => {
     if (!window.confirm(`Delete session ${code}? This cannot be undone.`)) return;
     try {
-      await sessionsApi.delete(id);
+      const storedPw = localStorage.getItem(`admin_pw_${code}`) || undefined;
+      await sessionsApi.delete(id, storedPw);
       setSessions(prev => prev.filter(s => s.id !== id));
       toast.success(`Session ${code} deleted`);
     } catch (error) {
@@ -123,7 +124,8 @@ export const AdminDashboard: React.FC = () => {
                       <Button
                         size="sm"
                         onClick={async () => {
-                          await sessionsApi.start(session.id);
+                          const storedPw = localStorage.getItem(`admin_pw_${session.code}`) || undefined;
+                          await sessionsApi.start(session.id, storedPw);
                           loadSessions();
                         }}
                       >

@@ -39,14 +39,18 @@ export const sessionsApi = {
     return response.data.data!;
   },
 
-  // Start session
-  start: async (id: string): Promise<void> => {
-    await apiClient.post(`/sessions/${id}/start`);
+  // Start session (requires admin password if session has one)
+  start: async (id: string, adminPassword?: string): Promise<void> => {
+    const headers: Record<string, string> = {};
+    if (adminPassword) headers['x-admin-password'] = adminPassword;
+    await apiClient.post(`/sessions/${id}/start`, {}, { headers });
   },
 
-  // End session
-  end: async (id: string): Promise<void> => {
-    await apiClient.post(`/sessions/${id}/end`);
+  // End session (requires admin password if session has one)
+  end: async (id: string, adminPassword?: string): Promise<void> => {
+    const headers: Record<string, string> = {};
+    if (adminPassword) headers['x-admin-password'] = adminPassword;
+    await apiClient.post(`/sessions/${id}/end`, {}, { headers });
   },
 
   // Get players for session
@@ -67,25 +71,33 @@ export const sessionsApi = {
     return response.data.data!;
   },
 
-  // Get comprehensive results for a session
-  getResults: async (id: string): Promise<any> => {
-    const response = await apiClient.get<ApiResponse<any>>(`/sessions/${id}/results`);
+  // Get comprehensive results for a session (requires admin password)
+  getResults: async (id: string, adminPassword?: string): Promise<any> => {
+    const headers: Record<string, string> = {};
+    if (adminPassword) headers['x-admin-password'] = adminPassword;
+    const response = await apiClient.get<ApiResponse<any>>(`/sessions/${id}/results`, { headers });
     return response.data.data!;
   },
 
-  // Delete session
-  delete: async (id: string): Promise<void> => {
-    await apiClient.delete(`/sessions/${id}`);
+  // Delete session (requires admin password)
+  delete: async (id: string, adminPassword?: string): Promise<void> => {
+    const headers: Record<string, string> = {};
+    if (adminPassword) headers['x-admin-password'] = adminPassword;
+    await apiClient.delete(`/sessions/${id}`, { headers });
   },
 
-  // Delete all sessions
+  // Delete all sessions (requires confirmation header)
   deleteAll: async (): Promise<void> => {
-    await apiClient.delete('/sessions');
+    await apiClient.delete('/sessions', {
+      headers: { 'x-confirm-delete-all': 'true' },
+    });
   },
 
-  // Get CSV export URL
-  getExportUrl: (id: string, type: string): string => {
+  // Get CSV export URL (with admin password as query param for download links)
+  getExportUrl: (id: string, type: string, adminPassword?: string): string => {
     const baseUrl = apiClient.defaults.baseURL || '';
-    return `${baseUrl}/sessions/${id}/export?type=${type}`;
+    const params = new URLSearchParams({ type });
+    if (adminPassword) params.set('admin_password', adminPassword);
+    return `${baseUrl}/sessions/${id}/export?${params.toString()}`;
   },
 };

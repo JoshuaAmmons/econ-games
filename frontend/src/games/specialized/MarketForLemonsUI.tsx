@@ -46,13 +46,10 @@ const MarketForLemonsUI: React.FC<GameUIProps> = ({
       setPrice('');
       setPartnerPrice(null);
       setResults(null);
-      // Seller gets a random quality each round
-      if (isSeller) {
-        const qualities = [10, 20, 30, 40, 50, 60, 70, 80, 90];
-        setSellerQuality(qualities[Math.floor(Math.random() * qualities.length)]);
-      }
+      // Quality is now assigned server-side; reset until game-state delivers it
+      setSellerQuality(null);
     }
-  }, [roundId, roundActive, isSeller]);
+  }, [roundId, roundActive]);
 
   useEffect(() => {
     const cleanups: (() => void)[] = [];
@@ -64,6 +61,9 @@ const MarketForLemonsUI: React.FC<GameUIProps> = ({
         if (isSeller && state.myAction.quality) {
           setSellerQuality(state.myAction.quality);
         }
+      } else if (isSeller && state.assignedQuality) {
+        // Quality is assigned server-side; use it before first submission
+        setSellerQuality(state.assignedQuality);
       }
       if (!isSeller && state.partnerAction) {
         setPartnerPrice(state.partnerAction.price);
@@ -116,7 +116,7 @@ const MarketForLemonsUI: React.FC<GameUIProps> = ({
       toast.error('Enter a valid price');
       return;
     }
-    submitAction({ type: 'first_move', price: p, quality: sellerQuality });
+    submitAction({ type: 'first_move', price: p });
     setSubmitted(true);
     toast.success(`Listed at $${p.toFixed(2)}`);
   };

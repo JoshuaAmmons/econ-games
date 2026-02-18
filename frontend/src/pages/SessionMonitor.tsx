@@ -247,7 +247,7 @@ const SessionMonitorContent: React.FC = () => {
   const handleStart = async () => {
     if (!session) return;
     try {
-      await sessionsApi.start(session.id);
+      await sessionsApi.start(session.id, storedAdminPassword);
       toast.success('Session started!');
       // The session start also starts round 1, so set timer
       setTimeRemaining(session.time_per_round);
@@ -263,7 +263,7 @@ const SessionMonitorContent: React.FC = () => {
   const handleEnd = async () => {
     if (!session) return;
     try {
-      await sessionsApi.end(session.id);
+      await sessionsApi.end(session.id, storedAdminPassword);
       toast.success('Session ended!');
       loadSession();
     } catch (error) {
