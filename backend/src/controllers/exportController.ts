@@ -8,6 +8,11 @@ import { GameActionModel } from '../models/GameAction';
 
 const DA_GAME_TYPES = ['double_auction', 'double_auction_tax', 'double_auction_price_controls'];
 
+/** Escape a string for use inside a double-quoted CSV field */
+function csvEscape(value: string): string {
+  return value.replace(/"/g, '""');
+}
+
 /**
  * Get comprehensive results for a session (JSON)
  */
@@ -142,7 +147,7 @@ async function exportCSV(req: Request, res: Response) {
       // Player summary CSV
       csv = 'PlayerName,Role,Valuation,ProductionCost,TotalProfit,IsBot\n';
       for (const p of players) {
-        csv += `"${p.name || 'Anonymous'}","${p.role}",${p.valuation != null ? Number(p.valuation) : ''},${p.production_cost != null ? Number(p.production_cost) : ''},${Number(p.total_profit)},${p.is_bot}\n`;
+        csv += `"${csvEscape(p.name || 'Anonymous')}","${p.role}",${p.valuation != null ? Number(p.valuation) : ''},${p.production_cost != null ? Number(p.production_cost) : ''},${Number(p.total_profit)},${p.is_bot}\n`;
       }
     } else if (type === 'rounds') {
       // Round-by-round profit CSV
@@ -166,7 +171,7 @@ async function exportCSV(req: Request, res: Response) {
       }));
 
       for (const player of players) {
-        const row: string[] = [`"${player.name || 'Anonymous'}"`, `"${player.role}"`];
+        const row: string[] = [`"${csvEscape(player.name || 'Anonymous')}"`, `"${player.role}"`];
 
         for (const round of completedRounds) {
           if (isDA) {
@@ -190,7 +195,7 @@ async function exportCSV(req: Request, res: Response) {
     } else if (type === 'trades' && isDA) {
       // Trade-level CSV for DA games
       csv = 'Round,Price,BuyerName,SellerName,BuyerProfit,SellerProfit,Time\n';
-      const playerMap = new Map(players.map((p) => [p.id, p.name || 'Anonymous']));
+      const playerMap = new Map(players.map((p) => [p.id, csvEscape(p.name || 'Anonymous')]));
       const completedForTrades = rounds.filter((r) => r.status === 'completed');
 
       // Pre-fetch all trades in parallel
@@ -209,7 +214,7 @@ async function exportCSV(req: Request, res: Response) {
     } else if (type === 'actions' && !isDA) {
       // Action-level CSV for non-DA games
       csv = 'Round,PlayerName,Role,ActionType,ActionData,Time\n';
-      const playerMapActions = new Map(players.map((p) => [p.id, { name: p.name || 'Anonymous', role: p.role }]));
+      const playerMapActions = new Map(players.map((p) => [p.id, { name: csvEscape(p.name || 'Anonymous'), role: p.role }]));
       const completedForActions = rounds.filter((r) => r.status === 'completed');
 
       // Pre-fetch all actions in parallel
