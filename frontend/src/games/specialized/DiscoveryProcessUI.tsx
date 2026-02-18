@@ -251,28 +251,34 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
   const handleSliderChange = (index: number, value: number) => {
     const newAlloc = [...allocation];
     newAlloc[index] = value;
-    // Adjust other values to keep sum at 100
-    const others = newAlloc.filter((_, i) => i !== index);
     const remaining = 100 - value;
-    const otherSum = others.reduce((s, v) => s + v, 0);
+
+    // Collect indices of all OTHER sliders
+    const otherIndices = newAlloc.map((_, i) => i).filter(i => i !== index);
+    const otherSum = otherIndices.reduce((s, i) => s + newAlloc[i], 0);
 
     if (otherSum > 0) {
       let distributed = 0;
-      newAlloc.forEach((_, i) => {
-        if (i !== index) {
-          if (i === newAlloc.length - 1 && i !== index) {
-            newAlloc[i] = remaining - distributed;
-          } else if (i !== index) {
-            newAlloc[i] = Math.round((newAlloc[i] / otherSum) * remaining);
-            distributed += newAlloc[i];
-          }
+      otherIndices.forEach((i, oi) => {
+        if (oi === otherIndices.length - 1) {
+          // Last non-changed slider absorbs rounding remainder
+          newAlloc[i] = remaining - distributed;
+        } else {
+          newAlloc[i] = Math.round((newAlloc[i] / otherSum) * remaining);
+          distributed += newAlloc[i];
         }
       });
     } else {
-      // Distribute evenly among others
-      const perOther = Math.round(remaining / (newAlloc.length - 1));
-      newAlloc.forEach((_, i) => {
-        if (i !== index) newAlloc[i] = perOther;
+      // Distribute evenly; last slider absorbs remainder
+      const base = Math.floor(remaining / otherIndices.length);
+      let distributed = 0;
+      otherIndices.forEach((i, oi) => {
+        if (oi === otherIndices.length - 1) {
+          newAlloc[i] = remaining - distributed;
+        } else {
+          newAlloc[i] = base;
+          distributed += base;
+        }
       });
     }
 

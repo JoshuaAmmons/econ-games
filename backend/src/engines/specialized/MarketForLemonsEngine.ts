@@ -8,6 +8,11 @@ import type {
 } from '../GameEngine';
 import { SequentialBaseEngine } from '../sequential/SequentialBaseEngine';
 
+/** In-memory cache of server-assigned quality per seller per round. */
+const sellerQualities = new Map<string, number>(); // key: `${roundId}:${playerId}`
+
+const DEFAULT_QUALITIES = [10, 20, 30, 40, 50, 60, 70, 80, 90];
+
 /**
  * Market for Lemons Engine (Week 14)
  *
@@ -136,7 +141,23 @@ export class MarketForLemonsEngine extends SequentialBaseEngine {
   }
 
   /**
-   * Override handleAction to validate seller-submitted quality.
+   * Get the server-assigned quality for a seller in a given round.
+   * Generates and caches a random quality on first call per seller per round.
+   */
+  private getSellerQuality(roundId: string, playerId: string): number {
+    const key = `${roundId}:${playerId}`;
+    let quality = sellerQualities.get(key);
+    if (quality === undefined) {
+      quality = DEFAULT_QUALITIES[Math.floor(Math.random() * DEFAULT_QUALITIES.length)];
+      sellerQualities.set(key, quality);
+    }
+    return quality;
+  }
+
+  /**
+   * Override handleAction to assign quality SERVER-SIDE.
+   * The client no longer controls quality — it's assigned from the
+   * server's per-round cache to prevent sellers from spoofing.
    */
   async handleAction(
     roundId: string,
@@ -145,16 +166,30 @@ export class MarketForLemonsEngine extends SequentialBaseEngine {
     sessionCode: string,
     io: Server
   ): Promise<ActionResult> {
-    // Use the quality submitted by the seller (assigned on the frontend).
-    // Only assign a random fallback if the submitted quality is invalid.
     if (action.type === 'first_move') {
-      const qualities = [10, 20, 30, 40, 50, 60, 70, 80, 90];
-      if (!action.quality || !qualities.includes(action.quality)) {
-        action.quality = qualities[Math.floor(Math.random() * qualities.length)];
-      }
+      // Use the server-cached quality; ignore any client-submitted value
+      action.quality = this.getSellerQuality(roundId, playerId);
     }
 
     return super.handleAction(roundId, playerId, action, sessionCode, io);
+  }
+
+  /**
+   * Override getGameState to include server-assigned quality for sellers.
+   * This lets sellers see their quality before choosing a price.
+   */
+  async getGameState(
+    roundId: string,
+    playerId?: string
+  ): Promise<Record<string, any>> {
+    const base = await super.getGameState(roundId, playerId);
+
+    // If this is a seller who hasn't submitted yet, include their assigned quality
+    if (playerId && base.myRole === 'seller' && !base.myAction) {
+      base.assignedQuality = this.getSellerQuality(roundId, playerId);
+    }
+
+    return base;
   }
 
   /**

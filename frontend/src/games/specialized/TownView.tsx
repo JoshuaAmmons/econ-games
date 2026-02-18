@@ -9,6 +9,7 @@ interface PlayerInfo {
   id: string;
   name: string;
   label: number;
+  typeIndex?: number;
 }
 
 interface GoodConfig {
@@ -193,14 +194,14 @@ const TownView: React.FC<TownViewProps> = ({
           {player.label}
         </text>
 
-        {/* Group label */}
+        {/* Type label */}
         <text
           x={x + 2}
           y={y + 12}
           fontSize="9"
           fill="#999"
         >
-          G1
+          T{(player.typeIndex ?? 0) + 1}
         </text>
 
         {/* Field (rectangle) */}

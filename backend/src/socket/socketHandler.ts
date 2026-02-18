@@ -1,5 +1,6 @@
 import { Server as HTTPServer } from 'http';
 import { Server, Socket } from 'socket.io';
+import bcrypt from 'bcryptjs';
 import { RoundModel } from '../models/Round';
 import { TradeModel } from '../models/Trade';
 import { SessionModel } from '../models/Session';
@@ -59,7 +60,21 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
 
     // If the session has an admin password, validate it
     if (session.admin_password) {
-      if (!adminPassword || adminPassword !== session.admin_password) {
+      if (!adminPassword) {
+        console.warn(`Unauthorized admin action on session ${sessionCode} from socket ${socket.id}`);
+        socket.emit('error', { message: 'Unauthorized: invalid admin password' });
+        return null;
+      }
+
+      // Support both bcrypt hash and legacy plaintext passwords
+      let isValid = false;
+      if (session.admin_password.startsWith('$2a$') || session.admin_password.startsWith('$2b$')) {
+        isValid = await bcrypt.compare(adminPassword, session.admin_password);
+      } else {
+        isValid = adminPassword === session.admin_password;
+      }
+
+      if (!isValid) {
         console.warn(`Unauthorized admin action on session ${sessionCode} from socket ${socket.id}`);
         socket.emit('error', { message: 'Unauthorized: invalid admin password' });
         return null;

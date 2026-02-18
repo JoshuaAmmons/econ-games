@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import { SessionModel } from '../models/Session';
 import { PlayerModel } from '../models/Player';
 import { RoundModel } from '../models/Round';
@@ -318,8 +319,20 @@ export class SessionController {
         return;
       }
 
-      // Check the provided password
-      if (!admin_password || admin_password !== session.admin_password) {
+      // Check the provided password (supports both bcrypt hash and legacy plaintext)
+      if (!admin_password) {
+        res.status(401).json({ success: false, error: 'Incorrect admin password' } as ApiResponse);
+        return;
+      }
+
+      let isValid = false;
+      if (session.admin_password.startsWith('$2a$') || session.admin_password.startsWith('$2b$')) {
+        isValid = await bcrypt.compare(admin_password, session.admin_password);
+      } else {
+        isValid = admin_password === session.admin_password;
+      }
+
+      if (!isValid) {
         res.status(401).json({ success: false, error: 'Incorrect admin password' } as ApiResponse);
         return;
       }

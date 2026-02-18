@@ -102,11 +102,14 @@ const ResultsContent: React.FC = () => {
     loadResults();
   }, [code]);
 
+  // Retrieve admin password from localStorage (saved by AdminPasswordGate)
+  const storedAdminPassword = code ? localStorage.getItem(`admin_pw_${code}`) || undefined : undefined;
+
   const loadResults = async () => {
     try {
       if (!code) return;
       const session = await sessionsApi.getByCode(code);
-      const results = await sessionsApi.getResults(session.id);
+      const results = await sessionsApi.getResults(session.id, storedAdminPassword);
       setData(results);
     } catch (error) {
       console.error('Failed to load results:', error);
@@ -118,7 +121,7 @@ const ResultsContent: React.FC = () => {
 
   const handleExport = (type: string) => {
     if (!data) return;
-    const url = sessionsApi.getExportUrl(data.session.id, type);
+    const url = sessionsApi.getExportUrl(data.session.id, type, storedAdminPassword);
     window.open(url, '_blank');
     toast.success(`Downloading ${type} CSV...`);
   };

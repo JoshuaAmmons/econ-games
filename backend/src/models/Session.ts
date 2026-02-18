@@ -1,10 +1,18 @@
+import bcrypt from 'bcryptjs';
 import { pool } from '../config/database';
 import { Session, CreateSessionRequest } from '../types';
+
+const BCRYPT_ROUNDS = 10;
 
 export class SessionModel {
   // Create new session
   static async create(data: CreateSessionRequest): Promise<Session> {
     const code = await this.generateUniqueCode();
+
+    // Hash admin password if provided
+    const hashedAdminPassword = data.admin_password
+      ? await bcrypt.hash(data.admin_password, BCRYPT_ROUNDS)
+      : null;
 
     const result = await pool.query<Session>(
       `INSERT INTO sessions (
@@ -28,7 +36,7 @@ export class SessionModel {
         data.cost_increments,
         data.bot_enabled || false,
         data.passcode || null,
-        data.admin_password || null
+        hashedAdminPassword,
       ]
     );
 

@@ -75,8 +75,10 @@ export function useAnalyticsData(sessionCode: string | undefined) {
     setLoading(true);
     setError(null);
     try {
+      // Retrieve admin password from localStorage (saved by AdminPasswordGate)
+      const storedAdminPassword = localStorage.getItem(`admin_pw_${sessionCode}`) || undefined;
       const session = await sessionsApi.getByCode(sessionCode);
-      const results = await sessionsApi.getResults(session.id);
+      const results = await sessionsApi.getResults(session.id, storedAdminPassword);
       setData(results);
     } catch (err) {
       console.error('Failed to load analytics data:', err);
