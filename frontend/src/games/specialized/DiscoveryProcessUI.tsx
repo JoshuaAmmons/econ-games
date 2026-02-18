@@ -350,7 +350,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
   };
 
   const getHouseValue = () => {
-    if (!myInfo) return 0;
+    if (!myInfo || goods.length === 0) return 0;
     const reqs = myInfo.earningRequirements;
     const setAmounts = goods.map((good, i) => {
       const goodKey = `good${i + 1}`;
@@ -363,7 +363,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
   };
 
   const getWastedGoods = () => {
-    if (!myInfo) return {};
+    if (!myInfo || goods.length === 0) return {};
     const reqs = myInfo.earningRequirements;
     const setAmounts = goods.map((good, i) => {
       const goodKey = `good${i + 1}`;

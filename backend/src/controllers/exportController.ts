@@ -8,9 +8,15 @@ import { GameActionModel } from '../models/GameAction';
 
 const DA_GAME_TYPES = ['double_auction', 'double_auction_tax', 'double_auction_price_controls'];
 
-/** Escape a string for use inside a double-quoted CSV field */
+/** Escape a string for use inside a double-quoted CSV field.
+ *  Also neutralizes formula injection by prefixing dangerous leading characters. */
 function csvEscape(value: string): string {
-  return value.replace(/"/g, '""');
+  let escaped = value.replace(/"/g, '""');
+  // Prevent CSV/formula injection in spreadsheet applications
+  if (/^[=+\-@\t\r]/.test(escaped)) {
+    escaped = "'" + escaped;
+  }
+  return escaped;
 }
 
 /**

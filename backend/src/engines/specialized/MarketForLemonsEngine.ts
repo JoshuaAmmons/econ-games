@@ -215,8 +215,8 @@ export class MarketForLemonsEngine extends SequentialBaseEngine {
     role: 'firstMover' | 'secondMover'
   ): Record<string, any> {
     if (role === 'firstMover') {
-      // Strip seller-specific cost/value details from broadcast
-      const { sellerCost, buyerValue, ...safe } = resultData;
+      // Strip seller-specific cost/value/quality details from broadcast
+      const { sellerCost, buyerValue, quality, ...safe } = resultData;
       return safe;
     }
     return resultData;

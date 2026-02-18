@@ -32,7 +32,7 @@ const TaxSubsidyUI: React.FC<DAGameUIProps> = ({
   // Get tax config from session
   const gameConfig = session?.game_config || {};
   const taxType = gameConfig.taxType || 'buyer';
-  const taxAmount = gameConfig.taxAmount ?? 0;
+  const taxAmount = Number(gameConfig.taxAmount ?? 0);
   const isSubsidy = taxAmount < 0;
   const taxLabel = isSubsidy ? 'Subsidy' : 'Tax';
   const absAmount = Math.abs(taxAmount);
@@ -140,8 +140,8 @@ const TaxSubsidyUI: React.FC<DAGameUIProps> = ({
               <DollarSign className="w-5 h-5 text-green-600" />
               <span className="font-medium">Total Profit</span>
             </div>
-            <span className={`text-2xl font-bold ${(Number(player?.total_profit) || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              ${Number(player?.total_profit || 0).toFixed(2)}
+            <span className={`text-2xl font-bold ${(Number(player?.total_profit ?? 0)) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              ${Number(player?.total_profit ?? 0).toFixed(2)}
             </span>
           </div>
         </Card>

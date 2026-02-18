@@ -40,9 +40,9 @@ const BertrandUI: React.FC<GameUIProps> = ({
   const [results, setResults] = useState<RoundResult[] | null>(null);
 
   const gameConfig = session?.game_config || {};
-  const marginalCost = gameConfig.marginalCost ?? 10;
-  const marketDemand = gameConfig.marketDemand ?? 100;
-  const maxPrice = gameConfig.maxPrice ?? 100;
+  const marginalCost = Number(gameConfig.marginalCost ?? 10);
+  const marketDemand = Number(gameConfig.marketDemand ?? 100);
+  const maxPrice = Number(gameConfig.maxPrice ?? 100);
 
   // Reset state when new round starts
   useEffect(() => {
