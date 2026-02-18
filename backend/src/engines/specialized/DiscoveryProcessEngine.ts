@@ -320,7 +320,7 @@ export class DiscoveryProcessEngine implements GameEngine {
         return this.handleMoveGoods(roundId, state, playerId, action, config, sessionCode, io);
 
       case 'chat':
-        return this.handleChat(state, playerId, player.name || `Player`, action, sessionCode, io);
+        return this.handleChat(state, playerId, player.name || `Player`, action, config, sessionCode, io);
 
       default:
         return { success: false, error: `Unknown action type: ${action.type}` };
@@ -518,12 +518,23 @@ export class DiscoveryProcessEngine implements GameEngine {
     playerId: string,
     playerName: string,
     action: Record<string, any>,
+    config: Record<string, any>,
     sessionCode: string,
     io: Server
   ): ActionResult {
+    // Enforce chat permission settings (frontend hides UI, but validate server-side)
+    if (config.allowChat === false) {
+      return { success: false, error: 'Chat is disabled for this session' };
+    }
+
     const { message, recipients } = action;
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
       return { success: false, error: 'Message cannot be empty' };
+    }
+
+    // Enforce private chat permission
+    if (recipients && recipients !== 'all' && config.allowPrivateChat === false) {
+      return { success: false, error: 'Private chat is disabled for this session' };
     }
 
     const chatMsg = {
@@ -539,9 +550,14 @@ export class DiscoveryProcessEngine implements GameEngine {
     if (recipients === 'all') {
       io.to(`market-${sessionCode}`).emit('chat-message', chatMsg);
     } else {
-      // Private message: send only to intended recipients + sender
+      // Private message: validate recipient IDs against session players, then send
       const recipientList = Array.isArray(recipients) ? recipients : [recipients];
-      const targets = new Set([...recipientList, playerId]);
+      const knownPlayerIds = new Set(state.inventories.keys());
+      const validRecipients = recipientList.filter(id => knownPlayerIds.has(id));
+      if (validRecipients.length === 0) {
+        return { success: false, error: 'No valid recipients found' };
+      }
+      const targets = new Set([...validRecipients, playerId]);
       for (const targetId of targets) {
         io.to(`player-${targetId}`).emit('chat-message', chatMsg);
       }
@@ -714,7 +730,7 @@ export class DiscoveryProcessEngine implements GameEngine {
       timeRemaining: 0,
     });
 
-    // Clean up timers for this round (keep roundState for reconnection)
+    // Clean up timers for this round
     const timer = this.productionTimers.get(roundId);
     if (timer) {
       clearTimeout(timer);
@@ -725,6 +741,12 @@ export class DiscoveryProcessEngine implements GameEngine {
       clearTimeout(moveTimer);
       this.moveTimers.delete(roundId);
     }
+
+    // Clean up round state after a grace period for late reconnections
+    const capturedRoundId = roundId;
+    setTimeout(() => {
+      this.roundStates.delete(capturedRoundId);
+    }, 60_000);
 
     return {
       playerResults: results,

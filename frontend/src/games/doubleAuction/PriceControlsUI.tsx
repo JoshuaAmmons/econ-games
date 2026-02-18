@@ -117,7 +117,9 @@ const PriceControlsUI: React.FC<DAGameUIProps> = ({
                 type="number"
                 step="0.01"
                 min={!isCeiling ? controlPrice : 0.01}
-                max={isCeiling ? controlPrice : (isBuyer ? privateValue : undefined)}
+                max={isCeiling
+                  ? (isBuyer && privateValue != null ? Math.min(Number(controlPrice), Number(privateValue)) : controlPrice)
+                  : (isBuyer ? privateValue : undefined)}
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder={`${isCeiling ? 'Max' : 'Min'} $${controlPrice.toFixed(2)}`}

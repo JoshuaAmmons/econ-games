@@ -158,11 +158,18 @@ export class MonopolyEngine extends SimultaneousBaseEngine {
 
       // Consumer surplus = 0.5 × (a - P) × Q
       const consumerSurplus = 0.5 * (a - price) * quantity;
-      // Deadweight loss = 0.5 × (P - MC) × (optimalQ_competitive - Q) where competitive Q = (a-mc)/b
+      // Deadweight loss triangle — under-production (P > MC) or over-production (P < MC)
       const competitiveQ = (a - mc) / b;
-      const dwl = quantity < competitiveQ
-        ? 0.5 * (price - mc) * (competitiveQ - quantity)
-        : 0;
+      let dwl: number;
+      if (quantity < competitiveQ) {
+        // Under-production: standard monopoly DWL
+        dwl = 0.5 * (price - mc) * (competitiveQ - quantity);
+      } else if (quantity > competitiveQ) {
+        // Over-production: welfare loss from producing beyond efficient level
+        dwl = 0.5 * (mc - price) * (quantity - competitiveQ);
+      } else {
+        dwl = 0;
+      }
 
       return {
         playerId: act.playerId,

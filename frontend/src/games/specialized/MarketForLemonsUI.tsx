@@ -268,7 +268,9 @@ const MarketForLemonsUI: React.FC<GameUIProps> = ({
                     <div className="text-sm space-y-1">
                       <div className="flex justify-between">
                         <span>Quality: {pair.firstMoverResultData?.quality ?? "N/A"}</span>
-                        <span>Value to buyer: ${Number(pair.firstMoverResultData?.buyerValue ?? 0).toFixed(2)}</span>
+                        <span>Value to buyer: {pair.secondMoverResultData?.buyerValue != null
+                          ? `$${Number(pair.secondMoverResultData.buyerValue).toFixed(2)}`
+                          : 'N/A'}</span>
                       </div>
                       <div className="flex justify-between text-xs">
                         <span>Seller: ${Number(pair.firstMoverProfit).toFixed(2)}</span>

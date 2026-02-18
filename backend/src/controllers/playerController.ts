@@ -42,6 +42,13 @@ export class PlayerController {
   static async joinSession(req: Request, res: Response) {
     try {
       const { code, name: rawName, passcode }: JoinSessionRequest = req.body;
+      if (!code) {
+        res.status(400).json({
+          success: false,
+          error: 'Session code is required'
+        } as ApiResponse);
+        return;
+      }
       const name = sanitizeName(rawName);
 
       // Find session
@@ -216,6 +223,13 @@ export class PlayerController {
       }
 
       const session = await SessionModel.findById(player.session_id);
+      if (!session) {
+        res.status(404).json({
+          success: false,
+          error: 'Session not found'
+        } as ApiResponse);
+        return;
+      }
 
       // Convert DECIMAL columns from strings to numbers (pg driver returns DECIMAL as string)
       const sanitizedPlayer = {

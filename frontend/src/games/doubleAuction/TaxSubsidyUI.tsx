@@ -32,7 +32,7 @@ const TaxSubsidyUI: React.FC<DAGameUIProps> = ({
   // Get tax config from session
   const gameConfig = session?.game_config || {};
   const taxType = gameConfig.taxType || 'buyer';
-  const taxAmount = gameConfig.taxAmount || 0;
+  const taxAmount = gameConfig.taxAmount ?? 0;
   const isSubsidy = taxAmount < 0;
   const taxLabel = isSubsidy ? 'Subsidy' : 'Tax';
   const absAmount = Math.abs(taxAmount);

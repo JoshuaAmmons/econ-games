@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, Suspense } from 'react';
+import React, { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Timer } from '../components/shared/Timer';
 import { Spinner } from '../components/shared/Spinner';
@@ -117,15 +117,21 @@ export const Market: React.FC = () => {
     }
   };
 
-  // Reload player data to get updated profit
-  const refreshPlayer = async () => {
+  // Reload player data to get updated profit (memoized to prevent
+  // socket listener useEffect from tearing down/re-registering on every render)
+  const refreshPlayer = useCallback(async () => {
     try {
       const { player: p } = await playersApi.getStatus(playerId);
       setPlayer(p);
     } catch (err) {
       console.error('Failed to refresh player:', err);
     }
-  };
+  }, [playerId]);
+
+  // Keep a ref to session so socket handlers always have the latest value
+  // without requiring re-registration of event listeners.
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
 
   // On (re)connect, recover the active round and request full game state.
   // This handles both initial page load recovery and mid-round socket reconnects.
@@ -249,8 +255,9 @@ export const Market: React.FC = () => {
       setRoundNumber(data.roundNumber);
       setRoundActive(true);
       // Initialize countdown timer from session's time_per_round
-      if (session?.time_per_round) {
-        setTimeRemaining(session.time_per_round);
+      // Use ref to avoid stale closure when session loads after socket connects
+      if (sessionRef.current?.time_per_round) {
+        setTimeRemaining(sessionRef.current.time_per_round);
       }
       setBids([]);
       setAsks([]);
