@@ -15,6 +15,11 @@ export function generateValuations(
     increment = 1;
   }
 
+  // Guard against min > max — return min repeated to fill count
+  if (min > max) {
+    return Array(count).fill(min);
+  }
+
   const values: number[] = [];
 
   // Generate all possible values
@@ -92,7 +97,7 @@ export function validateBid(bidPrice: number, player: Player): {
     return { valid: false, error: 'Only buyers can submit bids' };
   }
 
-  if (!player.valuation) {
+  if (player.valuation == null) {
     return { valid: false, error: 'Player has no valuation' };
   }
 
@@ -122,7 +127,7 @@ export function validateAsk(askPrice: number, player: Player): {
     return { valid: false, error: 'Only sellers can submit asks' };
   }
 
-  if (!player.production_cost) {
+  if (player.production_cost == null) {
     return { valid: false, error: 'Player has no production cost' };
   }
 

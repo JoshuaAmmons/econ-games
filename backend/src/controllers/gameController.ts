@@ -14,10 +14,19 @@ export class GameController {
       const { round_id, player_id, price }: SubmitBidRequest = req.body;
 
       // Validate inputs
-      if (!round_id || !player_id || !price) {
+      if (!round_id || !player_id || price === undefined || price === null) {
         res.status(400).json({
           success: false,
           error: 'Missing required fields'
+        } as ApiResponse);
+        return;
+      }
+
+      // Validate price is a finite number (must run BEFORE validateBid to catch NaN)
+      if (typeof price !== 'number' || !Number.isFinite(price) || price < 0) {
+        res.status(400).json({
+          success: false,
+          error: 'Price must be a valid non-negative number'
         } as ApiResponse);
         return;
       }
@@ -32,21 +41,12 @@ export class GameController {
         return;
       }
 
-      // Validate bid
+      // Validate bid against player's valuation
       const validation = validateBid(price, player);
       if (!validation.valid) {
         res.status(400).json({
           success: false,
           error: validation.error
-        } as ApiResponse);
-        return;
-      }
-
-      // Validate price is a finite number
-      if (typeof price !== 'number' || !Number.isFinite(price) || price < 0) {
-        res.status(400).json({
-          success: false,
-          error: 'Price must be a valid non-negative number'
         } as ApiResponse);
         return;
       }
@@ -85,10 +85,19 @@ export class GameController {
       const { round_id, player_id, price }: SubmitAskRequest = req.body;
 
       // Validate inputs
-      if (!round_id || !player_id || !price) {
+      if (!round_id || !player_id || price === undefined || price === null) {
         res.status(400).json({
           success: false,
           error: 'Missing required fields'
+        } as ApiResponse);
+        return;
+      }
+
+      // Validate price is a finite number (must run BEFORE validateAsk to catch NaN)
+      if (typeof price !== 'number' || !Number.isFinite(price) || price < 0) {
+        res.status(400).json({
+          success: false,
+          error: 'Price must be a valid non-negative number'
         } as ApiResponse);
         return;
       }
@@ -103,21 +112,12 @@ export class GameController {
         return;
       }
 
-      // Validate ask
+      // Validate ask against player's production cost
       const validation = validateAsk(price, player);
       if (!validation.valid) {
         res.status(400).json({
           success: false,
           error: validation.error
-        } as ApiResponse);
-        return;
-      }
-
-      // Validate price is a finite number
-      if (typeof price !== 'number' || !Number.isFinite(price) || price < 0) {
-        res.status(400).json({
-          success: false,
-          error: 'Price must be a valid non-negative number'
         } as ApiResponse);
         return;
       }
