@@ -85,6 +85,28 @@ export abstract class SequentialBaseEngine implements GameEngine {
   }
 
   /**
+   * Sanitize the second-move action before broadcasting to all players.
+   * Subclasses can override to strip hidden information.
+   * By default, returns only the action type (accept/reject) without details.
+   */
+  protected sanitizeSecondMoveForBroadcast(action: Record<string, any>): Record<string, any> {
+    return action;
+  }
+
+  /**
+   * Sanitize result data for broadcast to ALL players.
+   * Subclasses can override to strip hidden information from individual results
+   * (e.g., quality in Market for Lemons shouldn't be shown to buyers of other pairs).
+   * By default, returns the full result data.
+   */
+  protected sanitizeResultDataForBroadcast(
+    resultData: Record<string, any>,
+    _role: 'firstMover' | 'secondMover'
+  ): Record<string, any> {
+    return resultData;
+  }
+
+  /**
    * Build (or retrieve cached) stable pairings for a session.
    * Uses ALL players (including inactive) sorted by ID within each role group
    * so that pairings never shift when a player disconnects.
@@ -214,11 +236,11 @@ export abstract class SequentialBaseEngine implements GameEngine {
       const secondMovers = allPlayers.filter(p => p.role === secondMoverRole);
       const secondMoveActions = await GameActionModel.findByRoundAndType(roundId, 'second_move');
 
-      // Broadcast
+      // Broadcast — sanitize action to avoid leaking private details
       io.to(`market-${sessionCode}`).emit('second-move-submitted', {
         playerId,
         playerName: player.name,
-        action,
+        action: this.sanitizeSecondMoveForBroadcast(action),
         totalSecondMoves: secondMoveActions.length,
         totalSecondMovers: secondMovers.length,
         partnerId,
@@ -369,7 +391,7 @@ export abstract class SequentialBaseEngine implements GameEngine {
         // If both are active but one hasn't submitted yet, skip (timer will eventually resolve)
       }
 
-      // Broadcast all results
+      // Broadcast all results — sanitize to avoid leaking hidden info
       io.to(`market-${sessionCode}`).emit('round-results', {
         roundId,
         pairs: pairResults.map(pr => ({
@@ -378,11 +400,11 @@ export abstract class SequentialBaseEngine implements GameEngine {
           secondMoverId: pr.secondMover.id,
           secondMoverName: pr.secondMover.name,
           firstMoveAction: pr.firstMoveAction ? this.sanitizeFirstMoveForBroadcast(pr.firstMoveAction) : null,
-          secondMoveAction: pr.secondMoveAction,
+          secondMoveAction: pr.secondMoveAction ? this.sanitizeSecondMoveForBroadcast(pr.secondMoveAction) : null,
           firstMoverProfit: pr.result.firstMoverProfit,
           secondMoverProfit: pr.result.secondMoverProfit,
-          firstMoverResultData: pr.result.firstMoverResultData,
-          secondMoverResultData: pr.result.secondMoverResultData,
+          firstMoverResultData: this.sanitizeResultDataForBroadcast(pr.result.firstMoverResultData, 'firstMover'),
+          secondMoverResultData: this.sanitizeResultDataForBroadcast(pr.result.secondMoverResultData, 'secondMover'),
           partnerDisconnected: pr.partnerDisconnected || false,
         })),
       });

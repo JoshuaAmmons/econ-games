@@ -145,6 +145,7 @@ export class GiftExchangeEngine extends SequentialBaseEngine {
 
     if (effort === undefined || effort === null) return 'Effort level is required';
     if (typeof effort !== 'number' || isNaN(effort)) return 'Effort must be a valid number';
+    if (!Number.isInteger(effort)) return 'Effort must be a whole number';
     if (effort < 1) return 'Minimum effort is 1';
     if (effort > maxEffort) return `Effort cannot exceed ${maxEffort}`;
     return null;

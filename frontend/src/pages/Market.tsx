@@ -248,6 +248,10 @@ export const Market: React.FC = () => {
       setRoundId(data.round.id);
       setRoundNumber(data.roundNumber);
       setRoundActive(true);
+      // Initialize countdown timer from session's time_per_round
+      if (session?.time_per_round) {
+        setTimeRemaining(session.time_per_round);
+      }
       setBids([]);
       setAsks([]);
       setTrades([]);

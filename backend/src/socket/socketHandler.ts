@@ -222,8 +222,9 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
         const session = await verifyAdminAuth(sessionCode, adminPassword, socket);
         if (!session) return;
 
-        // Cache the admin password so timer-update can skip DB lookups
-        adminAuthCache.set(sessionCode, { adminPassword: session.admin_password || undefined });
+        // Cache the verified plaintext password (NOT the bcrypt hash) so
+        // timer-update can compare cheaply without bcrypt on every tick.
+        adminAuthCache.set(sessionCode, { adminPassword: adminPassword || undefined });
 
         const round = await RoundModel.findBySessionAndNumber(session.id, roundNumber);
         if (!round) throw new Error('Round not found');
@@ -268,8 +269,9 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
         const session = await verifyAdminAuth(sessionCode, adminPassword, socket);
         if (!session) return;
 
-        // Cache the admin password so timer-update can skip DB lookups
-        adminAuthCache.set(sessionCode, { adminPassword: session.admin_password || undefined });
+        // Cache the verified plaintext password (NOT the bcrypt hash) so
+        // timer-update can compare cheaply without bcrypt on every tick.
+        adminAuthCache.set(sessionCode, { adminPassword: adminPassword || undefined });
 
         // Guard against concurrent end-round processing (timer + manual click race)
         if (endingRounds.has(roundId)) {
@@ -343,10 +345,10 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
             return;
           }
         } else {
-          // First time: do full DB check and cache the result
+          // First time: do full DB check and cache the plaintext password
           const session = await verifyAdminAuth(data.sessionCode, data.adminPassword, socket);
           if (!session) return;
-          adminAuthCache.set(data.sessionCode, { adminPassword: session.admin_password || undefined });
+          adminAuthCache.set(data.sessionCode, { adminPassword: data.adminPassword || undefined });
         }
 
         io.to(`market-${data.sessionCode}`).emit('timer-update', {

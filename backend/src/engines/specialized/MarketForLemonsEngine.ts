@@ -166,7 +166,11 @@ export class MarketForLemonsEngine extends SequentialBaseEngine {
     sessionCode: string,
     io: Server
   ): Promise<ActionResult> {
-    if (action.type === 'first_move') {
+    // Look up the player's actual DB role to prevent a buyer from sending
+    // {type: 'first_move'} to bypass role checks and inject quality.
+    const { PlayerModel } = await import('../../models/Player');
+    const player = await PlayerModel.findById(playerId);
+    if (player?.role === 'seller' && action.type === 'first_move') {
       // Use the server-cached quality; ignore any client-submitted value
       action.quality = this.getSellerQuality(roundId, playerId);
     }
@@ -198,6 +202,44 @@ export class MarketForLemonsEngine extends SequentialBaseEngine {
   protected sanitizeFirstMoveForBroadcast(action: Record<string, any>): Record<string, any> {
     const { quality, ...safe } = action;
     return safe;
+  }
+
+  /**
+   * Strip quality-related info from result data broadcast to ALL players.
+   * Seller result data contains quality, sellerCost, buyerValue — these
+   * should not be visible to buyers in other pairs via the broadcast.
+   * The buyer's own result correctly shows quality only if they accepted.
+   */
+  protected sanitizeResultDataForBroadcast(
+    resultData: Record<string, any>,
+    role: 'firstMover' | 'secondMover'
+  ): Record<string, any> {
+    if (role === 'firstMover') {
+      // Strip seller-specific cost/value details from broadcast
+      const { sellerCost, buyerValue, ...safe } = resultData;
+      return safe;
+    }
+    return resultData;
+  }
+
+  /**
+   * Clean up the sellerQualities cache for this round to prevent memory leaks.
+   */
+  async processRoundEnd(
+    roundId: string,
+    sessionCode: string,
+    io: Server
+  ): Promise<RoundResult> {
+    const result = await super.processRoundEnd(roundId, sessionCode, io);
+
+    // Clean up quality cache for this round
+    for (const key of sellerQualities.keys()) {
+      if (key.startsWith(`${roundId}:`)) {
+        sellerQualities.delete(key);
+      }
+    }
+
+    return result;
   }
 
   protected calculatePairResult(
