@@ -340,7 +340,8 @@ export class DiscoveryProcessEngine implements GameEngine {
     }
 
     const sum = allocation.reduce((s, v) => s + v, 0);
-    if (Math.abs(sum - 100) > 1) {
+    // Tighter tolerance: slider guarantees exact sum via remainder absorption
+    if (Math.abs(sum - 100) > 0.5) {
       return { success: false, error: 'Allocation percentages must sum to 100' };
     }
 
@@ -635,7 +636,10 @@ export class DiscoveryProcessEngine implements GameEngine {
         this.roundStates.set(roundId, state);
       }
     } else if (originalPhase === 'production') {
-      // State exists but production never transitioned — run it now
+      // State exists but production never transitioned — run it now.
+      // Temporarily reset phase so handleStartProduction doesn't reject
+      // (it checks state.phase === 'production').
+      state.phase = 'production';
       await this.handleStartProduction(roundId, state, config, session, sessionCode, io);
     }
 
@@ -1179,8 +1183,10 @@ export class DiscoveryProcessEngine implements GameEngine {
   }
 
   private getPlayerTypeIndex(player: any, allPlayers: any[]): number {
-    // Assign types alternating: player 0 → type 0, player 1 → type 1, etc.
-    const idx = allPlayers.findIndex((p) => p.id === player.id);
+    // Sort by ID for stable ordering regardless of join/disconnect order.
+    // This ensures a player's type never changes even if others disconnect.
+    const sorted = [...allPlayers].sort((a, b) => a.id.localeCompare(b.id));
+    const idx = sorted.findIndex((p) => p.id === player.id);
     return idx >= 0 ? idx % 2 : 0;
   }
 

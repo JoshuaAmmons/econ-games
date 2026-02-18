@@ -626,7 +626,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
         {results && (
           <Card title="Period Results">
             <div className="space-y-2 text-sm">
-              {results
+              {[...results]
                 .sort((a, b) => b.earnings - a.earnings)
                 .map((r) => {
                   const isSelf = r.playerId === playerId;

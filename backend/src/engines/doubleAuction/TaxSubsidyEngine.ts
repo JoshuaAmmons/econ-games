@@ -105,7 +105,8 @@ export class TaxSubsidyEngine extends DoubleAuctionEngine {
 
       const gameConfig = session.game_config || {};
       const taxType: string = gameConfig.taxType || 'buyer';
-      const taxAmount: number = gameConfig.taxAmount || 0;
+      // Use ?? so a taxAmount of 0 is not replaced by the default
+      const taxAmount: number = gameConfig.taxAmount ?? 0;
 
       // Get active bids and asks
       const bids = await BidModel.findActiveByRound(roundId);
@@ -137,10 +138,11 @@ export class TaxSubsidyEngine extends DoubleAuctionEngine {
 
         if (taxType === 'buyer') {
           // Buyer pays the tax: their effective cost is price + tax
-          buyerProfit = (match.bid.player.valuation || 0) - match.price - taxAmount;
+          // Wrap in Number() because pg returns DECIMAL columns as strings
+          buyerProfit = Number(match.bid.player.valuation || 0) - match.price - taxAmount;
         } else {
           // Seller pays the tax: their effective revenue is price - tax
-          sellerProfit = match.price - taxAmount - (match.ask.player.production_cost || 0);
+          sellerProfit = match.price - taxAmount - Number(match.ask.player.production_cost || 0);
         }
 
         const trade = await TradeModel.create(

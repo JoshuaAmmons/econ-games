@@ -101,14 +101,18 @@ export class MonopolyEngine extends SimultaneousBaseEngine {
   }
 
   validateConfig(config: Record<string, any>): ValidationResult {
-    if (config.demandIntercept !== undefined && config.demandIntercept <= 0) {
+    // Use defaults so validation runs even when fields are omitted
+    const demandIntercept = config.demandIntercept ?? 100;
+    const demandSlope = config.demandSlope ?? 1;
+    const marginalCost = config.marginalCost ?? 20;
+
+    if (demandIntercept <= 0) {
       return { valid: false, error: 'Demand intercept must be positive' };
     }
-    if (config.demandSlope !== undefined && config.demandSlope <= 0) {
+    if (demandSlope <= 0) {
       return { valid: false, error: 'Demand slope must be positive' };
     }
-    if (config.marginalCost !== undefined && config.demandIntercept !== undefined
-        && config.marginalCost >= config.demandIntercept) {
+    if (marginalCost >= demandIntercept) {
       return { valid: false, error: 'Marginal cost must be less than demand intercept' };
     }
     return { valid: true };
