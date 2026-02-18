@@ -80,50 +80,59 @@ export class PlayerController {
         }
       }
 
-      // Get existing players for role assignment (capacity is enforced atomically below)
-      const existingPlayers = await PlayerModel.findBySession(session.id);
-
       const gameType = session.game_type || 'double_auction';
       let player: import('../types').Player | null = null;
 
       if (DA_GAME_TYPES.includes(gameType)) {
         // DA games: assign buyer/seller roles with valuations/costs
-        const currentBuyers = existingPlayers.filter(p => p.role === 'buyer').length;
-        const currentSellers = existingPlayers.filter(p => p.role === 'seller').length;
-        const role: 'buyer' | 'seller' = currentBuyers <= currentSellers ? 'buyer' : 'seller';
+        // Role assignment + capacity check happen atomically inside the transaction
+        player = await PlayerModel.createWithRoleAssignment(
+          session.id,
+          session.market_size,
+          name,
+          false,
+          (existingPlayers) => {
+            const currentBuyers = existingPlayers.filter(p => p.role === 'buyer').length;
+            const currentSellers = existingPlayers.filter(p => p.role === 'seller').length;
+            const role: 'buyer' | 'seller' = currentBuyers <= currentSellers ? 'buyer' : 'seller';
 
-        let value: number;
-        if (role === 'buyer') {
-          const valuations = generateValuations(
-            session.valuation_min,
-            session.valuation_max,
-            session.valuation_increments,
-            1
-          );
-          value = valuations[0];
-        } else {
-          const costs = generateProductionCosts(
-            session.cost_min,
-            session.cost_max,
-            session.cost_increments,
-            1
-          );
-          value = costs[0];
-        }
+            let value: number;
+            if (role === 'buyer') {
+              const valuations = generateValuations(
+                session.valuation_min,
+                session.valuation_max,
+                session.valuation_increments,
+                1
+              );
+              value = valuations[0];
+            } else {
+              const costs = generateProductionCosts(
+                session.cost_min,
+                session.cost_max,
+                session.cost_increments,
+                1
+              );
+              value = costs[0];
+            }
 
-        const valueColumn = role === 'buyer' ? 'valuation' as const : 'production_cost' as const;
-        player = await PlayerModel.createWithCapacityCheck(
-          session.id, session.market_size, role, name, false, valueColumn, value
+            const valueColumn = role === 'buyer' ? 'valuation' as const : 'production_cost' as const;
+            return { role, valueColumn, value };
+          }
         );
       } else if (PAIRED_ROLES[gameType]) {
-        // Paired games: alternate between two roles
+        // Paired games: alternate between two roles (atomic role assignment)
         const [role1, role2] = PAIRED_ROLES[gameType];
-        const role1Count = existingPlayers.filter(p => p.role === role1).length;
-        const role2Count = existingPlayers.filter(p => p.role === role2).length;
-        const role = role1Count <= role2Count ? role1 : role2;
-
-        player = await PlayerModel.createWithCapacityCheck(
-          session.id, session.market_size, role, name
+        player = await PlayerModel.createWithRoleAssignment(
+          session.id,
+          session.market_size,
+          name,
+          false,
+          (existingPlayers) => {
+            const role1Count = existingPlayers.filter(p => p.role === role1).length;
+            const role2Count = existingPlayers.filter(p => p.role === role2).length;
+            const role = role1Count <= role2Count ? role1 : role2;
+            return { role };
+          }
         );
       } else {
         // Uniform-role games (Bertrand, Cournot, Public Goods, etc.)
@@ -145,7 +154,7 @@ export class PlayerController {
       // Convert DECIMAL columns from strings to numbers (pg driver returns DECIMAL as string)
       const sanitizedPlayer = {
         ...player,
-        total_profit: Number(player.total_profit || 0),
+        total_profit: Number(player.total_profit ?? 0),
         valuation: player.valuation != null ? Number(player.valuation) : null,
         production_cost: player.production_cost != null ? Number(player.production_cost) : null,
       };
@@ -189,7 +198,7 @@ export class PlayerController {
       // Convert DECIMAL columns from strings to numbers (pg driver returns DECIMAL as string)
       const sanitizedPlayer = {
         ...player,
-        total_profit: Number(player.total_profit || 0),
+        total_profit: Number(player.total_profit ?? 0),
         valuation: player.valuation != null ? Number(player.valuation) : null,
         production_cost: player.production_cost != null ? Number(player.production_cost) : null,
       };
@@ -234,7 +243,7 @@ export class PlayerController {
       // Convert DECIMAL columns from strings to numbers (pg driver returns DECIMAL as string)
       const sanitizedPlayer = {
         ...player,
-        total_profit: Number(player.total_profit || 0),
+        total_profit: Number(player.total_profit ?? 0),
         valuation: player.valuation != null ? Number(player.valuation) : null,
         production_cost: player.production_cost != null ? Number(player.production_cost) : null,
       };

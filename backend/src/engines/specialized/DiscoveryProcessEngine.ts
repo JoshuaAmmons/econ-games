@@ -261,9 +261,9 @@ export class DiscoveryProcessEngine implements GameEngine {
       good2Color: config.good2Color || '#6495ED',
       good3Name: config.good3Name || 'Pink',
       good3Color: config.good3Color || '#FF1493',
-      productionLength: config.productionLength || 10,
-      moveLength: config.time_per_round || 90,
-      allowStealing: config.allowStealing || false,
+      productionLength: config.productionLength ?? 10,
+      moveLength: config.time_per_round ?? 90,
+      allowStealing: config.allowStealing ?? false,
       allowChat: config.allowChat !== false,
       allowPrivateChat: config.allowPrivateChat !== false,
     };
@@ -380,7 +380,7 @@ export class DiscoveryProcessEngine implements GameEngine {
     const activePlayers = await PlayerModel.findActiveBySession(session.id);
     const goodNames = this.getGoodNames(config);
     const playerTypes = this.getPlayerTypes(config);
-    const productionLength = config.productionLength || 10;
+    const productionLength = config.productionLength ?? 10;
 
     for (const p of activePlayers) {
       const typeIndex = this.getPlayerTypeIndex(p, activePlayers);
@@ -450,8 +450,14 @@ export class DiscoveryProcessEngine implements GameEngine {
 
     const { good, amount, fromLocation, fromPlayerId, toPlayerId } = action;
 
-    if (!good || typeof amount !== 'number' || !Number.isInteger(amount) || amount < 1) {
+    if (!good || typeof good !== 'string' || typeof amount !== 'number' || !Number.isInteger(amount) || amount < 1) {
       return { success: false, error: 'Invalid good or amount (must be a positive integer)' };
+    }
+
+    // Validate good name against configured goods
+    const goodNames = this.getGoodNames(config);
+    if (!goodNames.includes(good)) {
+      return { success: false, error: `Unknown good: "${good}". Valid goods: ${goodNames.join(', ')}` };
     }
 
     if (fromLocation !== 'field' && fromLocation !== 'house') {
@@ -459,7 +465,7 @@ export class DiscoveryProcessEngine implements GameEngine {
     }
 
     // Validate: can only move from own inventory (unless stealing is enabled)
-    const allowStealing = config.allowStealing || false;
+    const allowStealing = config.allowStealing ?? false;
     if (fromPlayerId !== playerId && !allowStealing) {
       return { success: false, error: 'Cannot take goods from other players' };
     }
@@ -642,8 +648,8 @@ export class DiscoveryProcessEngine implements GameEngine {
           productionSettings: new Map(),
           playerTypes: new Map(),
           phaseStartedAt: Date.now(),
-          productionLength: config.productionLength || 10,
-          moveLength: config.time_per_round || 90,
+          productionLength: config.productionLength ?? 10,
+          moveLength: config.time_per_round ?? 90,
           chatMessages: [],
         };
         for (const p of activePlayers) {
@@ -833,9 +839,9 @@ export class DiscoveryProcessEngine implements GameEngine {
           good2Color: config.good2Color || '#6495ED',
           good3Name: config.good3Name || 'Pink',
           good3Color: config.good3Color || '#FF1493',
-          productionLength: config.productionLength || 10,
-          moveLength: config.time_per_round || 90,
-          allowStealing: config.allowStealing || false,
+          productionLength: config.productionLength ?? 10,
+          moveLength: config.time_per_round ?? 90,
+          allowStealing: config.allowStealing ?? false,
           allowChat: config.allowChat !== false,
           allowPrivateChat: config.allowPrivateChat !== false,
         },
@@ -859,9 +865,9 @@ export class DiscoveryProcessEngine implements GameEngine {
       good2Color: config.good2Color || '#6495ED',
       good3Name: config.good3Name || 'Pink',
       good3Color: config.good3Color || '#FF1493',
-      productionLength: config.productionLength || 10,
-      moveLength: config.time_per_round || 90,
-      allowStealing: config.allowStealing || false,
+      productionLength: config.productionLength ?? 10,
+      moveLength: config.time_per_round ?? 90,
+      allowStealing: config.allowStealing ?? false,
       allowChat: config.allowChat !== false,
       allowPrivateChat: config.allowPrivateChat !== false,
     };
@@ -906,8 +912,8 @@ export class DiscoveryProcessEngine implements GameEngine {
           productionSettings: new Map(),
           playerTypes: new Map(),
           phaseStartedAt: Date.now(), // approximate
-          productionLength: config.productionLength || 10,
-          moveLength: config.time_per_round || 90,
+          productionLength: config.productionLength ?? 10,
+          moveLength: config.time_per_round ?? 90,
           chatMessages: [],
         };
         // Restore player types
@@ -927,8 +933,8 @@ export class DiscoveryProcessEngine implements GameEngine {
         const elapsed = round.started_at
           ? (Date.now() - new Date(round.started_at).getTime()) / 1000
           : 0;
-        const moveLength = config.time_per_round || 90;
-        const prodLength = config.productionLength || 10;
+        const moveLength = config.time_per_round ?? 90;
+        const prodLength = config.productionLength ?? 10;
         const moveTimeRemaining = Math.max(0, (prodLength + moveLength) - elapsed);
 
         return {
@@ -950,8 +956,8 @@ export class DiscoveryProcessEngine implements GameEngine {
       const elapsed = round.started_at
         ? (Date.now() - new Date(round.started_at).getTime()) / 1000
         : 0;
-      const prodLength = config.productionLength || 10;
-      const moveLength = config.time_per_round || 90;
+      const prodLength = config.productionLength ?? 10;
+      const moveLength = config.time_per_round ?? 90;
 
       if (elapsed < prodLength) {
         // Still in production phase
@@ -968,16 +974,18 @@ export class DiscoveryProcessEngine implements GameEngine {
         };
       } else {
         // Production time has passed but no production actions in DB (server restarted)
-        // Run production now so players get their goods
-        const state = this.getOrCreateRoundState(roundId, config);
-        if (state.phase === 'production') {
-          // Calculate production for all players inline
+        // Reconstruct in-memory state only — DO NOT write to DB from getGameState.
+        // The actual DB writes happen via onRoundStart / handleStartProduction /
+        // processRoundEnd which have proper concurrency control.
+        const reconState = this.getOrCreateRoundState(roundId, config);
+        if (reconState.phase === 'production') {
+          // Calculate production in memory only (no DB writes)
           for (const p of activePlayers) {
             const typeIndex = this.getPlayerTypeIndex(p, activePlayers);
-            state.playerTypes.set(p.id, typeIndex);
+            reconState.playerTypes.set(p.id, typeIndex);
             const pType = playerTypes[typeIndex % playerTypes.length];
-            const allocation = state.productionSettings.get(p.id) || this.defaultAllocation(goodNames.length);
-            const inventory = state.inventories.get(p.id) || { field: {}, house: {} };
+            const allocation = reconState.productionSettings.get(p.id) || this.defaultAllocation(goodNames.length);
+            const inventory = reconState.inventories.get(p.id) || { field: {}, house: {} };
 
             goodNames.forEach((goodName, i) => {
               const goodKey = `good${i + 1}`;
@@ -991,19 +999,14 @@ export class DiscoveryProcessEngine implements GameEngine {
             for (const goodName of goodNames) {
               if (inventory.house[goodName] === undefined) inventory.house[goodName] = 0;
             }
-            state.inventories.set(p.id, inventory);
-
-            await GameActionModel.create(roundId, p.id, 'production', {
-              allocation,
-              produced: { ...inventory.field },
-            });
+            reconState.inventories.set(p.id, inventory);
           }
-          state.phase = 'move';
-          state.phaseStartedAt = Date.now();
+          reconState.phase = 'move';
+          reconState.phaseStartedAt = Date.now();
         }
 
         const inventories: Record<string, PlayerInventory> = {};
-        for (const [pid, inv] of state.inventories) {
+        for (const [pid, inv] of reconState.inventories) {
           inventories[pid] = inv;
         }
 
@@ -1085,8 +1088,8 @@ export class DiscoveryProcessEngine implements GameEngine {
         productionSettings: new Map(),
         playerTypes: new Map(),
         phaseStartedAt: Date.now(),
-        productionLength: config.productionLength || 10,
-        moveLength: config.time_per_round || 90,
+        productionLength: config.productionLength ?? 10,
+        moveLength: config.time_per_round ?? 90,
         chatMessages: [],
       };
       this.roundStates.set(roundId, state);

@@ -100,8 +100,8 @@ export function computePerRoundProfits(
       const roundProfits = new Map<string, number>();
       for (const player of players) roundProfits.set(player.id, 0);
       for (const trade of round.trades) {
-        roundProfits.set(trade.buyerId, (roundProfits.get(trade.buyerId) || 0) + trade.buyerProfit);
-        roundProfits.set(trade.sellerId, (roundProfits.get(trade.sellerId) || 0) + trade.sellerProfit);
+        roundProfits.set(trade.buyerId, (roundProfits.get(trade.buyerId) || 0) + Number(trade.buyerProfit));
+        roundProfits.set(trade.sellerId, (roundProfits.get(trade.sellerId) || 0) + Number(trade.sellerProfit));
       }
       for (const player of players) {
         profitMap.get(player.id)!.push(roundProfits.get(player.id) || 0);

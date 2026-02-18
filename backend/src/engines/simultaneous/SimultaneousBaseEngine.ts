@@ -140,8 +140,8 @@ export abstract class SimultaneousBaseEngine implements GameEngine {
 
     const config = session.game_config || {};
 
-    // Get all actions for this round
-    const actions = await GameActionModel.findByRound(roundId);
+    // Get only 'decision' actions for this round (ignore any other action types)
+    const actions = await GameActionModel.findByRoundAndType(roundId, 'decision');
     const actionData = actions.map((a) => ({
       playerId: a.player_id,
       playerName: activePlayers.find((p) => p.id === a.player_id)?.name || 'Unknown',

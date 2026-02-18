@@ -195,16 +195,23 @@ export abstract class SequentialBaseEngine implements GameEngine {
       const firstMovers = allPlayers.filter(p => p.role === firstMoverRole);
       const firstMoveActions = await GameActionModel.findByRoundAndType(roundId, 'first_move');
 
-      // Broadcast to room — partner can now see the first move
-      // Use sanitized action to avoid leaking hidden info (e.g., quality in Market for Lemons)
+      // Broadcast progress to room (sanitized — no partnerId to avoid leaking pairings)
       io.to(`market-${sessionCode}`).emit('first-move-submitted', {
         playerId,
         playerName: player.name,
         action: this.sanitizeFirstMoveForBroadcast(action),
         totalFirstMoves: firstMoveActions.length,
         totalFirstMovers: firstMovers.length,
-        partnerId: partnerId,
       });
+
+      // Send partnerId privately to the partner only (so they know to respond)
+      if (partnerId) {
+        io.to(`player-${partnerId}`).emit('partner-first-move', {
+          playerId,
+          playerName: player.name,
+          action: this.sanitizeFirstMoveForBroadcast(action),
+        });
+      }
 
       // Check if all active pairs are complete
       await this.checkAllComplete(roundId, sessionCode, io, session);
@@ -236,14 +243,13 @@ export abstract class SequentialBaseEngine implements GameEngine {
       const secondMovers = allPlayers.filter(p => p.role === secondMoverRole);
       const secondMoveActions = await GameActionModel.findByRoundAndType(roundId, 'second_move');
 
-      // Broadcast — sanitize action to avoid leaking private details
+      // Broadcast progress to room (sanitized — no partnerId to avoid leaking pairings)
       io.to(`market-${sessionCode}`).emit('second-move-submitted', {
         playerId,
         playerName: player.name,
         action: this.sanitizeSecondMoveForBroadcast(action),
         totalSecondMoves: secondMoveActions.length,
         totalSecondMovers: secondMovers.length,
-        partnerId,
       });
 
       // Check if all active pairs are complete
