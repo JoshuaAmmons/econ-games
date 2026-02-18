@@ -424,8 +424,8 @@ export abstract class SequentialBaseEngine implements GameEngine {
     const session = await SessionModel.findById(round.session_id);
     if (!session) return { playerResults: [], summary: {} };
 
-    // Invalidate pairing cache so it gets rebuilt next round with any late joiners
-    this.sessionPairings.delete(session.id);
+    // NOTE: Pairing cache is invalidated AFTER resolveRound completes (below)
+    // to ensure the current round's pairings remain stable during result processing.
 
     // Use ALL players (not just active) so resolveRound can handle disconnects
     const allPlayers = await PlayerModel.findBySession(session.id);
@@ -513,6 +513,10 @@ export abstract class SequentialBaseEngine implements GameEngine {
     }
 
     const results = await GameResultModel.findByRound(roundId);
+
+    // Invalidate pairing cache AFTER all round processing is complete,
+    // so it gets rebuilt next round with any late joiners.
+    this.sessionPairings.delete(session.id);
 
     return {
       playerResults: results.map(r => ({
@@ -609,17 +613,18 @@ export abstract class SequentialBaseEngine implements GameEngine {
         const fmActions = await GameActionModel.findByRoundAndPlayer(roundId, fmResult.player_id);
         const smActions = await GameActionModel.findByRoundAndPlayer(roundId, partnerId);
 
+        const smActionData = smActions.find(a => a.action_type === 'second_move')?.action_data;
         pairsData.push({
           firstMoverId: fmResult.player_id,
           firstMoverName: fm?.name || 'Unknown',
           secondMoverId: partnerId,
           secondMoverName: sm?.name || 'Unknown',
           firstMoveAction: this.sanitizeFirstMoveForBroadcast(fmActions.find(a => a.action_type === 'first_move')?.action_data || {}),
-          secondMoveAction: smActions.find(a => a.action_type === 'second_move')?.action_data || null,
+          secondMoveAction: smActionData ? this.sanitizeSecondMoveForBroadcast(smActionData) : null,
           firstMoverProfit: Number(fmResult.profit),
           secondMoverProfit: Number(smResult.profit),
-          firstMoverResultData: fmResult.result_data,
-          secondMoverResultData: smResult.result_data,
+          firstMoverResultData: this.sanitizeResultDataForBroadcast(fmResult.result_data, 'firstMover'),
+          secondMoverResultData: this.sanitizeResultDataForBroadcast(smResult.result_data, 'secondMover'),
           partnerDisconnected: !!(fmResult.result_data?.partnerDisconnected || smResult.result_data?.partnerDisconnected),
         });
       }
