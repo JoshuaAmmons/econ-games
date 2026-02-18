@@ -109,7 +109,7 @@ export class ComparativeAdvantageEngine extends SimultaneousBaseEngine {
     config: Record<string, any>
   ): string | null {
     const { laborGood1 } = action;
-    const laborUnits = config.laborUnits || 100;
+    const laborUnits = config.laborUnits ?? 100;
 
     if (laborGood1 === undefined || laborGood1 === null) {
       return 'Labor allocation is required';

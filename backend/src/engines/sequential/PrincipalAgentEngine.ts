@@ -243,4 +243,23 @@ export class PrincipalAgentEngine extends SequentialBaseEngine {
       },
     };
   }
+
+  /**
+   * Strip agent's effort choice from broadcast — the principal should only
+   * observe the output (which is probabilistic), not the effort directly.
+   * This preserves the moral hazard information asymmetry.
+   */
+  protected sanitizeSecondMoveForBroadcast(action: Record<string, any>): Record<string, any> {
+    const { highEffort, ...safe } = action;
+    return safe;
+  }
+
+  protected sanitizeResultDataForBroadcast(
+    resultData: Record<string, any>,
+    _role: 'firstMover' | 'secondMover'
+  ): Record<string, any> {
+    // Strip effort details from broadcast to all players
+    const { highEffort, effortCost, ...safe } = resultData;
+    return safe;
+  }
 }

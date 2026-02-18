@@ -36,7 +36,11 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
     if (cached) return cached;
 
     const session = await SessionModel.findByCode(sessionCode);
-    const gameType = session?.game_type || 'double_auction';
+    if (!session) {
+      // Don't cache the fallback for missing sessions — they may be created later
+      return 'double_auction';
+    }
+    const gameType = session.game_type || 'double_auction';
     sessionGameTypeCache.set(sessionCode, gameType);
     return gameType;
   }
@@ -292,7 +296,11 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
           const gameType = await getSessionGameType(sessionCode);
           const engine = GameRegistry.get(gameType);
 
-          await RoundModel.end(roundId);
+          const endedRound = await RoundModel.end(roundId);
+          if (!endedRound) {
+            console.log(`Round ${roundId} was not in active status, skipping processRoundEnd`);
+            return;
+          }
           const roundResult = await engine.processRoundEnd(roundId, sessionCode, io);
 
           // Get trades for DA games (backward compat) — normalize DECIMAL strings

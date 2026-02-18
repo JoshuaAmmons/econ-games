@@ -164,8 +164,8 @@ export class TaxSubsidyEngine extends DoubleAuctionEngine {
 
         io.to(`market-${sessionCode}`).emit('trade-executed', {
           trade,
-          buyer: match.bid.player,
-          seller: match.ask.player,
+          buyer: { id: match.bid.player.id, name: match.bid.player.name, is_bot: match.bid.player.is_bot },
+          seller: { id: match.ask.player.id, name: match.ask.player.name, is_bot: match.ask.player.is_bot },
           taxInfo: { taxType, taxAmount },
         });
       }

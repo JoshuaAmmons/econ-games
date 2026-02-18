@@ -113,7 +113,7 @@ export class DoubleAuctionEngine implements GameEngine {
   }
 
   validateConfig(config: Record<string, any>): ValidationResult {
-    if (config.market_size && config.market_size < 2) {
+    if (config.market_size !== undefined && config.market_size < 2) {
       return { valid: false, error: 'Market size must be at least 2' };
     }
     return { valid: true };
@@ -136,7 +136,13 @@ export class DoubleAuctionEngine implements GameEngine {
     sessionCode: string,
     io: Server
   ): Promise<ActionResult> {
-    const { type, price } = action;
+    const { type } = action;
+    const price = Number(action.price);
+
+    // Validate price is a finite positive number (socket path has no type checking)
+    if (!Number.isFinite(price) || price <= 0) {
+      return { success: false, error: 'Price must be a positive number' };
+    }
 
     // Guard: only accept bids/asks while the round is active
     const round = await RoundModel.findById(roundId);
@@ -343,11 +349,11 @@ export class DoubleAuctionEngine implements GameEngine {
         await PlayerModel.updateProfit(match.bid.player_id, match.buyerProfit);
         await PlayerModel.updateProfit(match.ask.player_id, match.sellerProfit);
 
-        // Broadcast trade
+        // Broadcast trade — sanitize player objects to prevent leaking private valuations/costs
         io.to(`market-${sessionCode}`).emit('trade-executed', {
           trade,
-          buyer: match.bid.player,
-          seller: match.ask.player,
+          buyer: { id: match.bid.player.id, name: match.bid.player.name, is_bot: match.bid.player.is_bot },
+          seller: { id: match.ask.player.id, name: match.ask.player.name, is_bot: match.ask.player.is_bot },
         });
       }
     } catch (error) {

@@ -96,6 +96,10 @@ const SessionMonitorContent: React.FC = () => {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Ref to avoid stale session closure in socket event handlers
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+
   // Retrieve admin password from localStorage (saved by AdminPasswordGate on verification).
   // This is sent with admin-only socket events for server-side authorization.
   const storedAdminPassword = code ? localStorage.getItem(`admin_pw_${code}`) || undefined : undefined;
@@ -155,9 +159,9 @@ const SessionMonitorContent: React.FC = () => {
     }));
 
     cleanups.push(onEvent('trade-executed', () => {
-      // Refresh players to see updated profits
-      if (session) {
-        sessionsApi.getPlayers(session.id).then(setPlayers).catch(console.error);
+      // Refresh players to see updated profits — use ref to avoid stale closure
+      if (sessionRef.current) {
+        sessionsApi.getPlayers(sessionRef.current.id).then(setPlayers).catch(console.error);
       }
     }));
 

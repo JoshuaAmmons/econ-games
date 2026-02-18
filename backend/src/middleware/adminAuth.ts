@@ -36,10 +36,11 @@ export async function requireAdmin(req: Request, res: Response, next: NextFuncti
       return;
     }
 
+    // Only accept password from header or body — never from query string
+    // (query strings are logged in server access logs and browser history)
     const providedPassword =
       (req.headers['x-admin-password'] as string) ||
-      req.body?.admin_password ||
-      req.query?.admin_password;
+      req.body?.admin_password;
 
     if (!providedPassword) {
       res.status(401).json({ success: false, error: 'Admin password required' });
