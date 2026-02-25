@@ -20,7 +20,7 @@ import {
 
 /**
  * Double Auction Engine — wraps the existing DA game logic.
- * This is the original game type, used for Week 1.
+ * This is the original game type, used for Week 4.
  */
 export class DoubleAuctionEngine implements GameEngine {
   readonly gameType: GameType = 'double_auction';
@@ -33,7 +33,7 @@ export class DoubleAuctionEngine implements GameEngine {
       name: 'Double Auction',
       description: 'Buyers and sellers trade in a continuous double auction market.',
       category: 'continuous_trading',
-      weekNumber: 1,
+      weekNumber: 4,
       roles: [
         { role: 'buyer', label: 'Buyer', description: 'Submits bids to purchase goods' },
         { role: 'seller', label: 'Seller', description: 'Submits asks to sell goods' },

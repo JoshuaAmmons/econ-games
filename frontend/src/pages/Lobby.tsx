@@ -24,6 +24,15 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   monopoly: 'Monopoly',
   market_for_lemons: 'Market for Lemons',
   discovery_process: 'Exchange & Specialization',
+  prisoner_dilemma: "Prisoner's Dilemma",
+  beauty_contest: 'Beauty Contest',
+  common_pool_resource: 'Common Pool Resource',
+  stag_hunt: 'Stag Hunt',
+  dictator: 'Dictator Game',
+  matching_pennies: 'Matching Pennies',
+  trust_game: 'Trust Game',
+  bargaining: 'Bargaining Game',
+  auction: 'Sealed-Bid Auction',
 };
 
 /** Short descriptions of what each role does in each game */
@@ -159,6 +168,84 @@ const ROLE_INFO: Record<string, Record<string, string[]>> = {
       'You are a <strong>producer</strong> in a small economy',
       'Each round: produce goods, then move them between houses',
       'Earnings depend on the combination of goods in your house',
+    ],
+  },
+  prisoner_dilemma: {
+    player: [
+      'You face a <strong>cooperation dilemma</strong>',
+      'Choose to <strong>Cooperate</strong> or <strong>Defect</strong> each round',
+      'Mutual cooperation beats mutual defection, but defecting against a cooperator is tempting',
+    ],
+  },
+  beauty_contest: {
+    player: [
+      'Pick a number between 0 and the max',
+      'The winner is closest to <strong>fraction &times; group average</strong>',
+      'Think about what others will guess — and what they think you will guess',
+    ],
+  },
+  common_pool_resource: {
+    player: [
+      'You share a <strong>common resource pool</strong> with others',
+      'Choose how much to extract each round',
+      'Over-extraction depletes the pool — restraint earns a shared bonus',
+    ],
+  },
+  stag_hunt: {
+    player: [
+      'Choose to hunt <strong>Stag</strong> (risky, high reward) or <strong>Hare</strong> (safe, low reward)',
+      'Stag succeeds only if <strong>everyone</strong> hunts stag',
+      'If anyone hunts hare, stag hunters get nothing',
+    ],
+  },
+  dictator: {
+    player: [
+      'You receive an <strong>endowment</strong> each round',
+      'Choose how much to <strong>give</strong> to an anonymous recipient',
+      'You keep whatever you do not give away',
+    ],
+  },
+  matching_pennies: {
+    matcher: [
+      'You are the <strong>Matcher</strong>',
+      'Choose <strong>Heads</strong> or <strong>Tails</strong>',
+      'You win if your choice <strong>matches</strong> the Mismatcher',
+    ],
+    mismatcher: [
+      'You are the <strong>Mismatcher</strong>',
+      'Choose <strong>Heads</strong> or <strong>Tails</strong>',
+      'You win if your choice <strong>differs</strong> from the Matcher',
+    ],
+  },
+  trust_game: {
+    sender: [
+      'You are the <strong>Sender</strong> with an endowment',
+      'Choose how much to send — the amount is <strong>multiplied</strong>',
+      'Your partner decides how much (if any) to return',
+    ],
+    receiver: [
+      'You are the <strong>Receiver</strong>',
+      'You will receive a multiplied amount from the Sender',
+      'Choose how much to return — you keep the rest',
+    ],
+  },
+  bargaining: {
+    proposer: [
+      'You are the <strong>Proposer</strong>',
+      'Propose how to split a pie with your partner',
+      'If rejected, both earn nothing — the pie shrinks over time',
+    ],
+    responder: [
+      'You are the <strong>Responder</strong>',
+      'You will see a proposed split from the Proposer',
+      'Accept to split the pie or reject (both earn zero)',
+    ],
+  },
+  auction: {
+    bidder: [
+      'You are a <strong>Bidder</strong> with a private valuation',
+      'Submit a sealed bid for the item',
+      'Highest bidder wins — profit = valuation minus price paid',
     ],
   },
 };

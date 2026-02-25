@@ -10,7 +10,7 @@ import { RoundModel } from '../../models/Round';
 import { matchTrades } from '../../services/gameLogic';
 
 /**
- * DA + Tax/Subsidy Engine (Week 2)
+ * DA + Tax/Subsidy Engine (Week 8)
  *
  * Extends the standard double auction with a per-unit tax or subsidy.
  * - Tax on buyer: buyer pays trade_price + tax, profit = valuation - (price + tax)
@@ -31,7 +31,7 @@ export class TaxSubsidyEngine extends DoubleAuctionEngine {
       ...base,
       name: 'Double Auction + Tax/Subsidy',
       description: 'Double auction with a per-unit tax or subsidy that creates a wedge between buyer and seller prices.',
-      weekNumber: 2,
+      weekNumber: 8,
       configFields: [
         ...base.configFields,
         {

@@ -2,7 +2,7 @@ import type { GameType, UIConfig, ValidationResult } from '../GameEngine';
 import { SequentialBaseEngine } from './SequentialBaseEngine';
 
 /**
- * Gift Exchange Game Engine (Week 10)
+ * Gift Exchange Game Engine (Week 19)
  *
  * Pairs: Employer + Worker
  * Stage 1: Employer offers a wage
@@ -33,7 +33,7 @@ export class GiftExchangeEngine extends SequentialBaseEngine {
       name: 'Gift Exchange Game',
       description: 'Employer offers a wage, then worker chooses effort level. Tests reciprocity.',
       category: 'sequential',
-      weekNumber: 10,
+      weekNumber: 19,
       roles: [
         { role: 'employer', label: 'Employer', description: 'Offer a wage to the worker' },
         { role: 'worker', label: 'Worker', description: 'Choose effort level after seeing wage offer' },

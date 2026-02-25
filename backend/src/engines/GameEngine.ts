@@ -17,7 +17,16 @@ export type GameType =
   | 'comparative_advantage'
   | 'monopoly'
   | 'market_for_lemons'
-  | 'discovery_process';
+  | 'discovery_process'
+  | 'prisoner_dilemma'
+  | 'beauty_contest'
+  | 'trust_game'
+  | 'auction'
+  | 'bargaining'
+  | 'common_pool_resource'
+  | 'stag_hunt'
+  | 'dictator'
+  | 'matching_pennies';
 
 /**
  * Result of validating a game config

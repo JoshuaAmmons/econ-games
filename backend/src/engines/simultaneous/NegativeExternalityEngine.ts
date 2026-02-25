@@ -2,7 +2,7 @@ import type { GameType, UIConfig, ValidationResult } from '../GameEngine';
 import { SimultaneousBaseEngine } from './SimultaneousBaseEngine';
 
 /**
- * Negative Externality Game Engine (Week 8)
+ * Negative Externality Game Engine (Week 10)
  *
  * N firms choose production levels. Higher production creates negative
  * externalities (pollution, etc.) that impose social costs on everyone.
@@ -30,7 +30,7 @@ export class NegativeExternalityEngine extends SimultaneousBaseEngine {
       name: 'Negative Externality Game',
       description: 'Firms choose production levels that create negative externalities. Explore the effect of Pigouvian taxes.',
       category: 'simultaneous',
-      weekNumber: 8,
+      weekNumber: 10,
       roles: [
         { role: 'firm', label: 'Firm', description: 'Choose production level balancing private profit against social cost' },
       ],

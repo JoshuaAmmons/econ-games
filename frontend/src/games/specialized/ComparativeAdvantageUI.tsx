@@ -40,7 +40,7 @@ const ComparativeAdvantageUI: React.FC<GameUIProps> = ({
   const [results, setResults] = useState<RoundResult[] | null>(null);
 
   const gameConfig = session?.game_config || {};
-  const laborUnits = gameConfig.laborUnits ?? 100;
+  const laborUnits = Number(gameConfig.laborUnits ?? 100);
   const good1Name = gameConfig.good1Name ?? 'Food';
   const good2Name = gameConfig.good2Name ?? 'Clothing';
 

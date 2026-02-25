@@ -17,6 +17,15 @@ import { ComparativeAdvantageEngine } from './specialized/ComparativeAdvantageEn
 import { MonopolyEngine } from './specialized/MonopolyEngine';
 import { MarketForLemonsEngine } from './specialized/MarketForLemonsEngine';
 import { DiscoveryProcessEngine } from './specialized/DiscoveryProcessEngine';
+import { PrisonerDilemmaEngine } from './simultaneous/PrisonerDilemmaEngine';
+import { BeautyContestEngine } from './simultaneous/BeautyContestEngine';
+import { CommonPoolResourceEngine } from './simultaneous/CommonPoolResourceEngine';
+import { StagHuntEngine } from './simultaneous/StagHuntEngine';
+import { DictatorEngine } from './simultaneous/DictatorEngine';
+import { MatchingPenniesEngine } from './simultaneous/MatchingPenniesEngine';
+import { TrustGameEngine } from './sequential/TrustGameEngine';
+import { BargainingEngine } from './sequential/BargainingEngine';
+import { AuctionEngine } from './specialized/AuctionEngine';
 
 // Register all available game engines
 GameRegistry.register(new DoubleAuctionEngine());
@@ -33,6 +42,15 @@ GameRegistry.register(new ComparativeAdvantageEngine());
 GameRegistry.register(new MonopolyEngine());
 GameRegistry.register(new MarketForLemonsEngine());
 GameRegistry.register(new DiscoveryProcessEngine());
+GameRegistry.register(new PrisonerDilemmaEngine());
+GameRegistry.register(new BeautyContestEngine());
+GameRegistry.register(new CommonPoolResourceEngine());
+GameRegistry.register(new StagHuntEngine());
+GameRegistry.register(new DictatorEngine());
+GameRegistry.register(new MatchingPenniesEngine());
+GameRegistry.register(new TrustGameEngine());
+GameRegistry.register(new BargainingEngine());
+GameRegistry.register(new AuctionEngine());
 
 export { GameRegistry } from './GameRegistry';
 export type { GameEngine, GameType, UIConfig } from './GameEngine';

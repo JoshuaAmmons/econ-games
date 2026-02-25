@@ -39,10 +39,10 @@ const MonopolyUI: React.FC<GameUIProps> = ({
   const [results, setResults] = useState<RoundResult[] | null>(null);
 
   const gameConfig = session?.game_config || {};
-  const demandIntercept = gameConfig.demandIntercept ?? 100;
-  const demandSlope = gameConfig.demandSlope ?? 1;
-  const marginalCost = gameConfig.marginalCost ?? 20;
-  const fixedCost = gameConfig.fixedCost ?? 0;
+  const demandIntercept = Number(gameConfig.demandIntercept ?? 100);
+  const demandSlope = Number(gameConfig.demandSlope ?? 1);
+  const marginalCost = Number(gameConfig.marginalCost ?? 20);
+  const fixedCost = Number(gameConfig.fixedCost ?? 0);
 
   useEffect(() => {
     if (roundActive && roundId) {

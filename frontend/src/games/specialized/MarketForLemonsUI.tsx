@@ -36,8 +36,8 @@ const MarketForLemonsUI: React.FC<GameUIProps> = ({
   const [results, setResults] = useState<PairResult[] | null>(null);
 
   const gameConfig = session?.game_config || {};
-  const sellerCostFraction = gameConfig.sellerCostFraction ?? 0.5;
-  const buyerValueFraction = gameConfig.buyerValueFraction ?? 1.5;
+  const sellerCostFraction = Number(gameConfig.sellerCostFraction ?? 0.5);
+  const buyerValueFraction = Number(gameConfig.buyerValueFraction ?? 1.5);
   const isSeller = player?.role === 'seller';
 
   useEffect(() => {
@@ -73,17 +73,13 @@ const MarketForLemonsUI: React.FC<GameUIProps> = ({
       }
     }));
 
-    cleanups.push(onEvent('first-move-submitted', (data: { partnerId: string; action: { price: number } }) => {
-      if (data.partnerId === playerId) {
-        setPartnerPrice(data.action.price);
-        toast(`Seller is offering at $${Number(data.action.price).toFixed(2)}`, { icon: '🏷️' });
-      }
+    cleanups.push(onEvent('partner-first-move', (data: { action: { price: number } }) => {
+      setPartnerPrice(data.action.price);
+      toast(`Seller is offering at $${Number(data.action.price).toFixed(2)}`, { icon: '🏷️' });
     }));
 
-    cleanups.push(onEvent('second-move-submitted', (data: { partnerId: string }) => {
-      if (data.partnerId === playerId) {
-        toast('Buyer has decided!', { icon: '🤔' });
-      }
+    cleanups.push(onEvent('second-move-submitted', () => {
+      // Progress tracking only
     }));
 
     cleanups.push(onEvent('round-results', (data: { pairs: PairResult[] }) => {

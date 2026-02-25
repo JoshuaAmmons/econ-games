@@ -2,7 +2,7 @@ import type { GameType, UIConfig, ValidationResult } from '../GameEngine';
 import { SimultaneousBaseEngine } from './SimultaneousBaseEngine';
 
 /**
- * Public Goods Game Engine (Week 6)
+ * Public Goods Game Engine (Week 11)
  *
  * N players each receive an endowment and decide how much to contribute
  * to a public good. Contributions are multiplied by MPCR and shared equally.
@@ -25,7 +25,7 @@ export class PublicGoodsEngine extends SimultaneousBaseEngine {
       name: 'Public Goods Game',
       description: 'Players decide how much of their endowment to contribute to a shared public good.',
       category: 'simultaneous',
-      weekNumber: 6,
+      weekNumber: 11,
       roles: [
         { role: 'player', label: 'Player', description: 'Choose how much to contribute to the public good' },
       ],

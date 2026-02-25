@@ -2,7 +2,7 @@ import type { GameType, UIConfig, ValidationResult } from '../GameEngine';
 import { SequentialBaseEngine } from './SequentialBaseEngine';
 
 /**
- * Principal-Agent Game Engine (Week 11)
+ * Principal-Agent Game Engine (Week 14)
  *
  * Pairs: Principal + Agent
  * Stage 1: Principal designs a contract (fixed wage + bonus for high output)
@@ -37,7 +37,7 @@ export class PrincipalAgentEngine extends SequentialBaseEngine {
       name: 'Principal-Agent Game',
       description: 'Principal designs a contract, agent chooses effort. Output depends on effort probabilistically.',
       category: 'sequential',
-      weekNumber: 11,
+      weekNumber: 14,
       roles: [
         { role: 'principal', label: 'Principal', description: 'Design a compensation contract' },
         { role: 'agent', label: 'Agent', description: 'Choose effort level given the contract' },

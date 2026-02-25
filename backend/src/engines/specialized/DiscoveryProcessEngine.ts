@@ -87,7 +87,7 @@ export class DiscoveryProcessEngine implements GameEngine {
       name: 'Exchange & Specialization',
       description: 'Produce goods in your field, move them to houses, and discover the benefits of specialization and exchange.',
       category: 'specialized',
-      weekNumber: 14,
+      weekNumber: 3,
       roles: [
         { role: 'producer', label: 'Producer', description: 'Produce and trade goods in the village economy' },
       ],

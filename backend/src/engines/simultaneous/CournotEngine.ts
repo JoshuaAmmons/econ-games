@@ -2,7 +2,7 @@ import type { GameType, UIConfig, ValidationResult } from '../GameEngine';
 import { SimultaneousBaseEngine } from './SimultaneousBaseEngine';
 
 /**
- * Cournot Competition Engine (Week 5)
+ * Cournot Competition Engine (Week 18)
  *
  * N firms simultaneously choose output quantities.
  * Market price is determined by inverse demand: P = a - b × Q_total
@@ -23,7 +23,7 @@ export class CournotEngine extends SimultaneousBaseEngine {
       name: 'Cournot Competition',
       description: 'Firms simultaneously choose production quantities. Market price depends on total output.',
       category: 'simultaneous',
-      weekNumber: 5,
+      weekNumber: 18,
       roles: [
         { role: 'firm', label: 'Firm', description: 'Choose a production quantity to maximize profit' },
       ],

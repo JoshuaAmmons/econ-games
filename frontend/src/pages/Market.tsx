@@ -327,6 +327,15 @@ export const Market: React.FC = () => {
     monopoly: 'Monopoly',
     market_for_lemons: 'Market for Lemons',
     discovery_process: 'Exchange & Specialization',
+    prisoner_dilemma: "Prisoner's Dilemma",
+    beauty_contest: 'Beauty Contest',
+    common_pool_resource: 'Common Pool Resource',
+    stag_hunt: 'Stag Hunt',
+    dictator: 'Dictator Game',
+    matching_pennies: 'Matching Pennies',
+    trust_game: 'Trust Game',
+    bargaining: 'Bargaining Game',
+    auction: 'Sealed-Bid Auction',
   };
 
   return (

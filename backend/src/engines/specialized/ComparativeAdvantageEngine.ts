@@ -2,7 +2,7 @@ import type { GameType, UIConfig, ValidationResult } from '../GameEngine';
 import { SimultaneousBaseEngine } from '../simultaneous/SimultaneousBaseEngine';
 
 /**
- * Comparative Advantage Engine (Week 12)
+ * Comparative Advantage Engine (Week 9)
  *
  * Each player represents a "country" with labor units to allocate
  * between producing two goods. Players decide how to allocate labor,
@@ -30,7 +30,7 @@ export class ComparativeAdvantageEngine extends SimultaneousBaseEngine {
       name: 'Comparative Advantage',
       description: 'Countries allocate labor between two goods. Discover gains from trade through specialization.',
       category: 'specialized',
-      weekNumber: 12,
+      weekNumber: 9,
       roles: [
         { role: 'country', label: 'Country', description: 'Allocate labor between two goods' },
       ],
