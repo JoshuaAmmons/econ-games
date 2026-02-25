@@ -28,6 +28,15 @@ const analyticsRegistry: Record<string, React.LazyExoticComponent<React.Componen
   monopoly: React.lazy(() => import('./specialized/MonopolyAnalytics')),
   market_for_lemons: React.lazy(() => import('./sequential/MarketForLemonsAnalytics')),
   discovery_process: React.lazy(() => import('./specialized/DiscoveryProcessAnalytics')),
+  prisoner_dilemma: React.lazy(() => import('./simultaneous/PrisonerDilemmaAnalytics')),
+  beauty_contest: React.lazy(() => import('./simultaneous/BeautyContestAnalytics')),
+  common_pool_resource: React.lazy(() => import('./simultaneous/CommonPoolResourceAnalytics')),
+  stag_hunt: React.lazy(() => import('./simultaneous/StagHuntAnalytics')),
+  dictator: React.lazy(() => import('./simultaneous/DictatorAnalytics')),
+  trust_game: React.lazy(() => import('./sequential/TrustGameAnalytics')),
+  bargaining: React.lazy(() => import('./sequential/BargainingAnalytics')),
+  auction: React.lazy(() => import('./simultaneous/AuctionAnalytics')),
+  matching_pennies: React.lazy(() => import('./simultaneous/MatchingPenniesAnalytics')),
 };
 
 export function getAnalyticsComponent(gameType: string): React.LazyExoticComponent<React.ComponentType<AnalyticsProps>> | null {

@@ -39,10 +39,10 @@ const GiftExchangeUI: React.FC<GameUIProps> = ({
   const [results, setResults] = useState<PairResult[] | null>(null);
 
   const gameConfig = session?.game_config || {};
-  const maxWage = gameConfig.maxWage ?? 50;
-  const maxEffort = gameConfig.maxEffort ?? 10;
-  const productivityMultiplier = gameConfig.productivityMultiplier ?? 10;
-  const maxEffortCost = gameConfig.maxEffortCost ?? 20;
+  const maxWage = Number(gameConfig.maxWage ?? 50);
+  const maxEffort = Number(gameConfig.maxEffort ?? 10);
+  const productivityMultiplier = Number(gameConfig.productivityMultiplier ?? 10);
+  const maxEffortCost = Number(gameConfig.maxEffortCost ?? 20);
   const isEmployer = player?.role === 'employer';
 
   const effortCost = (e: number) => {
@@ -76,17 +76,13 @@ const GiftExchangeUI: React.FC<GameUIProps> = ({
       }
     }));
 
-    cleanups.push(onEvent('first-move-submitted', (data: { partnerId: string; action: { wage: number } }) => {
-      if (data.partnerId === playerId) {
-        setPartnerWage(data.action.wage);
-        toast(`Your employer offered $${Number(data.action.wage).toFixed(2)} wage`, { icon: '💼' });
-      }
+    cleanups.push(onEvent('partner-first-move', (data: { action: { wage: number } }) => {
+      setPartnerWage(data.action.wage);
+      toast(`Your employer offered $${Number(data.action.wage).toFixed(2)} wage`, { icon: '💼' });
     }));
 
-    cleanups.push(onEvent('second-move-submitted', (data: { partnerId: string }) => {
-      if (data.partnerId === playerId) {
-        toast('Worker chose effort level!', { icon: '⚡' });
-      }
+    cleanups.push(onEvent('second-move-submitted', () => {
+      // Progress tracking only
     }));
 
     cleanups.push(onEvent('round-results', (data: { pairs: PairResult[] }) => {

@@ -14,7 +14,7 @@ const sellerQualities = new Map<string, number>(); // key: `${roundId}:${playerI
 const DEFAULT_QUALITIES = [10, 20, 30, 40, 50, 60, 70, 80, 90];
 
 /**
- * Market for Lemons Engine (Week 14)
+ * Market for Lemons Engine (Week 23)
  *
  * Sellers have goods of varying quality. Buyers can't observe quality.
  * Seller sets a price knowing their quality. Buyer decides to buy or not
@@ -50,7 +50,7 @@ export class MarketForLemonsEngine extends SequentialBaseEngine {
       name: 'Market for Lemons',
       description: 'Sellers know product quality, buyers do not. Explore adverse selection and market unraveling.',
       category: 'specialized',
-      weekNumber: 14,
+      weekNumber: 23,
       roles: [
         { role: 'seller', label: 'Seller', description: 'Set price knowing the true quality' },
         { role: 'buyer', label: 'Buyer', description: 'Accept or reject based on price (quality unknown)' },

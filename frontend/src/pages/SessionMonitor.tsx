@@ -29,6 +29,15 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   monopoly: 'Monopoly',
   market_for_lemons: 'Market for Lemons',
   discovery_process: 'Exchange & Specialization',
+  prisoner_dilemma: "Prisoner's Dilemma",
+  beauty_contest: 'Beauty Contest',
+  common_pool_resource: 'Common Pool Resource',
+  stag_hunt: 'Stag Hunt',
+  dictator: 'Dictator Game',
+  matching_pennies: 'Matching Pennies',
+  trust_game: 'Trust Game',
+  bargaining: 'Bargaining Game',
+  auction: 'Sealed-Bid Auction',
 };
 
 /** Friendly labels for game config fields displayed on the monitor */
@@ -81,6 +90,37 @@ const CONFIG_LABELS: Record<string, string> = {
   sellerCostFraction: 'Seller Cost Fraction',
   buyerValueFraction: 'Buyer Value Fraction',
   fixedCost: 'Fixed Cost',
+  // Prisoner's Dilemma
+  reward: 'Reward (Both Cooperate)',
+  punishment: 'Punishment (Both Defect)',
+  temptation: 'Temptation (Defect vs Cooperate)',
+  sucker: 'Sucker (Cooperate vs Defect)',
+  // Beauty Contest
+  fraction: 'Target Fraction',
+  maxNumber: 'Max Number',
+  prize: 'Winner Prize',
+  // Common Pool Resource
+  poolSize: 'Pool Size',
+  maxExtraction: 'Max Extraction',
+  regenerationRate: 'Regeneration Rate',
+  extractionValue: 'Extraction Value',
+  bonusRate: 'Bonus Rate',
+  // Stag Hunt
+  stagPayoff: 'Stag Payoff (All Cooperate)',
+  harePayoff: 'Hare Payoff (Safe Option)',
+  // Dictator
+  // (endowment already listed above)
+  // Matching Pennies
+  winPayoff: 'Win Payoff',
+  // Trust Game
+  multiplier: 'Multiplier',
+  // Bargaining
+  pieSize: 'Pie Size',
+  discountFactor: 'Discount Factor',
+  // Auction
+  auctionType: 'Auction Type',
+  valueMin: 'Min Private Value',
+  valueMax: 'Max Private Value',
 };
 
 const SessionMonitorContent: React.FC = () => {

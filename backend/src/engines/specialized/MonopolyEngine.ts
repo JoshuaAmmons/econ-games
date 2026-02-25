@@ -2,7 +2,7 @@ import type { GameType, UIConfig, ValidationResult } from '../GameEngine';
 import { SimultaneousBaseEngine } from '../simultaneous/SimultaneousBaseEngine';
 
 /**
- * Monopoly Game Engine (Week 13)
+ * Monopoly Game Engine (Week 16)
  *
  * One player is the monopolist who sets a price (or quantity).
  * Demand is simulated: Q = max(0, (demandIntercept - P) / demandSlope)
@@ -27,7 +27,7 @@ export class MonopolyEngine extends SimultaneousBaseEngine {
       name: 'Monopoly Game',
       description: 'Set price on a demand curve as a monopolist. Find the profit-maximizing quantity.',
       category: 'specialized',
-      weekNumber: 13,
+      weekNumber: 16,
       roles: [
         { role: 'monopolist', label: 'Monopolist', description: 'Set price or quantity to maximize profit' },
       ],

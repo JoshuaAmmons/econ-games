@@ -599,4 +599,360 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       ],
     },
   },
+
+  prisoner_dilemma: {
+    studentInstructions: {
+      premise:
+        'You are paired with other players in a social dilemma. Each round, you simultaneously choose to Cooperate or Defect without knowing what others will do.',
+      yourGoal:
+        'Maximize your total earnings across all rounds. Mutual cooperation pays well, but defecting when others cooperate pays even more.',
+      howToPlay: [
+        'Each round, choose either Cooperate or Defect.',
+        'Your payoff depends on your choice AND what others chose.',
+        'If both you and your partner cooperate, you each earn the Reward payoff.',
+        'If you defect while your partner cooperates, you earn the Temptation payoff (highest) and they earn the Sucker payoff (lowest).',
+        'If both defect, you each earn the Punishment payoff.',
+        'In groups larger than 2, your payoff is averaged across all pairings.',
+      ],
+      tips: [
+        'The dominant strategy (best individual response) is to defect — but mutual defection is worse than mutual cooperation.',
+        'In repeated rounds, cooperation can be sustained through reciprocity.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Both Cooperate: each gets R (Reward)',
+        'Both Defect: each gets P (Punishment)',
+        'Cooperate vs Defect: cooperator gets S (Sucker), defector gets T (Temptation)',
+        'Payoff ordering: T > R > P > S',
+      ],
+      equilibrium:
+        'The unique Nash equilibrium is (Defect, Defect). Mutual cooperation is Pareto-superior but not a Nash equilibrium.',
+      keyParameters: [
+        'reward — payoff for mutual cooperation (default 3)',
+        'temptation — payoff for defecting against a cooperator (default 5)',
+        'sucker — payoff for cooperating against a defector (default 0)',
+        'punishment — payoff for mutual defection (default 1)',
+      ],
+      teachingNotes: [
+        'Classic illustration of the tension between individual and collective rationality.',
+        'Compare cooperation rates across rounds — do students learn to cooperate or defect?',
+        'Discuss real-world analogues: arms races, climate agreements, cartel stability.',
+      ],
+    },
+  },
+
+  beauty_contest: {
+    studentInstructions: {
+      premise:
+        'All players simultaneously choose a number. The winner is the player whose number is closest to a fraction (e.g., 2/3) of the group average.',
+      yourGoal:
+        'Choose the number closest to the target fraction of the group average to win the prize.',
+      howToPlay: [
+        'Choose a number between 0 and the maximum (e.g., 100).',
+        'All numbers are revealed simultaneously.',
+        'The group average is calculated, then multiplied by the target fraction (e.g., 2/3).',
+        'The player(s) closest to this target number win the prize.',
+        'Ties split the prize equally.',
+      ],
+      tips: [
+        'If everyone picks 50, the target would be 33.3 — so 50 is too high.',
+        'But if everyone thinks this way and picks 33, the target is 22 — so 33 is too high.',
+        'The logic continues: the Nash equilibrium is 0, but most people don\'t reason that far.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Winner profit = Prize / (number of winners)',
+        'Loser profit = 0',
+        'Target = fraction × average of all chosen numbers',
+      ],
+      equilibrium:
+        'The unique Nash equilibrium is for all players to choose 0 (iterated elimination of dominated strategies). In practice, first-round choices average around 33.',
+      keyParameters: [
+        'maxNumber — upper bound on choices (default 100)',
+        'fraction — target fraction of average (default 2/3 ≈ 0.667)',
+        'prize — amount the winner receives (default 10)',
+      ],
+      teachingNotes: [
+        'Named after Keynes\'s beauty contest metaphor for financial markets.',
+        'Track the group average across rounds — it should decline toward 0.',
+        'Level-k reasoning: Level-0 picks randomly (~50), Level-1 picks 33, Level-2 picks 22, etc.',
+      ],
+    },
+  },
+
+  trust_game: {
+    studentInstructions: {
+      premise:
+        'You are paired with another player. The Sender has an endowment and decides how much to send to the Receiver. The amount sent is multiplied (e.g., tripled). The Receiver then decides how much to return.',
+      yourGoal:
+        'Senders: maximize your earnings by deciding how much to trust. Receivers: decide how much to reciprocate.',
+      howToPlay: [
+        'Senders start with an endowment (e.g., $10).',
+        'The Sender chooses how much to send (0 to endowment).',
+        'The amount sent is multiplied (e.g., ×3) before reaching the Receiver.',
+        'The Receiver sees the multiplied amount and chooses how much to return (0 to multiplied amount).',
+        'Sender profit = Endowment - Amount Sent + Amount Returned.',
+        'Receiver profit = Amount Sent × Multiplier - Amount Returned.',
+      ],
+      tips: [
+        'Sending more shows trust and creates a larger total surplus.',
+        'The Receiver has no material incentive to return anything — but most do.',
+        'Think about how trust affects economic outcomes.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Sender profit = Endowment - Sent + Returned',
+        'Receiver profit = Sent × Multiplier - Returned',
+        'Total surplus = Endowment + Sent × (Multiplier - 1)',
+      ],
+      equilibrium:
+        'By backward induction, the Receiver returns 0, so the Sender sends 0. In practice, Senders typically send 40-60% and Receivers return about 30-40% of the tripled amount.',
+      keyParameters: [
+        'endowment — starting amount for the Sender (default 10)',
+        'multiplier — how much the sent amount is multiplied (default 3)',
+      ],
+      teachingNotes: [
+        'Measures trust (amount sent) and reciprocity (proportion returned).',
+        'Compare to the subgame-perfect equilibrium of sending and returning nothing.',
+        'Discuss how institutions and social norms affect trust in real economies.',
+      ],
+    },
+  },
+
+  auction: {
+    studentInstructions: {
+      premise:
+        'You are a bidder in a sealed-bid auction. You have a private value for the item — the most it is worth to you. You submit one sealed bid without seeing others\' bids.',
+      yourGoal:
+        'Win the item at a price below your value to earn a positive profit. Balance bidding high enough to win against bidding low enough to profit.',
+      howToPlay: [
+        'You receive a private value for the item (visible only to you).',
+        'Submit a sealed bid — all bids are revealed simultaneously.',
+        'The highest bidder wins the item.',
+        'First-price auction: the winner pays their own bid.',
+        'Second-price auction: the winner pays the second-highest bid.',
+        'Winner profit = Your Value - Price Paid. All others earn $0.',
+      ],
+      tips: [
+        'In a first-price auction, bid below your value — the margin is your profit.',
+        'In a second-price auction, bidding exactly your value is the dominant strategy.',
+        'Never bid above your value — you\'d lose money if you win!',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'First-price: Winner profit = Value - Own Bid',
+        'Second-price: Winner profit = Value - Second-Highest Bid',
+        'Loser profit = 0',
+      ],
+      equilibrium:
+        'Second-price: Truthful bidding (bid = value) is a dominant strategy. First-price: Equilibrium bid = value × (n-1)/n for uniform values, where n is the number of bidders.',
+      keyParameters: [
+        'auctionType — first_price or second_price',
+        'valueMin / valueMax — range for private value draws',
+      ],
+      teachingNotes: [
+        'Revenue equivalence theorem: expected revenue is the same across auction formats.',
+        'First-price auctions typically show bid shading (bids below value).',
+        'Second-price auctions test whether students discover the dominant strategy.',
+        'Compare observed revenue across formats to test revenue equivalence.',
+      ],
+    },
+  },
+
+  bargaining: {
+    studentInstructions: {
+      premise:
+        'You are negotiating with a partner over how to divide a pie (sum of money). One player proposes a split; the other accepts or rejects.',
+      yourGoal:
+        'Proposers: claim as much as possible while making an offer your partner will accept. Responders: accept offers that are better than nothing, reject unfair splits.',
+      howToPlay: [
+        'The Proposer states how much of the pie to keep.',
+        'The Responder sees the proposal and either Accepts or Rejects.',
+        'Accept: Proposer earns the kept amount; Responder earns the remainder.',
+        'Reject: Both players earn $0 for that round.',
+        'The pie may shrink over rounds (discount factor), making delay costly.',
+      ],
+      tips: [
+        'A shrinking pie means rejected offers destroy value — delay is costly for both sides.',
+        'The responder\'s minimum acceptable offer should account for the shrinking pie.',
+        'Think about what your partner will accept before making an offer.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Accept: Proposer profit = Keep amount; Responder profit = Pie - Keep',
+        'Reject: Both earn 0',
+        'Pie in round t: PieSize × (discountFactor)^(t-1)',
+      ],
+      equilibrium:
+        'Rubinstein bargaining: with a discount factor δ, the subgame-perfect equilibrium gives the proposer 1/(1+δ) of the pie. With equal patience, the first mover gets slightly more than half.',
+      keyParameters: [
+        'pieSize — initial size of the pie to divide (default 10)',
+        'discountFactor — pie shrinks by this factor each round (default 0.9)',
+      ],
+      teachingNotes: [
+        'Compare to Ultimatum Game — similar structure but framing affects behavior.',
+        'Track acceptance rates and proposal amounts across rounds.',
+        'Discuss how patience (discount factor) affects bargaining power.',
+      ],
+    },
+  },
+
+  common_pool_resource: {
+    studentInstructions: {
+      premise:
+        'You share a resource pool (e.g., a fishery) with other players. Each round, everyone simultaneously decides how much to extract. Over-extraction depletes the resource.',
+      yourGoal:
+        'Maximize your earnings by choosing how much to extract. More extraction earns you more, but if the group over-extracts, the resource is depleted and everyone suffers.',
+      howToPlay: [
+        'Each round, choose how many units to extract (0 to maximum).',
+        'Your extraction earns you money directly.',
+        'If total group extraction exceeds the pool size, all extractions are scaled down proportionally.',
+        'Whatever remains in the pool generates a shared bonus distributed equally.',
+        'Your profit = Your extraction earnings + Your share of the bonus.',
+      ],
+      tips: [
+        'If everyone extracts the maximum, the pool is depleted and the shared bonus is $0.',
+        'Restraint creates a larger total surplus through the shared bonus.',
+        'This is the "Tragedy of the Commons" — individual incentives lead to overuse.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Extraction earnings = min(extraction, proportional share) × extractionValue',
+        'Shared bonus = max(0, poolSize - totalExtraction) × regenerationRate / N',
+        'Player profit = Extraction earnings + Shared bonus',
+      ],
+      equilibrium:
+        'Nash equilibrium involves over-extraction relative to the social optimum. The socially optimal extraction balances marginal extraction value against the marginal loss of shared bonus.',
+      keyParameters: [
+        'poolSize — total units available in the resource pool (default 100)',
+        'maxExtraction — maximum individual extraction per round (default 25)',
+        'extractionValue — earnings per unit extracted (default 1)',
+        'regenerationRate — rate at which remaining pool generates bonus (default 0.5)',
+      ],
+      teachingNotes: [
+        'Classic illustration of the tragedy of the commons.',
+        'Compare group extraction to the social optimum and Nash equilibrium.',
+        'Discuss solutions: property rights, quotas, Pigouvian taxes, communication.',
+      ],
+    },
+  },
+
+  stag_hunt: {
+    studentInstructions: {
+      premise:
+        'You are in a group where everyone must coordinate. Each player simultaneously chooses to Hunt Stag (requires everyone to cooperate) or Hunt Hare (safe but less rewarding).',
+      yourGoal:
+        'Earn the most by coordinating with your group. Hunting stag pays more but only if EVERYONE hunts stag.',
+      howToPlay: [
+        'Each round, choose: Hunt Stag or Hunt Hare.',
+        'If ALL players choose Stag: everyone earns the Stag payoff (higher).',
+        'If you choose Hare: you earn the Hare payoff regardless of others.',
+        'If you choose Stag but anyone chooses Hare: you earn $0 (the stag escapes).',
+      ],
+      tips: [
+        'Stag is better if you trust everyone to coordinate, but risky.',
+        'Hare is the safe choice — guaranteed payoff no matter what.',
+        'This game has two equilibria: all-Stag (better) and all-Hare (safer).',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'All choose Stag: each earns stagPayoff',
+        'Choose Hare: earn harePayoff (regardless of others)',
+        'Choose Stag when others choose Hare: earn 0',
+      ],
+      equilibrium:
+        'Two pure-strategy Nash equilibria: all-Stag (payoff dominant) and all-Hare (risk dominant). Which one emerges depends on players\' trust and risk attitudes.',
+      keyParameters: [
+        'stagPayoff — payoff when all hunt stag (default 5)',
+        'harePayoff — guaranteed payoff for hunting hare (default 3)',
+      ],
+      teachingNotes: [
+        'Illustrates the difference between payoff dominance and risk dominance.',
+        'Track coordination rates across rounds — does the group converge to one equilibrium?',
+        'Discuss applications: technology adoption, bank runs, market entry.',
+      ],
+    },
+  },
+
+  dictator: {
+    studentInstructions: {
+      premise:
+        'You are given an endowment and must decide how much to give to an anonymous recipient. The recipient has no say — you have all the power.',
+      yourGoal:
+        'Decide how to split the endowment. You keep whatever you don\'t give away.',
+      howToPlay: [
+        'You receive an endowment (e.g., $10).',
+        'Choose how much to give to the recipient (0 to endowment).',
+        'You keep the remainder: Your profit = Endowment - Amount Given.',
+        'The recipient receives what you give (they cannot reject or respond).',
+      ],
+      tips: [
+        'There is no strategic reason to give anything — this measures pure generosity.',
+        'Think about what feels fair. What would you want to receive?',
+        'Your choice is anonymous — no one will know what you decided.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Dictator profit = Endowment - Amount Given',
+        'Recipient receives = Amount Given',
+      ],
+      equilibrium:
+        'The Nash equilibrium (and subgame-perfect equilibrium) is to give $0. In experiments, the modal gift is $0 but the mean is typically 20-30% of the endowment.',
+      keyParameters: [
+        'endowment — amount the dictator receives to split (default 10)',
+      ],
+      teachingNotes: [
+        'Measures pure altruism/fairness preferences without strategic considerations.',
+        'Compare to Ultimatum Game — how much does the threat of rejection change behavior?',
+        'Plot the distribution of giving: bimodal (0 and 50%) is typical.',
+        'Discuss social preferences: altruism, inequality aversion, warm glow.',
+      ],
+    },
+  },
+
+  matching_pennies: {
+    studentInstructions: {
+      premise:
+        'You are playing a zero-sum game. One player is the Matcher (wants choices to match) and the other is the Mismatcher (wants choices to differ). Both choose Heads or Tails simultaneously.',
+      yourGoal:
+        'Matchers: try to match your opponent\'s choice. Mismatchers: try to pick the opposite.',
+      howToPlay: [
+        'You are assigned a role: Matcher or Mismatcher.',
+        'Each round, choose Heads or Tails.',
+        'If choices match (both Heads or both Tails): Matcher wins, Mismatcher loses.',
+        'If choices differ (one Heads, one Tails): Mismatcher wins, Matcher loses.',
+        'Winners earn the win payoff; losers lose the same amount.',
+      ],
+      tips: [
+        'There is no pure strategy that guarantees a win — your opponent can exploit patterns.',
+        'The optimal strategy is to randomize 50/50 between Heads and Tails.',
+        'Try not to be predictable — avoid patterns others can exploit.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Match (both same): Matcher gets +winPayoff, Mismatcher gets -winPayoff',
+        'Mismatch (different): Mismatcher gets +winPayoff, Matcher gets -winPayoff',
+      ],
+      equilibrium:
+        'The unique Nash equilibrium is a mixed strategy: each player randomizes 50/50 between Heads and Tails. Expected payoff is 0 for both players.',
+      keyParameters: [
+        'winPayoff — amount won/lost per match (default 1)',
+      ],
+      teachingNotes: [
+        'Test whether students randomize close to 50/50.',
+        'Run a chi-squared test on observed frequencies vs. 50/50.',
+        'Track serial correlation — are students truly random or do they alternate?',
+        'Great for teaching mixed strategy equilibrium and hypothesis testing.',
+      ],
+    },
+  },
 };

@@ -19,7 +19,7 @@ pool.on('connect', () => {
 
 pool.on('error', (err: Error) => {
   console.error('PostgreSQL pool error:', err);
-  process.exit(-1);
+  // Don't crash — allow non-DB endpoints (e.g. /api/game-types) to keep serving
 });
 
 // Helper function to execute queries

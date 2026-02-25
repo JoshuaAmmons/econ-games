@@ -9,7 +9,7 @@ import { BidModel } from '../../models/Bid';
 import { AskModel } from '../../models/Ask';
 
 /**
- * DA + Price Controls Engine (Week 3)
+ * DA + Price Controls Engine (Week 6)
  *
  * Extends the standard double auction with a price floor or ceiling.
  * - Price ceiling: bids and asks above the ceiling are rejected
@@ -29,7 +29,7 @@ export class PriceControlsEngine extends DoubleAuctionEngine {
       ...base,
       name: 'Double Auction + Price Controls',
       description: 'Double auction with an enforced price floor or ceiling that constrains trading prices.',
-      weekNumber: 3,
+      weekNumber: 6,
       configFields: [
         ...base.configFields,
         {

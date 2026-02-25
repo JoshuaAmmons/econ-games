@@ -39,13 +39,13 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
   const [results, setResults] = useState<PairResult[] | null>(null);
 
   const gameConfig = session?.game_config || {};
-  const highOutput = gameConfig.highOutput ?? 100;
-  const lowOutput = gameConfig.lowOutput ?? 30;
-  const highEffortProb = gameConfig.highEffortProb ?? 0.8;
-  const lowEffortProb = gameConfig.lowEffortProb ?? 0.2;
-  const effortCostAmount = gameConfig.effortCost ?? 10;
-  const maxWage = gameConfig.maxWage ?? 50;
-  const maxBonus = gameConfig.maxBonus ?? 50;
+  const highOutput = Number(gameConfig.highOutput ?? 100);
+  const lowOutput = Number(gameConfig.lowOutput ?? 30);
+  const highEffortProb = Number(gameConfig.highEffortProb ?? 0.8);
+  const lowEffortProb = Number(gameConfig.lowEffortProb ?? 0.2);
+  const effortCostAmount = Number(gameConfig.effortCost ?? 10);
+  const maxWage = Number(gameConfig.maxWage ?? 50);
+  const maxBonus = Number(gameConfig.maxBonus ?? 50);
   const isPrincipal = player?.role === 'principal';
 
   useEffect(() => {
@@ -74,17 +74,13 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
       }
     }));
 
-    cleanups.push(onEvent('first-move-submitted', (data: { partnerId: string; action: { fixedWage: number; bonus: number } }) => {
-      if (data.partnerId === playerId) {
-        setPartnerContract(data.action);
-        toast(`Contract received: $${data.action.fixedWage} wage + $${data.action.bonus} bonus`, { icon: '📄' });
-      }
+    cleanups.push(onEvent('partner-first-move', (data: { action: { fixedWage: number; bonus: number } }) => {
+      setPartnerContract(data.action);
+      toast(`Contract received: $${data.action.fixedWage} wage + $${data.action.bonus} bonus`, { icon: '📄' });
     }));
 
-    cleanups.push(onEvent('second-move-submitted', (data: { partnerId: string }) => {
-      if (data.partnerId === playerId) {
-        toast('Agent chose effort level!', { icon: '⚡' });
-      }
+    cleanups.push(onEvent('second-move-submitted', () => {
+      // Progress tracking only
     }));
 
     cleanups.push(onEvent('round-results', (data: { pairs: PairResult[] }) => {

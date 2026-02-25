@@ -2,21 +2,27 @@ import type { GameType, UIConfig, ValidationResult } from '../GameEngine';
 import { SequentialBaseEngine } from './SequentialBaseEngine';
 
 /**
- * Ultimatum Game Engine (Week 7)
+ * Bargaining Game Engine (Week 5)
  *
  * Pairs: Proposer + Responder
- * Stage 1: Proposer offers a split of an endowment
- * Stage 2: Responder accepts or rejects
- *   - Accept: split as proposed
+ * Stage 1: Proposer proposes a split of a pie by stating the amount they want to keep
+ *          (0 to pieSize). The responder would receive pieSize - keep.
+ * Stage 2: Responder accepts or rejects.
+ *   - Accept: proposer gets kept amount, responder gets pieSize - kept
  *   - Reject: both get $0
  *
+ * Similar to ultimatum but framed around bargaining with a shrinking pie.
+ * The discountFactor is displayed to students so they understand that in
+ * repeated rounds the pie shrinks (instructors can reduce pieSize between
+ * sessions, or students internalize the cost of delay).
+ *
  * game_config: {
- *   endowment: number,    // total amount to split (default 10)
- *   minOffer: number,     // minimum allowed offer (default 0)
+ *   pieSize: number,        // total pie to split (default 10)
+ *   discountFactor: number, // pie shrinks by this factor each round (default 0.9)
  * }
  */
-export class UltimatumEngine extends SequentialBaseEngine {
-  readonly gameType: GameType = 'ultimatum';
+export class BargainingEngine extends SequentialBaseEngine {
+  readonly gameType: GameType = 'bargaining';
 
   protected roles(): [string, string] {
     return ['proposer', 'responder'];
@@ -24,12 +30,12 @@ export class UltimatumEngine extends SequentialBaseEngine {
 
   getUIConfig(): UIConfig {
     return {
-      name: 'Ultimatum Game',
-      description: 'Proposer offers a split of an endowment. Responder accepts or rejects.',
+      name: 'Bargaining Game',
+      description: 'Proposer states how much of the pie to keep. Responder accepts or rejects. Rejection means both get nothing.',
       category: 'sequential',
-      weekNumber: 7,
+      weekNumber: 5,
       roles: [
-        { role: 'proposer', label: 'Proposer', description: 'Offer a split of the endowment' },
+        { role: 'proposer', label: 'Proposer', description: 'Propose how to split the pie by choosing how much to keep' },
         { role: 'responder', label: 'Responder', description: 'Accept or reject the proposed split' },
       ],
       usesOrderBook: false,
@@ -57,13 +63,13 @@ export class UltimatumEngine extends SequentialBaseEngine {
           name: 'time_per_round',
           label: 'Time per Round (seconds)',
           type: 'number',
-          default: 90,
+          default: 120,
           min: 30,
           max: 300,
         },
         {
-          name: 'endowment',
-          label: 'Endowment ($)',
+          name: 'pieSize',
+          label: 'Pie Size ($)',
           type: 'number',
           default: 10,
           min: 1,
@@ -72,29 +78,25 @@ export class UltimatumEngine extends SequentialBaseEngine {
           description: 'Total amount to be split',
         },
         {
-          name: 'minOffer',
-          label: 'Minimum Offer ($)',
+          name: 'discountFactor',
+          label: 'Discount Factor',
           type: 'number',
-          default: 0,
-          min: 0,
-          max: 50,
-          step: 0.5,
-          description: 'Minimum amount the proposer can offer',
+          default: 0.9,
+          min: 0.1,
+          max: 1,
+          step: 0.05,
+          description: 'Pie shrinks by this factor each round',
         },
       ],
     };
   }
 
   validateConfig(config: Record<string, any>): ValidationResult {
-    if (config.endowment !== undefined && config.endowment <= 0) {
-      return { valid: false, error: 'Endowment must be positive' };
+    if (config.pieSize !== undefined && config.pieSize <= 0) {
+      return { valid: false, error: 'Pie size must be positive' };
     }
-    if (config.minOffer !== undefined && config.minOffer < 0) {
-      return { valid: false, error: 'Minimum offer cannot be negative' };
-    }
-    if (config.minOffer !== undefined && config.endowment !== undefined
-        && config.minOffer > config.endowment) {
-      return { valid: false, error: 'Minimum offer cannot exceed the endowment' };
+    if (config.discountFactor !== undefined && (config.discountFactor <= 0 || config.discountFactor > 1)) {
+      return { valid: false, error: 'Discount factor must be between 0 (exclusive) and 1 (inclusive)' };
     }
     return { valid: true };
   }
@@ -103,14 +105,13 @@ export class UltimatumEngine extends SequentialBaseEngine {
     action: Record<string, any>,
     config: Record<string, any>
   ): string | null {
-    const { offer } = action;
-    const endowment = config.endowment ?? 10;
-    const minOffer = config.minOffer ?? 0;
+    const { keep } = action;
+    const pieSize = config.pieSize ?? 10;
 
-    if (offer === undefined || offer === null) return 'Offer amount is required';
-    if (typeof offer !== 'number' || isNaN(offer)) return 'Offer must be a valid number';
-    if (offer < minOffer) return `Offer must be at least $${minOffer}`;
-    if (offer > endowment) return `Offer cannot exceed the endowment of $${endowment}`;
+    if (keep === undefined || keep === null) return 'Amount to keep is required';
+    if (typeof keep !== 'number' || isNaN(keep)) return 'Amount must be a valid number';
+    if (keep < 0) return 'Amount cannot be negative';
+    if (keep > pieSize) return `Amount cannot exceed the pie size of $${pieSize}`;
     return null;
   }
 
@@ -130,27 +131,28 @@ export class UltimatumEngine extends SequentialBaseEngine {
     secondMoveAction: Record<string, any>,
     config: Record<string, any>
   ) {
-    const endowment = config.endowment ?? 10;
-    const offer = firstMoveAction.offer as number;
+    const pieSize = config.pieSize ?? 10;
+    const keep = firstMoveAction.keep as number;
+    const offer = pieSize - keep;
     const accepted = secondMoveAction.accept as boolean;
 
     if (accepted) {
       return {
-        firstMoverProfit: Math.round((endowment - offer) * 100) / 100,
+        firstMoverProfit: Math.round(keep * 100) / 100,
         secondMoverProfit: Math.round(offer * 100) / 100,
         firstMoverResultData: {
           role: 'proposer',
+          keep,
           offer,
           accepted: true,
-          endowment,
-          kept: endowment - offer,
+          pieSize,
         },
         secondMoverResultData: {
           role: 'responder',
+          keep,
           offer,
           accepted: true,
-          endowment,
-          received: offer,
+          pieSize,
         },
       };
     } else {
@@ -159,17 +161,17 @@ export class UltimatumEngine extends SequentialBaseEngine {
         secondMoverProfit: 0,
         firstMoverResultData: {
           role: 'proposer',
+          keep,
           offer,
           accepted: false,
-          endowment,
-          kept: 0,
+          pieSize,
         },
         secondMoverResultData: {
           role: 'responder',
+          keep,
           offer,
           accepted: false,
-          endowment,
-          received: 0,
+          pieSize,
         },
       };
     }

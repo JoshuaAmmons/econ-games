@@ -3,7 +3,7 @@ import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
 import { Input } from '../../components/shared/Input';
 import type { GameUIProps } from '../GameUIRegistry';
-import { DollarSign, Users, Check, X, ArrowRight } from 'lucide-react';
+import { Scale, Handshake, DollarSign, Users, Check, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface PairResult {
@@ -11,16 +11,19 @@ interface PairResult {
   firstMoverName: string;
   secondMoverId: string;
   secondMoverName: string;
-  firstMoveAction: { offer: number };
+  firstMoveAction: { keep: number };
   secondMoveAction: { accept: boolean };
   firstMoverProfit: number;
   secondMoverProfit: number;
 }
 
 /**
- * Ultimatum Game UI (Week 9)
+ * Bargaining Game UI
+ * Proposer decides how much of the pie to keep. Responder accepts or rejects.
+ * Similar to Ultimatum but framed as keeping (not offering) and includes
+ * a discount factor that shrinks the pie each round.
  */
-const UltimatumUI: React.FC<GameUIProps> = ({
+const BargainingUI: React.FC<GameUIProps> = ({
   session,
   player,
   playerId,
@@ -30,21 +33,29 @@ const UltimatumUI: React.FC<GameUIProps> = ({
   submitAction,
   refreshPlayer,
 }) => {
-  const [offer, setOffer] = useState('');
+  const [keep, setKeep] = useState('');
   const [submitted, setSubmitted] = useState(false);
-  const [partnerOffer, setPartnerOffer] = useState<number | null>(null);
+  const [partnerKeep, setPartnerKeep] = useState<number | null>(null);
   const [results, setResults] = useState<PairResult[] | null>(null);
 
   const gameConfig = session?.game_config || {};
-  const endowment = Number(gameConfig.endowment ?? 10);
-  const minOffer = Number(gameConfig.minOffer ?? 0);
+  const pieSize = Number(gameConfig.pieSize ?? 10);
+  const discountFactor = Number(gameConfig.discountFactor ?? 0.9);
   const isProposer = player?.role === 'proposer';
+
+  // Derived preview values
+  const keepNum = parseFloat(keep) || 0;
+  const partnerGets = pieSize - keepNum;
+
+  // What the responder sees
+  const proposerKeeps = partnerKeep ?? 0;
+  const responderGets = pieSize - proposerKeeps;
 
   useEffect(() => {
     if (roundActive && roundId) {
       setSubmitted(false);
-      setOffer('');
-      setPartnerOffer(null);
+      setKeep('');
+      setPartnerKeep(null);
       setResults(null);
     }
   }, [roundId, roundActive]);
@@ -58,16 +69,17 @@ const UltimatumUI: React.FC<GameUIProps> = ({
         setSubmitted(true);
       }
       if (!isProposer && state.partnerAction) {
-        setPartnerOffer(state.partnerAction.offer);
+        setPartnerKeep(state.partnerAction.keep);
       }
       if (state.pairs) {
         setResults(Array.isArray(state.pairs) ? state.pairs : []);
       }
     }));
 
-    cleanups.push(onEvent('partner-first-move', (data: { action: { offer: number } }) => {
-      setPartnerOffer(data.action.offer);
-      toast(`Your partner offered $${Number(data.action.offer).toFixed(2)}`, { icon: '💰' });
+    cleanups.push(onEvent('partner-first-move', (data: { action: { keep: number } }) => {
+      setPartnerKeep(data.action.keep);
+      const offer = pieSize - Number(data.action.keep);
+      toast(`Your partner proposes to keep $${Number(data.action.keep).toFixed(2)} (you get $${offer.toFixed(2)})`, { icon: '⚖️' });
     }));
 
     cleanups.push(onEvent('second-move-submitted', () => {
@@ -81,9 +93,9 @@ const UltimatumUI: React.FC<GameUIProps> = ({
       if (myPair) {
         const myProfit = myPair.firstMoverId === playerId ? myPair.firstMoverProfit : myPair.secondMoverProfit;
         if (myPair.secondMoveAction?.accept) {
-          toast.success(`Offer accepted! Your profit: $${Number(myProfit).toFixed(2)}`);
+          toast.success(`Proposal accepted! Your profit: $${Number(myProfit).toFixed(2)}`);
         } else {
-          toast(`Offer rejected. Both earn $0.`, { icon: '❌' });
+          toast(`Proposal rejected. Both earn $0.`, { icon: '❌' });
         }
       }
     }));
@@ -94,26 +106,26 @@ const UltimatumUI: React.FC<GameUIProps> = ({
     }));
 
     return () => cleanups.forEach(fn => fn());
-  }, [onEvent, playerId, refreshPlayer, isProposer]);
+  }, [onEvent, playerId, refreshPlayer, isProposer, pieSize]);
 
   const handleProposerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!roundId || !offer || submitted) return;
-    const offerNum = parseFloat(offer);
-    if (isNaN(offerNum) || offerNum < minOffer || offerNum > endowment) {
-      toast.error(`Offer must be between $${minOffer} and $${endowment}`);
+    if (!roundId || !keep || submitted) return;
+    const keepVal = parseFloat(keep);
+    if (isNaN(keepVal) || keepVal < 0 || keepVal > pieSize) {
+      toast.error(`Amount to keep must be between $0 and $${pieSize}`);
       return;
     }
-    submitAction({ type: 'first_move', offer: offerNum });
+    submitAction({ type: 'first_move', keep: keepVal });
     setSubmitted(true);
-    toast.success(`Offered $${offerNum.toFixed(2)} to your partner`);
+    toast.success(`Proposed to keep $${keepVal.toFixed(2)}`);
   };
 
   const handleResponderDecision = (accept: boolean) => {
     if (!roundId || submitted) return;
     submitAction({ type: 'second_move', accept });
     setSubmitted(true);
-    toast.success(accept ? 'Offer accepted!' : 'Offer rejected!');
+    toast.success(accept ? 'Proposal accepted!' : 'Proposal rejected!');
   };
 
   return (
@@ -122,50 +134,55 @@ const UltimatumUI: React.FC<GameUIProps> = ({
       <div className="space-y-4">
         <Card>
           <div className="text-center">
-            <div className="text-sm text-gray-500 mb-1">Endowment to Split</div>
-            <div className="text-3xl font-bold text-sky-700">${endowment.toFixed(2)}</div>
+            <div className="text-sm text-gray-500 mb-1">Pie to Split</div>
+            <div className="text-3xl font-bold text-sky-700">${pieSize.toFixed(2)}</div>
             <div className="mt-2 px-3 py-1 inline-block rounded-full text-sm font-medium bg-purple-100 text-purple-700">
               You are the {isProposer ? 'Proposer' : 'Responder'}
             </div>
           </div>
+          <div className="mt-3 text-xs text-gray-400 p-2 bg-gray-50 rounded text-center">
+            <Scale className="w-4 h-4 inline mr-1" />
+            The pie shrinks by {discountFactor} each round
+          </div>
         </Card>
 
-        <Card title={isProposer ? 'Make Your Offer' : 'Respond to Offer'}>
+        <Card title={isProposer ? 'Make Your Proposal' : 'Respond to Proposal'}>
           {roundActive && roundId ? (
             isProposer ? (
               // Proposer UI
               submitted ? (
                 <div className="text-center py-4">
-                  <div className="text-green-600 font-medium mb-2">Offer Sent!</div>
+                  <div className="text-green-600 font-medium mb-2">Proposal Sent!</div>
                   <p className="text-sm text-gray-500">Waiting for your partner to respond...</p>
                 </div>
               ) : (
                 <form onSubmit={handleProposerSubmit} className="space-y-3">
                   <Input
-                    label={`Amount to offer (min $${minOffer})`}
+                    label={`Amount to keep ($0 - $${pieSize})`}
                     type="number"
                     step="0.50"
-                    min={minOffer}
-                    max={endowment}
-                    value={offer}
-                    onChange={(e) => setOffer(e.target.value)}
-                    placeholder={`$${minOffer} - $${endowment}`}
+                    min="0"
+                    max={pieSize}
+                    value={keep}
+                    onChange={(e) => setKeep(e.target.value)}
+                    placeholder={`$0 - $${pieSize}`}
                     required
                   />
-                  {offer && (
+                  {keep && !isNaN(keepNum) && keepNum >= 0 && (
                     <div className="bg-gray-50 rounded p-3 text-sm space-y-1">
                       <div className="flex justify-between">
-                        <span>You offer:</span>
-                        <span className="font-medium">${parseFloat(offer).toFixed(2)}</span>
+                        <span>You keep:</span>
+                        <span className="font-medium">${keepNum.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>You keep:</span>
-                        <span className="font-medium">${(endowment - parseFloat(offer)).toFixed(2)}</span>
+                        <span>Partner gets:</span>
+                        <span className="font-medium">${partnerGets.toFixed(2)}</span>
                       </div>
                     </div>
                   )}
-                  <Button type="submit" className="w-full" disabled={!offer}>
-                    Send Offer
+                  <Button type="submit" className="w-full" disabled={!keep}>
+                    <Handshake className="w-4 h-4 inline mr-2" />
+                    Submit Proposal
                   </Button>
                 </form>
               )
@@ -175,13 +192,13 @@ const UltimatumUI: React.FC<GameUIProps> = ({
                 <div className="text-center py-4">
                   <div className="text-green-600 font-medium">Response Submitted!</div>
                 </div>
-              ) : partnerOffer !== null ? (
+              ) : partnerKeep !== null ? (
                 <div className="space-y-4">
                   <div className="bg-amber-50 rounded-lg p-4 text-center">
-                    <p className="text-sm text-gray-500 mb-1">Your partner offers you:</p>
-                    <p className="text-3xl font-bold text-amber-700">${Number(partnerOffer).toFixed(2)}</p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      (They keep ${(endowment - Number(partnerOffer)).toFixed(2)})
+                    <p className="text-sm text-gray-500 mb-1">Your partner proposes to keep:</p>
+                    <p className="text-3xl font-bold text-amber-700">${proposerKeeps.toFixed(2)}</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      You would receive: <span className="font-bold text-green-700">${responderGets.toFixed(2)}</span>
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -199,13 +216,13 @@ const UltimatumUI: React.FC<GameUIProps> = ({
                     </Button>
                   </div>
                   <p className="text-xs text-gray-400 text-center">
-                    Reject = both get $0. Accept = you get ${Number(partnerOffer).toFixed(2)}.
+                    Reject = both get $0. Accept = you get ${responderGets.toFixed(2)}.
                   </p>
                 </div>
               ) : (
                 <div className="text-center py-4">
                   <Users className="w-8 h-8 mx-auto text-gray-300 mb-2" />
-                  <p className="text-sm text-gray-500">Waiting for your partner to make an offer...</p>
+                  <p className="text-sm text-gray-500">Waiting for your partner to make a proposal...</p>
                 </div>
               )
             )
@@ -234,6 +251,9 @@ const UltimatumUI: React.FC<GameUIProps> = ({
             <div className="space-y-3">
               {results.map((pair, i) => {
                 const isMyPair = pair.firstMoverId === playerId || pair.secondMoverId === playerId;
+                const kept = Number(pair.firstMoveAction?.keep ?? 0);
+                const offered = pieSize - kept;
+                const accepted = pair.secondMoveAction?.accept;
                 return (
                   <div
                     key={i}
@@ -243,15 +263,16 @@ const UltimatumUI: React.FC<GameUIProps> = ({
                       <span className="font-medium">
                         {pair.firstMoverName || 'Proposer'}
                       </span>
-                      <ArrowRight className="w-4 h-4 text-gray-400" />
+                      <Handshake className="w-4 h-4 text-gray-400" />
                       <span className="font-medium">
                         {pair.secondMoverName || 'Responder'}
                       </span>
                     </div>
                     <div className="text-sm text-gray-600 space-y-1">
-                      <div>Offer: ${Number(pair.firstMoveAction?.offer ?? 0).toFixed(2)} / ${endowment.toFixed(2)}</div>
+                      <div>Proposer keeps: ${kept.toFixed(2)} / ${pieSize.toFixed(2)}</div>
+                      <div>Responder offered: ${offered.toFixed(2)}</div>
                       <div className="flex items-center gap-1">
-                        {pair.secondMoveAction?.accept ? (
+                        {accepted ? (
                           <><Check className="w-3 h-3 text-green-600" /> <span className="text-green-600">Accepted</span></>
                         ) : (
                           <><X className="w-3 h-3 text-red-600" /> <span className="text-red-600">Rejected</span></>
@@ -268,7 +289,7 @@ const UltimatumUI: React.FC<GameUIProps> = ({
             </div>
           ) : (
             <div className="text-center text-gray-400 py-8">
-              <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <Scale className="w-12 h-12 mx-auto mb-3 opacity-30" />
               <p>Results will appear after all pairs complete</p>
             </div>
           )}
@@ -278,4 +299,4 @@ const UltimatumUI: React.FC<GameUIProps> = ({
   );
 };
 
-export default UltimatumUI;
+export default BargainingUI;

@@ -2,7 +2,7 @@ import type { GameType, UIConfig, ValidationResult } from '../GameEngine';
 import { SimultaneousBaseEngine } from './SimultaneousBaseEngine';
 
 /**
- * Bertrand Competition Engine (Week 4)
+ * Bertrand Competition Engine (Week 17)
  *
  * N firms simultaneously set prices. The firm(s) with the lowest price
  * capture the entire market demand. Ties split the market equally.
@@ -24,7 +24,7 @@ export class BertrandEngine extends SimultaneousBaseEngine {
       name: 'Bertrand Competition',
       description: 'Firms simultaneously set prices. The lowest price captures the entire market.',
       category: 'simultaneous',
-      weekNumber: 4,
+      weekNumber: 17,
       roles: [
         { role: 'firm', label: 'Firm', description: 'Set a price to compete for market demand' },
       ],
