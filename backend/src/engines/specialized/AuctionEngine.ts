@@ -1,6 +1,9 @@
+import type { Server } from 'socket.io';
 import type { GameType, UIConfig, ValidationResult } from '../GameEngine';
 import { SimultaneousBaseEngine } from '../simultaneous/SimultaneousBaseEngine';
 import { PlayerModel } from '../../models/Player';
+import { SessionModel } from '../../models/Session';
+import { RoundModel } from '../../models/Round';
 import { pool } from '../../config/database';
 
 /**
@@ -122,6 +125,29 @@ export class AuctionEngine extends SimultaneousBaseEngine {
   async setupPlayers(
     sessionId: string,
     _playerCount: number,
+    config: Record<string, any>
+  ): Promise<void> {
+    await this.assignValuations(sessionId, config);
+  }
+
+  /**
+   * Reassign fresh private valuations at the start of every round.
+   * Each round is a new auction with a new item, so players get new draws.
+   */
+  async onRoundStart(
+    roundId: string,
+    _sessionCode: string,
+    _io: Server
+  ): Promise<void> {
+    const round = await RoundModel.findById(roundId);
+    if (!round) return;
+    const session = await SessionModel.findById(round.session_id);
+    if (!session) return;
+    await this.assignValuations(session.id, session.game_config || {});
+  }
+
+  private async assignValuations(
+    sessionId: string,
     config: Record<string, any>
   ): Promise<void> {
     const valueMin = config.valueMin ?? 10;

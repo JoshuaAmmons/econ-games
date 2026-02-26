@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { RoundModel } from '../models/Round';
 import { TradeModel } from '../models/Trade';
 import { SessionModel } from '../models/Session';
+import { PlayerModel } from '../models/Player';
 import { GameRegistry } from '../engines/GameRegistry';
 
 export function setupSocketHandlers(httpServer: HTTPServer) {
@@ -262,6 +263,14 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
         // Let the engine initialize round state (timers, inventories, etc.)
         const gameType = await getSessionGameType(sessionCode);
         const engine = GameRegistry.get(gameType);
+
+        // On the first round, let the engine set up player-specific data
+        // (e.g. auction private valuations) before gameplay begins.
+        if (roundNumber === 1) {
+          const activePlayers = await PlayerModel.findActiveBySession(session.id);
+          await engine.setupPlayers(session.id, activePlayers.length, session.game_config || {});
+        }
+
         if (engine.onRoundStart) {
           await engine.onRoundStart(round.id, sessionCode, io);
         }
