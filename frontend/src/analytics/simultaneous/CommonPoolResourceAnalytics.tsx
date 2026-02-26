@@ -21,7 +21,7 @@ const CommonPoolResourceAnalytics: React.FC<AnalyticsProps> = ({ data, completed
         const rd = r.resultData || {};
         points.push({
           round: round.roundNumber,
-          extraction: Number(rd.extraction ?? rd.amount ?? 0),
+          extraction: Number(rd.requestedExtraction ?? rd.extraction ?? rd.amount ?? 0),
           player: data.players.find(p => p.id === r.playerId)?.name || 'Unknown',
         });
       }
@@ -33,7 +33,7 @@ const CommonPoolResourceAnalytics: React.FC<AnalyticsProps> = ({ data, completed
   const totalExtractionData = useMemo(() => {
     return completedRounds.map(round => {
       const results = round.results || [];
-      const extractions = results.map(r => Number(r.resultData?.extraction ?? r.resultData?.amount ?? 0));
+      const extractions = results.map(r => Number(r.resultData?.requestedExtraction ?? r.resultData?.extraction ?? r.resultData?.amount ?? 0));
       const total = extractions.reduce((s, e) => s + e, 0);
       return {
         round: round.roundNumber,

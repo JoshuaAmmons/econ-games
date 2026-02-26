@@ -10,10 +10,10 @@ interface RoundResult {
   playerId: string;
   playerName: string;
   profit: number;
-  extraction: number;
-  effectiveExtraction: number;
-  totalExtraction: number;
-  remainingPool: number;
+  requestedExtraction: number;
+  actualExtraction: number;
+  totalActualExtraction: number;
+  remaining: number;
   sharedBonus: number;
   poolSize: number;
 }
@@ -76,7 +76,7 @@ const CommonPoolResourceUI: React.FC<GameUIProps> = ({
       refreshPlayer();
       const myResult = data.results.find(r => r.playerId === playerId);
       if (myResult) {
-        toast.success(`Profit: $${Number(myResult.profit).toFixed(2)} (extracted ${Number(myResult.effectiveExtraction).toFixed(1)} + bonus $${Number(myResult.sharedBonus).toFixed(2)})`);
+        toast.success(`Profit: $${Number(myResult.profit).toFixed(2)} (extracted ${Number(myResult.actualExtraction).toFixed(1)} + bonus $${Number(myResult.sharedBonus).toFixed(2)})`);
       }
     }));
 
@@ -108,7 +108,7 @@ const CommonPoolResourceUI: React.FC<GameUIProps> = ({
 
   // Calculate the pool depletion percentage for the visual indicator
   const depletionPercent = myResult
-    ? Math.max(0, Math.min(100, ((myResult.poolSize - myResult.remainingPool) / myResult.poolSize) * 100))
+    ? Math.max(0, Math.min(100, ((myResult.poolSize - myResult.remaining) / myResult.poolSize) * 100))
     : 0;
 
   return (
@@ -221,13 +221,13 @@ const CommonPoolResourceUI: React.FC<GameUIProps> = ({
                   <div>
                     <div className="text-sm text-gray-500">Total Extracted</div>
                     <div className="text-xl font-bold text-red-600">
-                      {myResult?.totalExtraction != null ? Number(myResult.totalExtraction).toFixed(1) : '---'}
+                      {myResult?.totalActualExtraction != null ? Number(myResult.totalActualExtraction).toFixed(1) : '---'}
                     </div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-500">Remaining</div>
                     <div className="text-xl font-bold text-green-700">
-                      {myResult?.remainingPool != null ? Number(myResult.remainingPool).toFixed(1) : '---'}
+                      {myResult?.remaining != null ? Number(myResult.remaining).toFixed(1) : '---'}
                     </div>
                   </div>
                   <div>
@@ -263,8 +263,8 @@ const CommonPoolResourceUI: React.FC<GameUIProps> = ({
 
               {/* Individual Results */}
               {[...results]
-                .filter(r => r.extraction != null)
-                .sort((a, b) => Number(b.extraction) - Number(a.extraction))
+                .filter(r => r.requestedExtraction != null)
+                .sort((a, b) => Number(b.requestedExtraction) - Number(a.requestedExtraction))
                 .map((r, i) => (
                   <div
                     key={r.playerId}
@@ -276,9 +276,9 @@ const CommonPoolResourceUI: React.FC<GameUIProps> = ({
                   >
                     <div className="flex items-center gap-3">
                       <Fish className={`w-5 h-5 ${
-                        Number(r.extraction) > maxExtraction * 0.7
+                        Number(r.requestedExtraction) > maxExtraction * 0.7
                           ? 'text-red-500'
-                          : Number(r.extraction) > maxExtraction * 0.3
+                          : Number(r.requestedExtraction) > maxExtraction * 0.3
                           ? 'text-yellow-500'
                           : 'text-green-500'
                       }`} />
@@ -287,9 +287,9 @@ const CommonPoolResourceUI: React.FC<GameUIProps> = ({
                           {r.playerId === playerId ? 'You' : r.playerName || `Player ${i + 1}`}
                         </span>
                         <div className="text-xs text-gray-500">
-                          Extracted: {Number(r.extraction).toFixed(1)}
-                          {Number(r.effectiveExtraction) !== Number(r.extraction) && (
-                            <span className="text-red-500"> (effective: {Number(r.effectiveExtraction).toFixed(1)})</span>
+                          Extracted: {Number(r.requestedExtraction).toFixed(1)}
+                          {Number(r.actualExtraction) !== Number(r.requestedExtraction) && (
+                            <span className="text-red-500"> (effective: {Number(r.actualExtraction).toFixed(1)})</span>
                           )}
                           {' '}| Bonus: ${Number(r.sharedBonus).toFixed(2)}
                         </div>
@@ -303,33 +303,33 @@ const CommonPoolResourceUI: React.FC<GameUIProps> = ({
                     </div>
                   </div>
                 ))}
-              {results.filter(r => r.extraction == null).length > 0 && (
+              {results.filter(r => r.requestedExtraction == null).length > 0 && (
                 <div className="text-xs text-gray-400 italic mt-2">
-                  {results.filter(r => r.extraction == null).length} player(s) did not submit
+                  {results.filter(r => r.requestedExtraction == null).length} player(s) did not submit
                 </div>
               )}
 
               {/* Your Summary */}
-              {myResult && myResult.extraction != null && (
+              {myResult && myResult.requestedExtraction != null && (
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm">
                   <div className="flex items-center gap-2 mb-1">
                     <BarChart3 className="w-4 h-4 text-blue-600" />
                     <span className="font-medium text-blue-700">Your Summary</span>
                   </div>
                   <p className="text-blue-600">
-                    You extracted {Number(myResult.effectiveExtraction).toFixed(1)} units
-                    {Number(myResult.effectiveExtraction) !== Number(myResult.extraction)
-                      ? ` (requested ${Number(myResult.extraction).toFixed(1)}, pool was over-harvested)`
+                    You extracted {Number(myResult.actualExtraction).toFixed(1)} units
+                    {Number(myResult.actualExtraction) !== Number(myResult.requestedExtraction)
+                      ? ` (requested ${Number(myResult.requestedExtraction).toFixed(1)}, pool was over-harvested)`
                       : ''}.
-                    {' '}The group extracted {Number(myResult.totalExtraction).toFixed(1)} total,
-                    leaving {Number(myResult.remainingPool).toFixed(1)} in the pool.
-                    {Number(myResult.remainingPool) > 0
+                    {' '}The group extracted {Number(myResult.totalActualExtraction).toFixed(1)} total,
+                    leaving {Number(myResult.remaining).toFixed(1)} in the pool.
+                    {Number(myResult.remaining) > 0
                       ? ` The remaining pool generated a shared bonus of $${Number(myResult.sharedBonus).toFixed(2)} per player.`
                       : ' The pool was completely depleted — no shared bonus this round.'}
                   </p>
                 </div>
               )}
-              {myResult && myResult.extraction == null && (
+              {myResult && myResult.requestedExtraction == null && (
                 <div className="mt-4 p-3 bg-amber-50 rounded-lg text-sm">
                   <p className="text-amber-700">You did not submit an extraction this round. Profit: $0.00</p>
                 </div>
