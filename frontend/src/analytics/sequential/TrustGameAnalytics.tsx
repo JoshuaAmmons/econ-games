@@ -170,7 +170,7 @@ const TrustGameAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds })
                 tickFormatter={formatDollar}
                 label={{ value: 'Amount Returned', angle: -90, position: 'insideLeft' }}
               />
-              <Tooltip formatter={(value: any, name: any) => formatDollar(value)} />
+              <Tooltip formatter={(value: any) => formatDollar(value)} />
               <Scatter
                 data={trustReciprocityData}
                 fill={CHART_COLORS[2]}

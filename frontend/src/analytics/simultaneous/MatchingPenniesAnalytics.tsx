@@ -7,7 +7,7 @@ import { ChartCard } from '../../components/charts/ChartCard';
 import { CHART_COLORS, CHART_HEIGHT, CHART_MARGINS, formatDollar } from '../../components/charts/chartUtils';
 import type { AnalyticsProps } from '../AnalyticsRegistry';
 
-const MatchingPenniesAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) => {
+const MatchingPenniesAnalytics: React.FC<AnalyticsProps> = ({ completedRounds }) => {
   // Heads frequency per round, split by matchers and mismatchers
   const headsFrequency = useMemo(() => {
     return completedRounds.map(round => {
