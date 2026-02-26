@@ -4,6 +4,7 @@ import { SessionModel } from '../models/Session';
 import { PlayerModel } from '../models/Player';
 import { RoundModel } from '../models/Round';
 import { CreateSessionRequest, ApiResponse } from '../types';
+import { GameRegistry } from '../engines';
 
 export class SessionController {
   // Create new session
@@ -196,6 +197,17 @@ export class SessionController {
       if (firstRound) {
         await RoundModel.start(firstRound.id);
         await SessionModel.updateCurrentRound(id, 1);
+
+        // Let the engine initialize player-specific data (e.g. auction valuations)
+        const gameType = session.game_type || 'double_auction';
+        try {
+          const engine = GameRegistry.get(gameType);
+          const activePlayers = await PlayerModel.findActiveBySession(id);
+          await engine.setupPlayers(id, activePlayers.length, session.game_config || {});
+        } catch (engineError) {
+          console.error('Engine setup during session start:', engineError);
+          // Non-fatal: session is started, engine setup can be retried
+        }
       }
 
       res.json({
