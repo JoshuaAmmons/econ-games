@@ -2,10 +2,9 @@ import React, { useMemo } from 'react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, ReferenceLine,
-  ScatterChart, Scatter,
 } from 'recharts';
 import { ChartCard } from '../../components/charts/ChartCard';
-import { CHART_COLORS, CHART_HEIGHT, CHART_MARGINS, formatDollar, getPlayerColor } from '../../components/charts/chartUtils';
+import { CHART_COLORS, CHART_HEIGHT, CHART_MARGINS, formatDollar } from '../../components/charts/chartUtils';
 import type { AnalyticsProps } from '../AnalyticsRegistry';
 
 const PrisonerDilemmaAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) => {

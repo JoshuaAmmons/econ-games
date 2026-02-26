@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react';
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, ReferenceLine,
   ScatterChart, Scatter,
 } from 'recharts';
 import { ChartCard } from '../../components/charts/ChartCard';
-import { CHART_COLORS, CHART_HEIGHT, CHART_MARGINS, getPlayerColor } from '../../components/charts/chartUtils';
+import { CHART_COLORS, CHART_HEIGHT, CHART_MARGINS } from '../../components/charts/chartUtils';
 import type { AnalyticsProps } from '../AnalyticsRegistry';
 
 const BeautyContestAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) => {

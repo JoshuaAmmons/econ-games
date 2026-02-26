@@ -187,7 +187,7 @@ const AuctionAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) =
               <XAxis dataKey="round" />
               <YAxis tickFormatter={formatDollar} />
               <Tooltip
-                formatter={(value: any, name: any) => formatDollar(value)}
+                formatter={(value: any) => formatDollar(value)}
               />
               <Legend />
               <ReferenceLine y={0} stroke="#999" />
