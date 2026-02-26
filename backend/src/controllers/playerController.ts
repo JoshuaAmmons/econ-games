@@ -25,8 +25,10 @@ const GAME_ROLES: Record<string, string> = {
 // Games where players alternate between two roles
 const PAIRED_ROLES: Record<string, [string, string]> = {
   ultimatum: ['proposer', 'responder'],
+  bargaining: ['proposer', 'responder'],
   gift_exchange: ['employer', 'worker'],
   principal_agent: ['principal', 'agent'],
+  trust_game: ['sender', 'receiver'],
   market_for_lemons: ['seller', 'buyer'],
 };
 
