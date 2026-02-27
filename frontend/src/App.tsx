@@ -52,6 +52,8 @@ const router = createBrowserRouter([
 function App() {
   return (
     <>
+      {/* Subtle animated water backdrop */}
+      <div className="water-backdrop" aria-hidden="true" />
       <RouterProvider router={router} />
       <Toaster
         position="top-right"
@@ -59,17 +61,23 @@ function App() {
           duration: 3000,
           style: {
             borderRadius: '8px',
-            background: '#333',
-            color: '#fff',
+            background: '#1c2333',
+            color: '#e6e1d6',
+            border: '1px solid #30363d',
+            fontFamily: "'Crimson Pro', Georgia, serif",
           },
           success: {
             style: {
-              background: '#059669',
+              background: '#0d2818',
+              border: '1px solid #1a4a2e',
+              color: '#3fb950',
             },
           },
           error: {
             style: {
-              background: '#dc2626',
+              background: '#2d1215',
+              border: '1px solid #5a2a2a',
+              color: '#f85149',
             },
           },
         }}
