@@ -280,6 +280,10 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
   // Store io on BotService so sessionController can trigger round-1 bot actions
   BotService.getInstance().setIO(io);
 
+  // Expose timer functions so sessionController can set up round-1 timers
+  // (since it starts round 1 directly, the socket start-round handler never runs for it)
+  (io as any).__scheduleRoundEndTimer = scheduleRoundEndTimer;
+
   // Expose scheduleAutoAdvance so engines (like DiscoveryProcess) can trigger it
   (io as any).__scheduleAutoAdvance = scheduleAutoAdvance;
 

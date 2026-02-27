@@ -213,12 +213,26 @@ export class SessionController {
           const activePlayers = await PlayerModel.findActiveBySession(id);
           await engine.setupPlayers(id, activePlayers.length, session.game_config || {});
 
-          // Trigger bot actions for round 1 (socket handler can't do this
-          // because the round is already started by the time it sees it)
-          if (session.bot_enabled && firstRound) {
-            const botService = BotService.getInstance();
-            const io = botService.getIO();
-            if (io) {
+          // The socket start-round handler normally sets up timers and bot actions,
+          // but it can't for round 1 because the round is already 'active' by the
+          // time it runs (RoundModel.start returns null → early return).
+          // So we must do it here.
+          const botService = BotService.getInstance();
+          const io = botService.getIO();
+          if (io) {
+            // Schedule server-side auto-end timer for round 1
+            const scheduleTimer = (io as any).__scheduleRoundEndTimer;
+            if (scheduleTimer) {
+              scheduleTimer(firstRound.id, session.code, session, gameType);
+            }
+
+            // Let the engine initialize round state (e.g. discovery process timers)
+            if (engine.onRoundStart) {
+              await engine.onRoundStart(firstRound.id, session.code, io);
+            }
+
+            // Trigger bot actions for round 1
+            if (session.bot_enabled) {
               botService.onRoundStart(firstRound.id, session.code, session, io)
                 .catch(err => console.error('BotService round 1 start error:', err));
             }
