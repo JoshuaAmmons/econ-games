@@ -46,8 +46,24 @@ app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    version: 'v3-debug',
+    version: 'v6-constraints',
   });
+});
+
+// Debug: check database constraints
+app.get('/api/debug/constraints', async (_req, res) => {
+  try {
+    const { pool } = require('./config/database');
+    const result = await pool.query(`
+      SELECT conname, pg_get_constraintdef(oid) as definition
+      FROM pg_constraint
+      WHERE conrelid = 'sessions'::regclass
+      ORDER BY conname
+    `);
+    res.json({ constraints: result.rows });
+  } catch (err: any) {
+    res.json({ error: err.message });
+  }
 });
 
 // Debug endpoint for bot diagnostics
