@@ -277,6 +277,9 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
     autoAdvanceTimers.set(sessionCode, timer);
   }
 
+  // Store io on BotService so sessionController can trigger round-1 bot actions
+  BotService.getInstance().setIO(io);
+
   // Expose scheduleAutoAdvance so engines (like DiscoveryProcess) can trigger it
   (io as any).__scheduleAutoAdvance = scheduleAutoAdvance;
 

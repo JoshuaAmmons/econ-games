@@ -212,6 +212,17 @@ export class SessionController {
 
           const activePlayers = await PlayerModel.findActiveBySession(id);
           await engine.setupPlayers(id, activePlayers.length, session.game_config || {});
+
+          // Trigger bot actions for round 1 (socket handler can't do this
+          // because the round is already started by the time it sees it)
+          if (session.bot_enabled && firstRound) {
+            const botService = BotService.getInstance();
+            const io = botService.getIO();
+            if (io) {
+              botService.onRoundStart(firstRound.id, session.code, session, io)
+                .catch(err => console.error('BotService round 1 start error:', err));
+            }
+          }
         } catch (engineError) {
           console.error('Engine setup during session start:', engineError);
           // Non-fatal: session is started, engine setup can be retried

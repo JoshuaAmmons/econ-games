@@ -70,7 +70,16 @@ export class BotService {
   /** Track round start times for DA elapsed-time calculation */
   private roundStartTimes = new Map<string, number>();
 
+  /** Socket.IO server reference (set once from socketHandler) */
+  private io: import('socket.io').Server | null = null;
+
   private constructor() {}
+
+  /** Store the Socket.IO server so sessionController can trigger bot rounds */
+  setIO(io: import('socket.io').Server): void { this.io = io; }
+
+  /** Get the stored Socket.IO server */
+  getIO(): import('socket.io').Server | null { return this.io; }
 
   /** Get recent log messages for diagnostics */
   getRecentLogs(): string[] { return [...recentLogs]; }
