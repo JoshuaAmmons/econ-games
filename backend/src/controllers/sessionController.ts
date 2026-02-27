@@ -244,9 +244,16 @@ export class SessionController {
                 .catch(err => console.error('BotService round 1 start error:', err));
             }
           }
-        } catch (engineError) {
+        } catch (engineError: any) {
           console.error('Engine setup during session start:', engineError);
-          // Non-fatal: session is started, engine setup can be retried
+          // Return the error details so we can debug
+          res.json({
+            success: true,
+            message: 'Session started (with engine setup warning)',
+            engineError: engineError?.message || String(engineError),
+            engineStack: engineError?.stack?.split('\n').slice(0, 5),
+          } as any);
+          return;
         }
       }
 
