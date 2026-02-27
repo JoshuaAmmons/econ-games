@@ -56,11 +56,33 @@ app.get('/api/debug/bots', (_req, res) => {
     const { BotStrategyRegistry } = require('./services/botStrategies');
     const strategies = BotStrategyRegistry.listAll();
     const daStrat = BotStrategyRegistry.get('double_auction');
+
+    // Test actual DA action generation
+    const fakeBuyer = { role: 'buyer', valuation: 40 } as any;
+    const fakeSeller = { role: 'seller', production_cost: 25 } as any;
+    let buyerAction = null, sellerAction = null, actionError = null;
+    try {
+      buyerAction = daStrat?.getDAAction?.(fakeBuyer, { time_per_round: 60 }, {}, 10);
+      sellerAction = daStrat?.getDAAction?.(fakeSeller, { time_per_round: 60 }, {}, 10);
+    } catch (e: any) {
+      actionError = e.message;
+    }
+
+    // Test BotService singleton
+    const { BotService } = require('./services/BotService');
+    const botService = BotService.getInstance();
+    const roundTimerCount = botService['roundTimers'].size;
+    const roundStartTimeCount = botService['roundStartTimes'].size;
+
     res.json({
-      version: 'v3-debug',
+      version: 'v4-debug',
       registeredStrategies: strategies,
       daStrategyExists: !!daStrat,
       daHasGetDAAction: !!daStrat?.getDAAction,
+      testBuyerAction: buyerAction,
+      testSellerAction: sellerAction,
+      actionError,
+      botServiceState: { roundTimerCount, roundStartTimeCount },
     });
   } catch (err: any) {
     res.json({ error: err.message, stack: err.stack });
