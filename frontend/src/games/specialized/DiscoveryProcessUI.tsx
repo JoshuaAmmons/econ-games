@@ -116,7 +116,6 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
         setPhase(data.phase as any);
         setPhaseTimeRemaining(data.timeRemaining);
         if (data.phase === 'move') {
-          toast.success('Move phase started!');
           setProductionStarted(false);
         } else if (data.phase === 'complete') {
           toast('Period complete!');
@@ -134,10 +133,8 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
     );
 
     cleanups.push(
-      onEvent('goods-moved', (data: { fromPlayerId: string; toPlayerId: string; good: string; amount: number; movedBy: string }) => {
-        if (data.toPlayerId === playerId && data.movedBy !== playerId) {
-          toast(`${data.amount} ${data.good} moved to your house!`);
-        }
+      onEvent('goods-moved', (_data: { fromPlayerId: string; toPlayerId: string; good: string; amount: number; movedBy: string }) => {
+        // Intentionally silent — players must discover mechanics on their own
       })
     );
 
@@ -387,7 +384,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
   // --------------------------------------------------------------------------
 
   const phaseLabel =
-    phase === 'production' ? 'Production' : phase === 'move' ? 'Move' : phase === 'complete' ? 'Complete' : 'Waiting';
+    phase === 'production' ? 'Production' : phase === 'move' ? 'Active' : phase === 'complete' ? 'Complete' : 'Waiting';
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
@@ -564,7 +561,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
             </div>
           ) : (
             <p className="text-sm text-gray-500 text-center py-2">
-              {phase === 'move' ? 'Production complete. Move phase active.' : 'Waiting for next period...'}
+              {phase === 'move' ? 'Production complete.' : 'Waiting for next period...'}
             </p>
           )}
         </Card>

@@ -51,17 +51,21 @@ interface RoundState {
 
 const DEFAULT_PLAYER_TYPES: PlayerTypeConfig[] = [
   {
+    // Type 0: comparative advantage in good1
+    // 50/50 → ~6 good1, ~3 good2; full specialization → ~10 good1
     production: {
-      good1: { p1: 0, p2: 0.411096, p3: 2.5 },
-      good2: { p1: 0, p2: 2.254, p3: 1 },
+      good1: { p1: 0, p2: 2.0, p3: 0.7 },
+      good2: { p1: 0, p2: 1.2, p3: 0.7 },
     },
     earningRequirements: { good1: 3, good2: 1 },
     earningAmount: 3,
   },
   {
+    // Type 1: comparative advantage in good2
+    // 50/50 → ~3 good1, ~6 good2; full specialization → ~10 good2
     production: {
-      good1: { p1: 0, p2: 2.53, p3: 1 },
-      good2: { p1: 0, p2: 1.1, p3: 2 },
+      good1: { p1: 0, p2: 1.2, p3: 0.7 },
+      good2: { p1: 0, p2: 2.0, p3: 0.7 },
     },
     earningRequirements: { good1: 1, good2: 2 },
     earningAmount: 2,
