@@ -75,7 +75,7 @@ app.get('/api/debug/bots', (_req, res) => {
     const roundStartTimeCount = botService['roundStartTimes'].size;
 
     res.json({
-      version: 'v4-debug',
+      version: 'v5-logs',
       registeredStrategies: strategies,
       daStrategyExists: !!daStrat,
       daHasGetDAAction: !!daStrat?.getDAAction,
@@ -83,6 +83,7 @@ app.get('/api/debug/bots', (_req, res) => {
       testSellerAction: sellerAction,
       actionError,
       botServiceState: { roundTimerCount, roundStartTimeCount },
+      recentLogs: botService.getRecentLogs(),
     });
   } catch (err: any) {
     res.json({ error: err.message, stack: err.stack });

@@ -50,6 +50,14 @@ const DA_TYPES = new Set(DA_GAME_TYPES);
 const DA_MIN_INTERVAL_MS = 3000;
 const DA_MAX_INTERVAL_MS = 12000;
 
+/** Recent log messages (ring buffer for diagnostics) */
+const recentLogs: string[] = [];
+function botLog(msg: string) {
+  console.log(msg);
+  recentLogs.push(`${new Date().toISOString()} ${msg}`);
+  if (recentLogs.length > 50) recentLogs.shift();
+}
+
 /**
  * Singleton service that manages bot player creation and automated actions.
  */
@@ -63,6 +71,9 @@ export class BotService {
   private roundStartTimes = new Map<string, number>();
 
   private constructor() {}
+
+  /** Get recent log messages for diagnostics */
+  getRecentLogs(): string[] { return [...recentLogs]; }
 
   static getInstance(): BotService {
     if (!BotService.instance) {
@@ -145,7 +156,7 @@ export class BotService {
       if (bot) bots.push(bot);
     }
 
-    console.log(`BotService: Created ${bots.length} bots for session ${session.code} (${gameType})`);
+    botLog(`BotService: Created ${bots.length} bots for session ${session.code} (${gameType})`);
     return bots;
   }
 
@@ -161,18 +172,18 @@ export class BotService {
     io: Server
   ): Promise<void> {
     const gameType = session.game_type || 'double_auction';
-    console.log(`[BotService] onRoundStart called: session=${sessionCode}, gameType=${gameType}, roundId=${roundId}`);
+    botLog(`[BotService] onRoundStart called: session=${sessionCode}, gameType=${gameType}, roundId=${roundId}`);
 
     const strategy = BotStrategyRegistry.get(gameType);
     if (!strategy) {
-      console.warn(`BotService: No strategy for game type "${gameType}"`);
+      botLog(`BotService: No strategy for game type "${gameType}"`);
       return;
     }
-    console.log(`[BotService] Strategy found for ${gameType}, hasDAAction=${!!strategy.getDAAction}`);
+    botLog(`[BotService] Strategy found for ${gameType}, hasDAAction=${!!strategy.getDAAction}`);
 
     const allPlayers = await PlayerModel.findActiveBySession(session.id);
     const bots = allPlayers.filter(p => p.is_bot);
-    console.log(`[BotService] Found ${bots.length} bots out of ${allPlayers.length} players`);
+    botLog(`[BotService] Found ${bots.length} bots out of ${allPlayers.length} players`);
     if (bots.length === 0) return;
 
     const config = {
@@ -339,7 +350,7 @@ export class BotService {
           const action = strategy.getDAAction!(bot, config, {}, elapsed);
           if (action) {
             const result = await engine.handleAction(roundId, bot.id, action, sessionCode, io);
-            console.log(`BotService DA: ${bot.name} (${bot.role}) submitted ${action.type} @ ${action.price} → ${result?.success ? 'OK' : result?.error || 'unknown'}`);
+            botLog(`BotService DA: ${bot.name} (${bot.role}) submitted ${action.type} @ ${action.price} → ${result?.success ? 'OK' : result?.error || 'unknown'}`);
           }
         } catch (err) {
           console.error(`BotService DA error for ${bot.name}:`, err);
@@ -352,7 +363,7 @@ export class BotService {
 
     // Start with a random initial delay
     const initialDelay = 1000 + Math.random() * 2000;
-    console.log(`BotService DA: Scheduling ${bot.name} (${bot.role}) with initial delay ${Math.round(initialDelay)}ms`);
+    botLog(`BotService DA: Scheduling ${bot.name} (${bot.role}) with initial delay ${Math.round(initialDelay)}ms`);
     const initTimer = setTimeout(() => scheduleNext(), initialDelay);
     timers.push(initTimer);
   }
