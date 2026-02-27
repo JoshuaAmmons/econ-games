@@ -7,6 +7,9 @@ import { SessionModel } from '../models/Session';
 import { PlayerModel } from '../models/Player';
 import { GameRegistry } from '../engines/GameRegistry';
 
+// Delay between round end and auto-starting the next round (milliseconds)
+const AUTO_ADVANCE_DELAY_MS = 5000;
+
 export function setupSocketHandlers(httpServer: HTTPServer) {
   const allowedOrigins = [
     'http://localhost:5173',
@@ -31,6 +34,12 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
 
   // Guard against concurrent end-round processing (timer + manual click race)
   const endingRounds = new Set<string>();
+
+  // Server-side round timers: auto-end rounds when time expires
+  const roundEndTimers: Map<string, NodeJS.Timeout> = new Map();
+
+  // Auto-advance timers: auto-start next round after a delay
+  const autoAdvanceTimers: Map<string, NodeJS.Timeout> = new Map();
 
   async function getSessionGameType(sessionCode: string): Promise<string> {
     const cached = sessionGameTypeCache.get(sessionCode);
@@ -88,6 +97,178 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
 
     return session;
   }
+
+  // =========================================================================
+  // Server-side round auto-end timer
+  // =========================================================================
+
+  /**
+   * Schedule a server-side timer to auto-end a round after its time expires.
+   * For discovery_process, the engine handles its own internal phase timers
+   * (production → move → end), so we skip the server timer for DP.
+   */
+  function scheduleRoundEndTimer(
+    roundId: string,
+    sessionCode: string,
+    session: any,
+    gameType: string
+  ): void {
+    // Cancel any existing timer for this round
+    const existing = roundEndTimers.get(roundId);
+    if (existing) clearTimeout(existing);
+
+    // Discovery process manages its own internal timers (production + move phases)
+    // so we don't need a separate server-side end timer for it
+    if (gameType === 'discovery_process') return;
+
+    const durationMs = (session.time_per_round || 90) * 1000;
+
+    console.log(`[AutoTimer] Scheduling round end in ${durationMs}ms for ${sessionCode} round ${roundId}`);
+
+    const timer = setTimeout(async () => {
+      roundEndTimers.delete(roundId);
+
+      // Guard against concurrent processing
+      if (endingRounds.has(roundId)) return;
+      endingRounds.add(roundId);
+
+      try {
+        const round = await RoundModel.findById(roundId);
+        if (!round || round.status === 'completed') {
+          console.log(`[AutoTimer] Round ${roundId} already ended, skipping`);
+          return;
+        }
+
+        console.log(`[AutoTimer] Auto-ending round for ${sessionCode}`);
+
+        const engine = GameRegistry.get(gameType);
+        const endedRound = await RoundModel.end(roundId);
+        if (!endedRound) return;
+
+        const roundResult = await engine.processRoundEnd(roundId, sessionCode, io);
+
+        const rawTrades = await TradeModel.findByRound(roundId);
+        const trades = rawTrades.map(t => ({
+          ...t,
+          price: Number(t.price),
+          buyer_profit: Number(t.buyer_profit),
+          seller_profit: Number(t.seller_profit),
+        }));
+
+        io.to(`session-${sessionCode}`).emit('round-ended', {
+          roundId,
+          trades,
+          results: roundResult,
+        });
+        io.to(`market-${sessionCode}`).emit('round-ended', {
+          roundId,
+          trades,
+          results: roundResult,
+        });
+
+        // Schedule auto-advance to next round
+        scheduleAutoAdvance(sessionCode);
+      } catch (err) {
+        console.error(`[AutoTimer] Error auto-ending round:`, err);
+      } finally {
+        endingRounds.delete(roundId);
+      }
+    }, durationMs);
+
+    roundEndTimers.set(roundId, timer);
+  }
+
+  // =========================================================================
+  // Auto-advance: start next round after a delay
+  // =========================================================================
+
+  /**
+   * Schedule auto-start of the next round for a session.
+   * Called after any round ends (from timer, admin click, or engine internal).
+   * Exported so the DiscoveryProcessEngine can also trigger it.
+   */
+  function scheduleAutoAdvance(sessionCode: string): void {
+    // Cancel any existing auto-advance for this session
+    const existing = autoAdvanceTimers.get(sessionCode);
+    if (existing) clearTimeout(existing);
+
+    console.log(`[AutoAdvance] Scheduling next round in ${AUTO_ADVANCE_DELAY_MS}ms for ${sessionCode}`);
+
+    // Notify clients about the upcoming auto-advance
+    io.to(`session-${sessionCode}`).emit('auto-advance-scheduled', {
+      delayMs: AUTO_ADVANCE_DELAY_MS,
+    });
+    io.to(`market-${sessionCode}`).emit('auto-advance-scheduled', {
+      delayMs: AUTO_ADVANCE_DELAY_MS,
+    });
+
+    const timer = setTimeout(async () => {
+      autoAdvanceTimers.delete(sessionCode);
+
+      try {
+        const session = await SessionModel.findByCode(sessionCode);
+        if (!session || session.status !== 'active') {
+          console.log(`[AutoAdvance] Session ${sessionCode} not active, skipping`);
+          return;
+        }
+
+        // Find next waiting round
+        const rounds = await RoundModel.findBySession(session.id);
+        const nextRound = rounds.find(r => r.status === 'waiting');
+
+        if (!nextRound) {
+          // No more rounds — end the session
+          console.log(`[AutoAdvance] No more rounds for ${sessionCode}, ending session`);
+          await SessionModel.end(session.id);
+          io.to(`session-${sessionCode}`).emit('session-ended', {});
+          io.to(`market-${sessionCode}`).emit('session-ended', {});
+          return;
+        }
+
+        console.log(`[AutoAdvance] Auto-starting round ${nextRound.round_number} for ${sessionCode}`);
+
+        const updatedRound = await RoundModel.start(nextRound.id);
+        if (!updatedRound) {
+          console.error(`[AutoAdvance] Failed to start round ${nextRound.id}`);
+          return;
+        }
+        await SessionModel.updateCurrentRound(session.id, nextRound.round_number);
+
+        const gameType = await getSessionGameType(sessionCode);
+        const engine = GameRegistry.get(gameType);
+
+        if (engine.onRoundStart) {
+          await engine.onRoundStart(nextRound.id, sessionCode, io);
+        }
+
+        io.to(`session-${sessionCode}`).emit('round-started', {
+          round: updatedRound,
+          roundNumber: nextRound.round_number,
+        });
+        io.to(`market-${sessionCode}`).emit('round-started', {
+          round: updatedRound,
+          roundNumber: nextRound.round_number,
+        });
+
+        // Schedule server-side auto-end timer for this new round
+        scheduleRoundEndTimer(nextRound.id, sessionCode, session, gameType);
+
+        // Broadcast initial timer to players
+        io.to(`market-${sessionCode}`).emit('timer-update', {
+          seconds_remaining: session.time_per_round,
+        });
+
+        console.log(`[AutoAdvance] Round ${nextRound.round_number} started for ${sessionCode}`);
+      } catch (err) {
+        console.error(`[AutoAdvance] Error auto-starting next round:`, err);
+      }
+    }, AUTO_ADVANCE_DELAY_MS);
+
+    autoAdvanceTimers.set(sessionCode, timer);
+  }
+
+  // Expose scheduleAutoAdvance so engines (like DiscoveryProcess) can trigger it
+  (io as any).__scheduleAutoAdvance = scheduleAutoAdvance;
 
   io.on('connection', (socket: Socket) => {
     console.log('Client connected:', socket.id);
@@ -285,6 +466,9 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
           roundNumber,
         });
 
+        // Schedule server-side auto-end timer for this round
+        scheduleRoundEndTimer(round.id, sessionCode, session, gameType);
+
         console.log(`Round ${roundNumber} started for session ${sessionCode}`);
       } catch (error) {
         console.error('Error starting round:', error);
@@ -304,6 +488,13 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
         // Cache the verified plaintext password (NOT the bcrypt hash) so
         // timer-update can compare cheaply without bcrypt on every tick.
         adminAuthCache.set(sessionCode, { adminPassword: adminPassword || undefined });
+
+        // Cancel server-side timer if admin manually ends the round
+        const existingTimer = roundEndTimers.get(roundId);
+        if (existingTimer) {
+          clearTimeout(existingTimer);
+          roundEndTimers.delete(roundId);
+        }
 
         // Guard against concurrent end-round processing (timer + manual click race)
         if (endingRounds.has(roundId)) {
@@ -354,10 +545,12 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
 
           console.log(`Round ended for session ${sessionCode}`);
 
+          // Schedule auto-advance to next round
+          scheduleAutoAdvance(sessionCode);
+
           // Clear caches to prevent unbounded memory growth.
           // They will be re-populated on the next lookup if needed.
           sessionGameTypeCache.delete(sessionCode);
-          adminAuthCache.delete(sessionCode);
         } finally {
           endingRounds.delete(roundId);
         }

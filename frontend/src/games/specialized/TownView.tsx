@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 interface PlayerInventory {
   field: Record<string, number>;
@@ -27,10 +27,14 @@ interface TownViewProps {
   onMoveGoods?: (good: string, amount: number, fromLocation: 'field' | 'house', fromPlayerId: string, toPlayerId: string) => void;
 }
 
-interface SelectedGood {
+interface DragState {
   good: string;
+  goodColor: string;
   fromLocation: 'field' | 'house';
   fromPlayerId: string;
+  // Current mouse position in SVG coordinates
+  svgX: number;
+  svgY: number;
 }
 
 // House SVG dimensions
@@ -55,12 +59,18 @@ const TownView: React.FC<TownViewProps> = ({
   allowStealing = false,
   onMoveGoods,
 }) => {
-  const [selected, setSelected] = useState<SelectedGood | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const [hoverTarget, setHoverTarget] = useState<string | null>(null);
+  // Click-to-select fallback
+  const [selected, setSelected] = useState<{ good: string; fromLocation: 'field' | 'house'; fromPlayerId: string } | null>(null);
 
-  // Clear selection when phase changes away from 'move'
+  // Clear state when phase changes away from 'move'
   useEffect(() => {
     if (phase !== 'move') {
+      setDrag(null);
       setSelected(null);
+      setHoverTarget(null);
     }
   }, [phase]);
 
@@ -74,12 +84,68 @@ const TownView: React.FC<TownViewProps> = ({
 
   const canInteract = phase === 'move' && onMoveGoods;
 
-  const handleGoodClick = (good: string, location: 'field' | 'house', playerId: string) => {
-    if (!canInteract) return;
+  // Convert screen coordinates to SVG coordinates
+  const screenToSvg = useCallback((clientX: number, clientY: number): { x: number; y: number } => {
+    const svg = svgRef.current;
+    if (!svg) return { x: 0, y: 0 };
+    const pt = svg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return { x: 0, y: 0 };
+    const svgPt = pt.matrixTransform(ctm.inverse());
+    return { x: svgPt.x, y: svgPt.y };
+  }, []);
 
-    // Can only pick from own inventory (or from others if stealing)
+  // Compute house bounding boxes for hit testing
+  const getPlayerPositions = useCallback(() => {
+    const positions: Array<{ playerId: string; houseX: number; houseY: number; roofTop: number; wallBottom: number }> = [];
+    const addPlayer = (player: PlayerInfo, x: number, y: number) => {
+      const houseX = x + FIELD_W + GAP;
+      const houseY = y + LABEL_H;
+      positions.push({
+        playerId: player.id,
+        houseX,
+        houseY,
+        roofTop: houseY - ROOF_H,
+        wallBottom: houseY + HOUSE_H,
+      });
+    };
+    leftCol.forEach((player, i) => {
+      addPlayer(player, 10, i * (UNIT_H + ROW_GAP + LABEL_H) + 10);
+    });
+    rightCol.forEach((player, i) => {
+      addPlayer(player, UNIT_W + COL_GAP + 10, i * (UNIT_H + ROW_GAP + LABEL_H) + 10);
+    });
+    return positions;
+  }, [leftCol, rightCol]);
+
+  // Find which house the cursor is over
+  const findHouseAtPoint = useCallback((svgX: number, svgY: number): string | null => {
+    const positions = getPlayerPositions();
+    for (const pos of positions) {
+      if (
+        svgX >= pos.houseX &&
+        svgX <= pos.houseX + HOUSE_W &&
+        svgY >= pos.roofTop &&
+        svgY <= pos.wallBottom
+      ) {
+        return pos.playerId;
+      }
+    }
+    return null;
+  }, [getPlayerPositions]);
+
+  // --- Drag handlers ---
+  const handleDragStart = useCallback((
+    e: React.MouseEvent,
+    good: string,
+    goodColor: string,
+    location: 'field' | 'house',
+    playerId: string
+  ) => {
+    if (!canInteract) return;
     if (playerId !== currentPlayerId && !allowStealing) return;
-    // Can only pick from others' house (not field) when stealing
     if (playerId !== currentPlayerId && location === 'field') return;
 
     const inv = inventories[playerId];
@@ -87,17 +153,68 @@ const TownView: React.FC<TownViewProps> = ({
     const store = location === 'field' ? inv.field : inv.house;
     if ((store[good] || 0) < 1) return;
 
+    e.preventDefault();
+    e.stopPropagation();
+
+    const svgPt = screenToSvg(e.clientX, e.clientY);
+    setDrag({
+      good,
+      goodColor,
+      fromLocation: location,
+      fromPlayerId: playerId,
+      svgX: svgPt.x,
+      svgY: svgPt.y,
+    });
+    setSelected(null);
+  }, [canInteract, currentPlayerId, allowStealing, inventories, screenToSvg]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!drag) return;
+    const svgPt = screenToSvg(e.clientX, e.clientY);
+    setDrag(prev => prev ? { ...prev, svgX: svgPt.x, svgY: svgPt.y } : null);
+    setHoverTarget(findHouseAtPoint(svgPt.x, svgPt.y));
+  }, [drag, screenToSvg, findHouseAtPoint]);
+
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    if (!drag || !onMoveGoods) {
+      setDrag(null);
+      setHoverTarget(null);
+      return;
+    }
+
+    const svgPt = screenToSvg(e.clientX, e.clientY);
+    const targetPlayerId = findHouseAtPoint(svgPt.x, svgPt.y);
+
+    if (targetPlayerId) {
+      onMoveGoods(drag.good, 1, drag.fromLocation, drag.fromPlayerId, targetPlayerId);
+    }
+
+    setDrag(null);
+    setHoverTarget(null);
+  }, [drag, onMoveGoods, screenToSvg, findHouseAtPoint]);
+
+  // --- Click-to-select fallback ---
+  const handleGoodClick = (e: React.MouseEvent, good: string, location: 'field' | 'house', playerId: string) => {
+    if (!canInteract) return;
+    if (playerId !== currentPlayerId && !allowStealing) return;
+    if (playerId !== currentPlayerId && location === 'field') return;
+
+    const inv = inventories[playerId];
+    if (!inv) return;
+    const store = location === 'field' ? inv.field : inv.house;
+    if ((store[good] || 0) < 1) return;
+
+    e.stopPropagation();
     setSelected({ good, fromLocation: location, fromPlayerId: playerId });
   };
 
   const handleHouseClick = (playerId: string) => {
     if (!canInteract || !selected) return;
-
-    // Execute move
     onMoveGoods!(selected.good, 1, selected.fromLocation, selected.fromPlayerId, playerId);
     setSelected(null);
   };
 
+  // --- Rendering ---
   const renderGoodOvals = (
     items: Record<string, number>,
     x: number,
@@ -123,14 +240,28 @@ const TownView: React.FC<TownViewProps> = ({
         selected?.fromLocation === location &&
         selected?.fromPlayerId === playerId;
 
+      const isDragging =
+        drag?.good === good.name &&
+        drag?.fromLocation === location &&
+        drag?.fromPlayerId === playerId;
+
+      const canPick = canInteract && (playerId === currentPlayerId || allowStealing) && count > 0;
+
       elements.push(
         <g
           key={`${playerId}-${location}-${good.name}`}
+          onMouseDown={(e) => {
+            if (canPick) {
+              handleDragStart(e, good.name, good.color, location, playerId);
+            }
+          }}
           onClick={(e) => {
             e.stopPropagation();
-            handleGoodClick(good.name, location, playerId);
+            if (canPick && !drag) {
+              handleGoodClick(e, good.name, location, playerId);
+            }
           }}
-          style={{ cursor: canInteract && (playerId === currentPlayerId || allowStealing) ? 'pointer' : 'default' }}
+          style={{ cursor: canPick ? 'grab' : 'default' }}
         >
           <ellipse
             cx={cx}
@@ -138,9 +269,9 @@ const TownView: React.FC<TownViewProps> = ({
             rx={ovalRx}
             ry={ovalRy}
             fill={good.color}
-            stroke={isSelected ? '#000' : 'none'}
-            strokeWidth={isSelected ? 2.5 : 0}
-            opacity={0.9}
+            stroke={isSelected ? '#000' : isDragging ? '#FFD700' : 'none'}
+            strokeWidth={isSelected || isDragging ? 2.5 : 0}
+            opacity={isDragging ? 0.5 : 0.9}
           />
           <text
             x={cx}
@@ -150,6 +281,7 @@ const TownView: React.FC<TownViewProps> = ({
             fontSize="13"
             fontWeight="bold"
             fill="white"
+            pointerEvents="none"
           >
             {count}
           </text>
@@ -165,7 +297,8 @@ const TownView: React.FC<TownViewProps> = ({
     const inv = inventories[player.id] || { field: {}, house: {} };
     const fillColor = isSelf ? '#c8e6c9' : '#e0e0e0';
     const strokeColor = isSelf ? '#4caf50' : '#9e9e9e';
-    const isDropTarget = selected && canInteract;
+    const isDropTarget = (selected || drag) && canInteract;
+    const isHovered = hoverTarget === player.id && drag;
 
     // Field rectangle
     const fieldX = x;
@@ -214,34 +347,40 @@ const TownView: React.FC<TownViewProps> = ({
           stroke={strokeColor}
           strokeWidth={1.5}
           rx={3}
-          onClick={() => isDropTarget && handleHouseClick(player.id)}
-          style={{ cursor: isDropTarget ? 'pointer' : 'default' }}
         />
+        <text
+          x={fieldX + FIELD_W / 2}
+          y={fieldY + FIELD_H - 4}
+          textAnchor="middle"
+          fontSize="8"
+          fill="#999"
+          pointerEvents="none"
+        >
+          field
+        </text>
         {renderGoodOvals(inv.field, fieldX, fieldY, FIELD_W, FIELD_H, 'field', player.id)}
-        {/* Field drop target overlay (on top of ovals) */}
-        {isDropTarget && (
-          <rect
-            x={fieldX}
-            y={fieldY}
-            width={FIELD_W}
-            height={FIELD_H}
-            fill="transparent"
-            stroke="none"
-            rx={3}
-            onClick={() => handleHouseClick(player.id)}
-            style={{ cursor: 'pointer' }}
-          />
-        )}
 
         {/* House (pentagon shape) */}
         <polygon
           points={`${roofLeft},${wallTop} ${(roofLeft + roofRight) / 2},${roofTop} ${roofRight},${wallTop} ${roofRight},${wallBottom} ${roofLeft},${wallBottom}`}
-          fill={fillColor}
-          stroke={strokeColor}
-          strokeWidth={1.5}
-          onClick={() => isDropTarget && handleHouseClick(player.id)}
+          fill={isHovered ? '#bbdefb' : fillColor}
+          stroke={isHovered ? '#1976d2' : strokeColor}
+          strokeWidth={isHovered ? 2.5 : 1.5}
+          onClick={() => {
+            if (selected && canInteract) handleHouseClick(player.id);
+          }}
           style={{ cursor: isDropTarget ? 'pointer' : 'default' }}
         />
+        <text
+          x={houseX + HOUSE_W / 2}
+          y={wallBottom - 4}
+          textAnchor="middle"
+          fontSize="8"
+          fill="#999"
+          pointerEvents="none"
+        >
+          house
+        </text>
         {/* House label number */}
         <text
           x={houseX + HOUSE_W - 8}
@@ -250,15 +389,15 @@ const TownView: React.FC<TownViewProps> = ({
           fontWeight="bold"
           fill={isSelf ? '#2e7d32' : '#757575'}
           textAnchor="end"
+          pointerEvents="none"
         >
           {player.label}
         </text>
         {renderGoodOvals(inv.house, houseX, wallTop, HOUSE_W, HOUSE_H, 'house', player.id)}
 
-        {/* Drop target: clickable overlay on top of ovals + dashed highlight */}
-        {isDropTarget && (
+        {/* Drop target highlight for click-to-select */}
+        {selected && canInteract && !drag && (
           <>
-            {/* Transparent clickable polygon covering the whole house area */}
             <polygon
               points={`${roofLeft},${wallTop} ${(roofLeft + roofRight) / 2},${roofTop} ${roofRight},${wallTop} ${roofRight},${wallBottom} ${roofLeft},${wallBottom}`}
               fill="transparent"
@@ -266,7 +405,6 @@ const TownView: React.FC<TownViewProps> = ({
               onClick={() => handleHouseClick(player.id)}
               style={{ cursor: 'pointer' }}
             />
-            {/* Dashed border highlight */}
             <rect
               x={houseX - 2}
               y={roofTop - 2}
@@ -282,15 +420,31 @@ const TownView: React.FC<TownViewProps> = ({
             />
           </>
         )}
+
+        {/* Drop target highlight for drag */}
+        {drag && isHovered && (
+          <rect
+            x={houseX - 3}
+            y={roofTop - 3}
+            width={HOUSE_W + 6}
+            height={HOUSE_H + ROOF_H + 6}
+            fill="none"
+            stroke="#1976d2"
+            strokeWidth={3}
+            rx={5}
+            opacity={0.8}
+            pointerEvents="none"
+          />
+        )}
       </g>
     );
   };
 
   return (
     <div className="relative">
-      {selected && (
+      {selected && !drag && (
         <div className="absolute top-0 right-0 z-10 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded shadow">
-          Moving {selected.good} — click a house to place it
+          Selected {selected.good} — click a house to place it
           <button
             className="ml-2 text-blue-600 underline"
             onClick={() => setSelected(null)}
@@ -299,10 +453,25 @@ const TownView: React.FC<TownViewProps> = ({
           </button>
         </div>
       )}
+      {drag && (
+        <div className="absolute top-0 right-0 z-10 bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded shadow">
+          Dragging {drag.good} — drop on a house
+        </div>
+      )}
       <svg
+        ref={svgRef}
         width="100%"
         viewBox={`0 0 ${svgW} ${svgH}`}
         className="max-w-full"
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={() => {
+          if (drag) {
+            setDrag(null);
+            setHoverTarget(null);
+          }
+        }}
+        style={{ cursor: drag ? 'grabbing' : 'default' }}
       >
         {/* Left column */}
         {leftCol.map((player, i) => {
@@ -317,6 +486,33 @@ const TownView: React.FC<TownViewProps> = ({
           const y = i * (UNIT_H + ROW_GAP + LABEL_H) + 10;
           return renderPlayerUnit(player, x, y);
         })}
+
+        {/* Drag ghost — follows cursor */}
+        {drag && (
+          <g pointerEvents="none">
+            <ellipse
+              cx={drag.svgX}
+              cy={drag.svgY}
+              rx={12}
+              ry={16}
+              fill={drag.goodColor}
+              opacity={0.8}
+              stroke="#000"
+              strokeWidth={1.5}
+            />
+            <text
+              x={drag.svgX}
+              y={drag.svgY + 1}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize="11"
+              fontWeight="bold"
+              fill="white"
+            >
+              1
+            </text>
+          </g>
+        )}
       </svg>
     </div>
   );

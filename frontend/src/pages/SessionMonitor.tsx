@@ -134,7 +134,9 @@ const SessionMonitorContent: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [currentRound, setCurrentRound] = useState<Round | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
+  const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState(0);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoAdvanceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Ref to avoid stale session closure in socket event handlers
   const sessionRef = useRef(session);
@@ -194,6 +196,17 @@ const SessionMonitorContent: React.FC = () => {
       toast('Round ended!', { icon: '🏁' });
     }));
 
+    cleanups.push(onEvent('auto-advance-scheduled', (data: { delayMs: number }) => {
+      const seconds = Math.ceil(data.delayMs / 1000);
+      setAutoAdvanceCountdown(seconds);
+      toast(`Next round starting in ${seconds}s...`, { icon: '⏭️' });
+    }));
+
+    cleanups.push(onEvent('session-ended', () => {
+      loadSession();
+      toast.success('Session completed — all rounds finished!');
+    }));
+
     cleanups.push(onEvent('player-joined', () => {
       loadSession();
     }));
@@ -250,6 +263,43 @@ const SessionMonitorContent: React.FC = () => {
         timerIntervalRef.current = null;
       }
     };
+  }, [currentRound?.id, currentRound?.status]);
+
+  // Auto-advance countdown effect
+  useEffect(() => {
+    if (autoAdvanceIntervalRef.current) {
+      clearInterval(autoAdvanceIntervalRef.current);
+      autoAdvanceIntervalRef.current = null;
+    }
+
+    if (autoAdvanceCountdown > 0) {
+      autoAdvanceIntervalRef.current = setInterval(() => {
+        setAutoAdvanceCountdown(prev => {
+          if (prev <= 1) {
+            if (autoAdvanceIntervalRef.current) {
+              clearInterval(autoAdvanceIntervalRef.current);
+              autoAdvanceIntervalRef.current = null;
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (autoAdvanceIntervalRef.current) {
+        clearInterval(autoAdvanceIntervalRef.current);
+        autoAdvanceIntervalRef.current = null;
+      }
+    };
+  }, [autoAdvanceCountdown]);
+
+  // Clear auto-advance countdown when a new round starts
+  useEffect(() => {
+    if (currentRound?.status === 'active') {
+      setAutoAdvanceCountdown(0);
+    }
   }, [currentRound?.id, currentRound?.status]);
 
   const loadSession = async () => {
@@ -452,7 +502,12 @@ const SessionMonitorContent: React.FC = () => {
                   Start Session
                 </Button>
               )}
-              {session.status === 'active' && !currentRound && (
+              {session.status === 'active' && !currentRound && autoAdvanceCountdown > 0 && (
+                <span className="px-3 py-2 bg-amber-100 text-amber-800 rounded text-sm font-medium">
+                  Next round in {autoAdvanceCountdown}s...
+                </span>
+              )}
+              {session.status === 'active' && !currentRound && autoAdvanceCountdown <= 0 && (
                 <Button onClick={handleNextRound}>
                   <SkipForward className="w-4 h-4 inline mr-2" />
                   Start Next Round

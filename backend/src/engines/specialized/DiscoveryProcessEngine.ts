@@ -1177,6 +1177,12 @@ export class DiscoveryProcessEngine implements GameEngine {
           });
 
           console.log(`[DiscoveryProcess] Move phase auto-ended for round ${roundId}`);
+
+          // Trigger auto-advance to next round via the socket handler's scheduler
+          const scheduleAutoAdvance = (io as any).__scheduleAutoAdvance;
+          if (typeof scheduleAutoAdvance === 'function') {
+            scheduleAutoAdvance(sessionCode);
+          }
         } catch (err) {
           console.error(`[DiscoveryProcess] Error in move phase auto-end:`, err);
         }

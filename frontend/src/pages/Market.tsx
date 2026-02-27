@@ -285,6 +285,17 @@ export const Market: React.FC = () => {
       setTimeRemaining(data.seconds_remaining);
     }));
 
+    cleanups.push(onEvent('auto-advance-scheduled', (data: { delayMs: number }) => {
+      const seconds = Math.ceil(data.delayMs / 1000);
+      toast(`Next round starting in ${seconds}s...`, { icon: '⏭️', duration: data.delayMs });
+    }));
+
+    cleanups.push(onEvent('session-ended', () => {
+      setRoundActive(false);
+      toast.success('Session complete!');
+      navigate(`/session/${code}/results`);
+    }));
+
     cleanups.push(onEvent('error', (data: { message: string }) => {
       toast.error(data.message);
     }));
