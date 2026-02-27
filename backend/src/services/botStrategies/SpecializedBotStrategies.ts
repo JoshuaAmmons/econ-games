@@ -55,22 +55,49 @@ export const auctionStrategy: BotStrategy = {
 
 // ─── Discovery Process ─────────────────────────────────────────────────────
 export const discoveryProcessStrategy: BotStrategy = {
-  getSpecializedActions(_player, config) {
-    // Simple strategy: specialize in first good (100% allocation),
-    // then move goods to own house during move phase
+  getSpecializedActions(player, config) {
     const actions: Array<{ action: Record<string, any>; delayMs: number }> = [];
+    const productionLength = (config.productionLength ?? 10) * 1000; // ms
 
-    // During production phase: set allocation to specialize
+    // Good names from config
+    const good1 = config.good1Name || 'Orange';
+    const good2 = config.good2Name || 'Blue';
+
+    // Use default 50/50 allocation — produces a mix of both goods
     actions.push({
-      action: { type: 'set_production', allocation: [100, 0] },
-      delayMs: 1000,
+      action: { type: 'set_production', allocation: [50, 50] },
+      delayMs: 500 + Math.random() * 500,
     });
 
     // Start production
     actions.push({
       action: { type: 'start_production' },
-      delayMs: 2000,
+      delayMs: 1500 + Math.random() * 500,
     });
+
+    // After production phase ends → move phase starts.
+    // Move produced goods from field to own house in small batches.
+    // We don't know exact amounts, so use batch size of 5 and retry.
+    // Typical production with 50/50 is 10–30 units per good.
+    const moveBase = productionLength + 2000 + Math.random() * 2000;
+    const batchSize = 5;
+    const numBatches = 6; // up to 30 units per good
+
+    for (let i = 0; i < numBatches; i++) {
+      for (const good of [good1, good2]) {
+        actions.push({
+          action: {
+            type: 'move_goods',
+            good,
+            amount: batchSize,
+            fromLocation: 'field',
+            fromPlayerId: player.id,
+            toPlayerId: player.id,
+          },
+          delayMs: moveBase + i * 800 + (good === good2 ? 400 : 0),
+        });
+      }
+    }
 
     return actions;
   },
