@@ -122,9 +122,9 @@ export const postedOfferStrategy: BotStrategy = {
       const markup = rand(1.2, 1.5);
       return { price: r2(clamp(cost * markup, 0, 999)) };
     } else {
-      // Buyers: just submit (action handled by engine in shopping phase)
-      // For simultaneous-compatible fallback, submit a placeholder
-      return { buyerReady: true };
+      // Buyers: handled by the engine during shopping phase transition
+      // Return null so BotService skips this bot
+      return null as any;
     }
   },
 };

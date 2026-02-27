@@ -20,6 +20,11 @@ const PAIRED_ROLES: Record<string, [string, string]> = {
   principal_agent: ['principal', 'agent'],
   trust_game: ['sender', 'receiver'],
   market_for_lemons: ['seller', 'buyer'],
+};
+
+// Games where bots need balanced buyer/seller roles during creation,
+// but actions are NOT sequential (engine handles role assignment in setupPlayers)
+const BOT_BALANCED_ROLES: Record<string, [string, string]> = {
   posted_offer: ['seller', 'buyer'],
   sealed_bid_offer: ['buyer', 'seller'],
 };
@@ -152,9 +157,9 @@ export class BotService {
             return { role, valueColumn, value };
           }
         );
-      } else if (PAIRED_ROLES[gameType]) {
-        // Paired-role games: alternate between two roles
-        const [role1, role2] = PAIRED_ROLES[gameType];
+      } else if (PAIRED_ROLES[gameType] || BOT_BALANCED_ROLES[gameType]) {
+        // Paired-role or balanced-role games: alternate between two roles
+        const [role1, role2] = PAIRED_ROLES[gameType] || BOT_BALANCED_ROLES[gameType];
         bot = await PlayerModel.createWithRoleAssignment(
           session.id,
           session.market_size,

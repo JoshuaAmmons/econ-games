@@ -376,11 +376,11 @@ export class PostedOfferEngine implements GameEngine {
   /**
    * Transition from posting phase to shopping phase.
    */
-  private transitionToShopping(
+  private async transitionToShopping(
     roundId: string,
     sessionCode: string,
     io: Server
-  ): void {
+  ): Promise<void> {
     const state = this.roundStates.get(roundId);
     if (!state || state.phase !== 'posting') return;
 
@@ -406,6 +406,62 @@ export class PostedOfferEngine implements GameEngine {
     });
 
     console.log(`[PostedOffer] Round ${roundId} — shopping phase started, ${postedPrices.length} prices posted`);
+
+    // Schedule buyer bot actions
+    await this.scheduleBuyerBotActions(state, roundId, sessionCode, io);
+  }
+
+  /**
+   * Auto-submit choices for buyer bots during shopping phase.
+   * Each buyer bot picks the cheapest affordable seller (price ≤ valuation).
+   */
+  private async scheduleBuyerBotActions(
+    state: RoundState,
+    roundId: string,
+    sessionCode: string,
+    io: Server
+  ): Promise<void> {
+    const round = await RoundModel.findById(roundId);
+    if (!round) return;
+    const allPlayers = await PlayerModel.findActiveBySession(round.session_id);
+    const buyerBots = allPlayers.filter(p => p.role === 'buyer' && p.is_bot);
+    if (buyerBots.length === 0) return;
+
+    const postedPrices = Array.from(state.postedPrices.values());
+
+    for (const bot of buyerBots) {
+      const valuation = bot.valuation ?? 0;
+      // Find sellers with prices the buyer can afford
+      const affordable = postedPrices
+        .filter(pp => pp.price <= valuation)
+        .sort((a, b) => a.price - b.price);
+
+      if (affordable.length === 0) continue; // No affordable sellers
+
+      // Pick from the cheapest sellers (slight randomization)
+      const chosen = affordable[Math.floor(Math.random() * Math.min(affordable.length, 2))];
+      const delay = 1000 + Math.random() * 3000;
+
+      setTimeout(async () => {
+        try {
+          if (state.phase !== 'shopping') return;
+          // Store action in DB
+          await GameActionModel.create(
+            roundId, bot.id,
+            'choose_seller',
+            { sellerId: chosen.playerId }
+          );
+          await this.handleBuyerAction(
+            state, bot.id, bot,
+            { sellerId: chosen.playerId },
+            roundId, sessionCode, io
+          );
+          console.log(`[PostedOffer] Bot ${bot.name} chose seller at $${chosen.price}`);
+        } catch (err) {
+          console.error(`[PostedOffer] Bot buyer ${bot.name} action error:`, err);
+        }
+      }, delay);
+    }
   }
 
   /**
