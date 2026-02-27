@@ -116,7 +116,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
         setPhase(data.phase as any);
         setPhaseTimeRemaining(data.timeRemaining);
         if (data.phase === 'move') {
-          toast.success('Move phase started! Move goods between houses.');
+          toast.success('Move phase started!');
           setProductionStarted(false);
         } else if (data.phase === 'complete') {
           toast('Period complete!');
@@ -564,7 +564,7 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
             </div>
           ) : (
             <p className="text-sm text-gray-500 text-center py-2">
-              {phase === 'move' ? 'Production complete. Move your goods!' : 'Waiting for next period...'}
+              {phase === 'move' ? 'Production complete. Move phase active.' : 'Waiting for next period...'}
             </p>
           )}
         </Card>

@@ -556,22 +556,21 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
   discovery_process: {
     studentInstructions: {
       premise:
-        'You are a person in a small village economy. You and others each have a field that produces colored goods and a house where goods are stored. Each period has a production phase and a move phase.',
+        'You are a person in a small village economy. You and others each have a field that produces goods and a house where goods are stored. Each period has a production phase and a move phase.',
       yourGoal:
-        'Maximize your earnings by producing goods and getting the right combination of goods into your house. Earnings depend on having complete "sets" of goods in your house at the end of each period.',
+        'Maximize your earnings. When the move phase clock expires, you earn cash based upon the number of complete sets of goods that have been moved to your house.',
       howToPlay: [
-        'During the Production Phase, use the slider to decide how to split your production time between goods. Click "Start Production" when ready.',
-        'Your field produces goods automatically based on your slider setting and your production function.',
-        'During the Move Phase, click on goods in your field or house to select them, then click on a house (yours or another player\'s) to move them there.',
+        'During the Production Phase, use the slider to decide how to split your production time between goods.',
+        'Your field produces goods automatically based on your slider setting.',
+        'During the Move Phase, items can be moved by dragging them with the mouse. Items that are highlighted can be selected by clicking on them.',
         'Goods in your HOUSE count toward earnings. Goods left in your field do NOT earn anything.',
         'Earnings = number of complete sets of goods in your house × earning amount per set.',
         'Leftover goods that don\'t form complete sets are wasted.',
-        'Use the chat to communicate with other players.',
+        'You can communicate with other villagers using the chat.',
       ],
       tips: [
-        'Pay attention to which goods you produce most efficiently — that is your comparative advantage.',
-        'Moving goods to another player\'s house is how you trade. Consider specializing and exchanging.',
-        'Look at what other players are producing and try to find mutually beneficial trades.',
+        'Experiment with your production slider to learn what your field produces most efficiently.',
+        'Pay attention to your earning requirements — you need the right combination of goods in your house.',
       ],
     },
     instructorNotes: {
