@@ -31,7 +31,12 @@ export type GameType =
   | 'newsvendor'
   | 'dutch_auction'
   | 'english_auction'
-  | 'discriminative_auction';
+  | 'discriminative_auction'
+  | 'posted_offer'
+  | 'lindahl'
+  | 'pg_auction'
+  | 'sealed_bid_offer'
+  | 'sponsored_search';
 
 /**
  * Result of validating a game config

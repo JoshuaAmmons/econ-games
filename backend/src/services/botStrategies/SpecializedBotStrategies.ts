@@ -112,6 +112,71 @@ export const discriminativeAuctionStrategy: BotStrategy = {
   },
 };
 
+// ─── Posted-Offer Pricing ────────────────────────────────────────────
+export const postedOfferStrategy: BotStrategy = {
+  getSimultaneousAction(player, _config) {
+    const role = (player as any).role;
+    if (role === 'seller') {
+      // Sellers: post price = cost × 1.2–1.5 markup
+      const cost = Number((player as any).cost) || rand(20, 60);
+      const markup = rand(1.2, 1.5);
+      return { price: r2(clamp(cost * markup, 0, 999)) };
+    } else {
+      // Buyers: just submit (action handled by engine in shopping phase)
+      // For simultaneous-compatible fallback, submit a placeholder
+      return { buyerReady: true };
+    }
+  },
+};
+
+// ─── Lindahl Mechanism ──────────────────────────────────────────────
+export const lindahlStrategy: BotStrategy = {
+  getSimultaneousAction(player, _config) {
+    // Under-report WTP to free-ride (60–90% of true value)
+    const valuation = Number((player as any).valuation) || rand(5, 15);
+    const shade = rand(0.6, 0.9);
+    return { willingnessToPay: r2(clamp(valuation * shade, 0, 999)) };
+  },
+};
+
+// ─── Public Goods Auction ───────────────────────────────────────────
+export const pgAuctionStrategy: BotStrategy = {
+  getSimultaneousAction(player, _config) {
+    // Bid 50–80% of true value (strategic shading)
+    const valuation = Number((player as any).valuation) || rand(15, 35);
+    const shade = rand(0.5, 0.8);
+    return { bid: r2(clamp(valuation * shade, 0, 999)) };
+  },
+};
+
+// ─── Sealed Bid-Offer Auction ───────────────────────────────────────
+export const sealedBidOfferStrategy: BotStrategy = {
+  getSimultaneousAction(player, _config) {
+    const role = (player as any).role;
+    if (role === 'seller') {
+      // Sellers: ask 110–140% of cost
+      const cost = Number((player as any).cost) || rand(20, 60);
+      const markup = rand(1.1, 1.4);
+      return { ask: r2(clamp(cost * markup, 0, 999)) };
+    } else {
+      // Buyers: bid 60–90% of valuation
+      const valuation = Number((player as any).valuation) || rand(30, 80);
+      const shade = rand(0.6, 0.9);
+      return { bid: r2(clamp(valuation * shade, 0, 999)) };
+    }
+  },
+};
+
+// ─── Sponsored Search / GSP ─────────────────────────────────────────
+export const sponsoredSearchStrategy: BotStrategy = {
+  getSimultaneousAction(player, _config) {
+    // GSP: shade bid to 50–80% of value per click
+    const valuation = Number((player as any).valuation) || rand(3, 8);
+    const shade = rand(0.5, 0.8);
+    return { bid: r2(clamp(valuation * shade, 0, 999)) };
+  },
+};
+
 // ─── Discovery Process ─────────────────────────────────────────────────────
 export const discoveryProcessStrategy: BotStrategy = {
   getSpecializedActions(player, config) {
