@@ -331,11 +331,11 @@ export class BotService {
           const engine = GameRegistry.get(gameType);
           const action = strategy.getDAAction!(bot, config, {}, elapsed);
           if (action) {
-            // DA engines use submit-bid / submit-ask, but handleAction routes them
-            await engine.handleAction(roundId, bot.id, action, sessionCode, io);
+            const result = await engine.handleAction(roundId, bot.id, action, sessionCode, io);
+            console.log(`BotService DA: ${bot.name} (${bot.role}) submitted ${action.type} @ ${action.price} → ${result?.success ? 'OK' : result?.error || 'unknown'}`);
           }
         } catch (err) {
-          // Ignore errors (e.g., duplicate bid) — bot just tries again next tick
+          console.error(`BotService DA error for ${bot.name}:`, err);
         }
         // Schedule next action
         scheduleNext();
@@ -345,6 +345,7 @@ export class BotService {
 
     // Start with a random initial delay
     const initialDelay = 2000 + Math.random() * 3000;
+    console.log(`BotService DA: Scheduling ${bot.name} (${bot.role}) with initial delay ${Math.round(initialDelay)}ms`);
     const initTimer = setTimeout(() => scheduleNext(), initialDelay);
     timers.push(initTimer);
   }
