@@ -45,8 +45,26 @@ app.use((req, _res, next) => {
 app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    version: 'v3-debug',
   });
+});
+
+// Debug endpoint for bot diagnostics
+app.get('/api/debug/bots', (_req, res) => {
+  try {
+    const { BotStrategyRegistry } = require('./services/botStrategies');
+    const strategies = BotStrategyRegistry.listAll();
+    const daStrat = BotStrategyRegistry.get('double_auction');
+    res.json({
+      version: 'v3-debug',
+      registeredStrategies: strategies,
+      daStrategyExists: !!daStrat,
+      daHasGetDAAction: !!daStrat?.getDAAction,
+    });
+  } catch (err: any) {
+    res.json({ error: err.message, stack: err.stack });
+  }
 });
 
 // Game types discovery endpoint

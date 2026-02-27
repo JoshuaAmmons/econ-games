@@ -60,6 +60,10 @@ class BotStrategyRegistryClass {
   has(gameType: string): boolean {
     return this.strategies.has(gameType);
   }
+
+  listAll(): string[] {
+    return Array.from(this.strategies.keys());
+  }
 }
 
 export const BotStrategyRegistry = new BotStrategyRegistryClass();
