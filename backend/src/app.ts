@@ -46,63 +46,23 @@ app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    version: 'v6-constraints',
   });
 });
 
-// Debug: check database constraints
-app.get('/api/debug/constraints', async (_req, res) => {
-  try {
-    const { pool } = require('./config/database');
-    const result = await pool.query(`
-      SELECT conname, pg_get_constraintdef(oid) as definition
-      FROM pg_constraint
-      WHERE conrelid = 'sessions'::regclass
-      ORDER BY conname
-    `);
-    res.json({ constraints: result.rows });
-  } catch (err: any) {
-    res.json({ error: err.message });
-  }
-});
-
-// Debug endpoint for bot diagnostics
+// Bot diagnostics — strategies, active timers, recent log buffer
 app.get('/api/debug/bots', (_req, res) => {
   try {
     const { BotStrategyRegistry } = require('./services/botStrategies');
-    const strategies = BotStrategyRegistry.listAll();
-    const daStrat = BotStrategyRegistry.get('double_auction');
-
-    // Test actual DA action generation
-    const fakeBuyer = { role: 'buyer', valuation: 40 } as any;
-    const fakeSeller = { role: 'seller', production_cost: 25 } as any;
-    let buyerAction = null, sellerAction = null, actionError = null;
-    try {
-      buyerAction = daStrat?.getDAAction?.(fakeBuyer, { time_per_round: 60 }, {}, 10);
-      sellerAction = daStrat?.getDAAction?.(fakeSeller, { time_per_round: 60 }, {}, 10);
-    } catch (e: any) {
-      actionError = e.message;
-    }
-
-    // Test BotService singleton
     const { BotService } = require('./services/BotService');
     const botService = BotService.getInstance();
-    const roundTimerCount = botService['roundTimers'].size;
-    const roundStartTimeCount = botService['roundStartTimes'].size;
 
     res.json({
-      version: 'v5-logs',
-      registeredStrategies: strategies,
-      daStrategyExists: !!daStrat,
-      daHasGetDAAction: !!daStrat?.getDAAction,
-      testBuyerAction: buyerAction,
-      testSellerAction: sellerAction,
-      actionError,
-      botServiceState: { roundTimerCount, roundStartTimeCount },
+      registeredStrategies: BotStrategyRegistry.listAll(),
+      activeTimers: botService['roundTimers'].size,
       recentLogs: botService.getRecentLogs(),
     });
   } catch (err: any) {
-    res.json({ error: err.message, stack: err.stack });
+    res.json({ error: err.message });
   }
 });
 
