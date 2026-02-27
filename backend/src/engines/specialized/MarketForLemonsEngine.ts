@@ -170,7 +170,7 @@ export class MarketForLemonsEngine extends SequentialBaseEngine {
     // {type: 'first_move'} to bypass role checks and inject quality.
     const { PlayerModel } = await import('../../models/Player');
     const player = await PlayerModel.findById(playerId);
-    if (player?.role === 'seller' && action.type === 'first_move') {
+    if (player?.role === 'seller') {
       // Use the server-cached quality; ignore any client-submitted value
       action.quality = this.getSellerQuality(roundId, playerId);
     }
