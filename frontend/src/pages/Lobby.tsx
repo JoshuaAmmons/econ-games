@@ -6,6 +6,7 @@ import { playersApi } from '../api/players';
 import { sessionsApi } from '../api/sessions';
 import type { Player, Session } from '../types';
 import { User } from 'lucide-react';
+import { GameInstructions } from '../components/shared/GameInstructions';
 
 const DA_GAME_TYPES = ['double_auction', 'double_auction_tax', 'double_auction_price_controls'];
 
@@ -328,6 +329,10 @@ export const Lobby: React.FC = () => {
                 <span className="font-semibold">Your Role</span>
               </div>
               <p className="text-2xl font-bold text-sky-900 capitalize">{role}</p>
+            </div>
+
+            <div className="text-left mb-6">
+              <GameInstructions gameType={gameType} variant="student" />
             </div>
 
             <div className="bg-gray-50 rounded-lg p-6">
