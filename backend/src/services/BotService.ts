@@ -161,17 +161,24 @@ export class BotService {
     io: Server
   ): Promise<void> {
     const gameType = session.game_type || 'double_auction';
+    console.log(`[BotService] onRoundStart called: session=${sessionCode}, gameType=${gameType}, roundId=${roundId}`);
+
     const strategy = BotStrategyRegistry.get(gameType);
     if (!strategy) {
       console.warn(`BotService: No strategy for game type "${gameType}"`);
       return;
     }
+    console.log(`[BotService] Strategy found for ${gameType}, hasDAAction=${!!strategy.getDAAction}`);
 
     const allPlayers = await PlayerModel.findActiveBySession(session.id);
     const bots = allPlayers.filter(p => p.is_bot);
+    console.log(`[BotService] Found ${bots.length} bots out of ${allPlayers.length} players`);
     if (bots.length === 0) return;
 
-    const config = session.game_config || {};
+    const config = {
+      ...session.game_config || {},
+      time_per_round: session.time_per_round,
+    };
     const timers: NodeJS.Timeout[] = [];
     this.roundStartTimes.set(roundId, Date.now());
 
@@ -344,7 +351,7 @@ export class BotService {
     };
 
     // Start with a random initial delay
-    const initialDelay = 2000 + Math.random() * 3000;
+    const initialDelay = 1000 + Math.random() * 2000;
     console.log(`BotService DA: Scheduling ${bot.name} (${bot.role}) with initial delay ${Math.round(initialDelay)}ms`);
     const initTimer = setTimeout(() => scheduleNext(), initialDelay);
     timers.push(initTimer);
