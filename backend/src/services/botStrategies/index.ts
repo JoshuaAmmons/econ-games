@@ -37,6 +37,11 @@ import {
   comparativeAdvantageStrategy,
   auctionStrategy,
   discoveryProcessStrategy,
+  ellsbergStrategy,
+  newsvendorStrategy,
+  dutchAuctionStrategy,
+  englishAuctionStrategy,
+  discriminativeAuctionStrategy,
 } from './SpecializedBotStrategies';
 
 // ─── Register all strategies ───────────────────────────────────────────────
@@ -71,6 +76,11 @@ BotStrategyRegistry.register('monopoly', monopolyStrategy);
 BotStrategyRegistry.register('comparative_advantage', comparativeAdvantageStrategy);
 BotStrategyRegistry.register('auction', auctionStrategy);
 BotStrategyRegistry.register('discovery_process', discoveryProcessStrategy);
+BotStrategyRegistry.register('ellsberg', ellsbergStrategy);
+BotStrategyRegistry.register('newsvendor', newsvendorStrategy);
+BotStrategyRegistry.register('dutch_auction', dutchAuctionStrategy);
+BotStrategyRegistry.register('english_auction', englishAuctionStrategy);
+BotStrategyRegistry.register('discriminative_auction', discriminativeAuctionStrategy);
 
 export { BotStrategyRegistry } from './BotStrategyRegistry';
 export type { BotStrategy } from './BotStrategyRegistry';

@@ -18,7 +18,9 @@ async function applyConstraintUpdates() {
       'comparative_advantage', 'monopoly', 'market_for_lemons',
       'discovery_process', 'prisoner_dilemma', 'beauty_contest',
       'common_pool_resource', 'stag_hunt', 'dictator', 'matching_pennies',
-      'trust_game', 'bargaining', 'auction'
+      'trust_game', 'bargaining', 'auction',
+      'ellsberg', 'newsvendor', 'dutch_auction', 'english_auction',
+      'discriminative_auction'
     ))`);
 
     // Ensure role_check includes all roles
@@ -27,7 +29,8 @@ async function applyConstraintUpdates() {
       'buyer', 'seller', 'player', 'firm',
       'proposer', 'responder', 'employer', 'worker',
       'principal', 'agent', 'country', 'monopolist',
-      'producer', 'bidder', 'sender', 'receiver'
+      'producer', 'bidder', 'sender', 'receiver',
+      'chooser', 'manager'
     ))`);
 
     // Ensure passcode column exists on sessions table
