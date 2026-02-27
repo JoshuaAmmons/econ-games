@@ -211,14 +211,7 @@ export class SessionController {
           }
 
           const activePlayers = await PlayerModel.findActiveBySession(id);
-          console.log(`[SessionStart] Calling setupPlayers for ${gameType} with ${activePlayers.length} players, config:`, JSON.stringify(session.game_config || {}));
-          try {
-            await engine.setupPlayers(id, activePlayers.length, session.game_config || {});
-            console.log(`[SessionStart] setupPlayers completed successfully for ${gameType}`);
-          } catch (setupErr) {
-            console.error(`[SessionStart] setupPlayers FAILED for ${gameType}:`, setupErr);
-            throw setupErr;
-          }
+          await engine.setupPlayers(id, activePlayers.length, session.game_config || {});
 
           // The socket start-round handler normally sets up timers and bot actions,
           // but it can't for round 1 because the round is already 'active' by the
@@ -244,16 +237,8 @@ export class SessionController {
                 .catch(err => console.error('BotService round 1 start error:', err));
             }
           }
-        } catch (engineError: any) {
+        } catch (engineError) {
           console.error('Engine setup during session start:', engineError);
-          // Return the error details so we can debug
-          res.json({
-            success: true,
-            message: 'Session started (with engine setup warning)',
-            engineError: engineError?.message || String(engineError),
-            engineStack: engineError?.stack?.split('\n').slice(0, 5),
-          } as any);
-          return;
         }
       }
 

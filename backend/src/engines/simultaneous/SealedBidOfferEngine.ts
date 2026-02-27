@@ -185,14 +185,14 @@ export class SealedBidOfferEngine extends SimultaneousBaseEngine {
         // Buyer: gets valuation
         const valuation = Math.round(valueMin + Math.random() * (valueMax - valueMin));
         await pool.query(
-          'UPDATE players SET role = $1, valuation = $2, cost = NULL WHERE id = $3',
+          'UPDATE players SET role = $1, valuation = $2, production_cost = NULL WHERE id = $3',
           ['buyer', valuation, player.id]
         );
       } else {
         // Seller: gets cost
         const cost = Math.round(costMin + Math.random() * (costMax - costMin));
         await pool.query(
-          'UPDATE players SET role = $1, valuation = NULL, cost = $2 WHERE id = $3',
+          'UPDATE players SET role = $1, valuation = NULL, production_cost = $2 WHERE id = $3',
           ['seller', cost, player.id]
         );
       }
@@ -215,7 +215,7 @@ export class SealedBidOfferEngine extends SimultaneousBaseEngine {
         await pool.query('UPDATE players SET valuation = $1 WHERE id = $2', [valuation, player.id]);
       } else {
         const cost = Math.round(costMin + Math.random() * (costMax - costMin));
-        await pool.query('UPDATE players SET cost = $1 WHERE id = $2', [cost, player.id]);
+        await pool.query('UPDATE players SET production_cost = $1 WHERE id = $2', [cost, player.id]);
       }
     }
   }
@@ -265,7 +265,7 @@ export class SealedBidOfferEngine extends SimultaneousBaseEngine {
           playerId: a.playerId,
           playerName: a.playerName,
           ask: a.action.ask as number,
-          cost: player?.cost ?? 0,
+          cost: player?.production_cost ?? 0,
         });
       }
     }

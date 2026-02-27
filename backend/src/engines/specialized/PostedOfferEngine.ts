@@ -301,7 +301,7 @@ export class PostedOfferEngine implements GameEngine {
       playerId,
       playerName: player.name || 'Seller',
       price,
-      cost: player.cost ?? 0,
+      cost: player.production_cost ?? 0,
     });
 
     // Notify all players that a seller posted
@@ -457,7 +457,7 @@ export class PostedOfferEngine implements GameEngine {
 
     // Compute max possible surplus
     const buyerVals = allPlayers.filter(p => p.role === 'buyer').map(p => p.valuation ?? 0).sort((a, b) => b - a);
-    const sellerCosts = allPlayers.filter(p => p.role === 'seller').map(p => (p as any).cost ?? p.production_cost ?? 0).sort((a, b) => a - b);
+    const sellerCosts = allPlayers.filter(p => p.role === 'seller').map(p => p.production_cost ?? 0).sort((a, b) => a - b);
     for (let i = 0; i < Math.min(buyerVals.length, sellerCosts.length); i++) {
       if (buyerVals[i] > sellerCosts[i]) maxSurplus += buyerVals[i] - sellerCosts[i];
     }
@@ -470,7 +470,7 @@ export class PostedOfferEngine implements GameEngine {
         const matchedBuyerId = matches.get(player.id);
         const isMatched = !!matchedBuyerId;
         const price = postedPrice?.price ?? 0;
-        const cost = (player as any).cost ?? player.production_cost ?? 0;
+        const cost = player.production_cost ?? 0;
         const profit = isMatched ? price - cost : 0;
         if (isMatched) {
           totalSurplus += profit;
@@ -632,14 +632,14 @@ export class PostedOfferEngine implements GameEngine {
         // Seller: gets cost
         const cost = Math.round(costMin + Math.random() * (costMax - costMin));
         await pool.query(
-          'UPDATE players SET role = $1, cost = $2, valuation = NULL WHERE id = $3',
+          'UPDATE players SET role = $1, production_cost = $2, valuation = NULL WHERE id = $3',
           ['seller', cost, player.id]
         );
       } else {
         // Buyer: gets valuation
         const valuation = Math.round(valueMin + Math.random() * (valueMax - valueMin));
         await pool.query(
-          'UPDATE players SET role = $1, valuation = $2, cost = NULL WHERE id = $3',
+          'UPDATE players SET role = $1, valuation = $2, production_cost = NULL WHERE id = $3',
           ['buyer', valuation, player.id]
         );
       }
@@ -659,7 +659,7 @@ export class PostedOfferEngine implements GameEngine {
     for (const player of players) {
       if (player.role === 'seller') {
         const cost = Math.round(costMin + Math.random() * (costMax - costMin));
-        await pool.query('UPDATE players SET cost = $1 WHERE id = $2', [cost, player.id]);
+        await pool.query('UPDATE players SET production_cost = $1 WHERE id = $2', [cost, player.id]);
       } else {
         const valuation = Math.round(valueMin + Math.random() * (valueMax - valueMin));
         await pool.query('UPDATE players SET valuation = $1 WHERE id = $2', [valuation, player.id]);

@@ -51,7 +51,7 @@ const SealedBidOfferUI: React.FC<GameUIProps> = ({
   const isBuyer = role === 'buyer';
   const privateValue = isBuyer
     ? Number(player?.valuation ?? 0)
-    : Number((player as any)?.cost ?? player?.production_cost ?? 0);
+    : Number(player?.production_cost ?? 0);
 
   const amountNum = parseFloat(amount) || 0;
 

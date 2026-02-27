@@ -176,7 +176,7 @@ export class LindahlEngine extends SimultaneousBaseEngine {
 
     const players = await PlayerModel.findBySession(sessionId);
     for (const player of players) {
-      const valuation = Math.round((valueMin + Math.random() * (valueMax - valueMin)) * 100) / 100;
+      const valuation = Math.round(valueMin + Math.random() * (valueMax - valueMin));
       await pool.query(
         'UPDATE players SET valuation = $1 WHERE id = $2',
         [valuation, player.id]
