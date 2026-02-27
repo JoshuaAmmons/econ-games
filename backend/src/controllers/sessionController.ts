@@ -211,7 +211,14 @@ export class SessionController {
           }
 
           const activePlayers = await PlayerModel.findActiveBySession(id);
-          await engine.setupPlayers(id, activePlayers.length, session.game_config || {});
+          console.log(`[SessionStart] Calling setupPlayers for ${gameType} with ${activePlayers.length} players, config:`, JSON.stringify(session.game_config || {}));
+          try {
+            await engine.setupPlayers(id, activePlayers.length, session.game_config || {});
+            console.log(`[SessionStart] setupPlayers completed successfully for ${gameType}`);
+          } catch (setupErr) {
+            console.error(`[SessionStart] setupPlayers FAILED for ${gameType}:`, setupErr);
+            throw setupErr;
+          }
 
           // The socket start-round handler normally sets up timers and bot actions,
           // but it can't for round 1 because the round is already 'active' by the
