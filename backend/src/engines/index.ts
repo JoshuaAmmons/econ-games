@@ -31,6 +31,11 @@ import { NewsvendorEngine } from './simultaneous/NewsvendorEngine';
 import { DutchAuctionEngine } from './specialized/DutchAuctionEngine';
 import { EnglishAuctionEngine } from './specialized/EnglishAuctionEngine';
 import { DiscriminativeAuctionEngine } from './specialized/DiscriminativeAuctionEngine';
+import { PostedOfferEngine } from './specialized/PostedOfferEngine';
+import { LindahlEngine } from './simultaneous/LindahlEngine';
+import { PGAuctionEngine } from './simultaneous/PGAuctionEngine';
+import { SealedBidOfferEngine } from './simultaneous/SealedBidOfferEngine';
+import { SponsoredSearchEngine } from './simultaneous/SponsoredSearchEngine';
 
 // Register all available game engines
 GameRegistry.register(new DoubleAuctionEngine());
@@ -61,6 +66,11 @@ GameRegistry.register(new NewsvendorEngine());
 GameRegistry.register(new DutchAuctionEngine());
 GameRegistry.register(new EnglishAuctionEngine());
 GameRegistry.register(new DiscriminativeAuctionEngine());
+GameRegistry.register(new PostedOfferEngine());
+GameRegistry.register(new LindahlEngine());
+GameRegistry.register(new PGAuctionEngine());
+GameRegistry.register(new SealedBidOfferEngine());
+GameRegistry.register(new SponsoredSearchEngine());
 
 export { GameRegistry } from './GameRegistry';
 export type { GameEngine, GameType, UIConfig } from './GameEngine';

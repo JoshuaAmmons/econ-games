@@ -20,6 +20,8 @@ const PAIRED_ROLES: Record<string, [string, string]> = {
   principal_agent: ['principal', 'agent'],
   trust_game: ['sender', 'receiver'],
   market_for_lemons: ['seller', 'buyer'],
+  posted_offer: ['seller', 'buyer'],
+  sealed_bid_offer: ['buyer', 'seller'],
 };
 
 // Default role for non-DA, non-paired game types
@@ -43,6 +45,11 @@ const GAME_ROLES: Record<string, string> = {
   dutch_auction: 'bidder',
   english_auction: 'bidder',
   discriminative_auction: 'bidder',
+  posted_offer: 'seller',
+  lindahl: 'voter',
+  pg_auction: 'voter',
+  sealed_bid_offer: 'buyer',
+  sponsored_search: 'advertiser',
 };
 
 // Sequential game types (need first-mover / second-mover handling)

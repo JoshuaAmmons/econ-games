@@ -42,6 +42,11 @@ import {
   dutchAuctionStrategy,
   englishAuctionStrategy,
   discriminativeAuctionStrategy,
+  postedOfferStrategy,
+  lindahlStrategy,
+  pgAuctionStrategy,
+  sealedBidOfferStrategy,
+  sponsoredSearchStrategy,
 } from './SpecializedBotStrategies';
 
 // ─── Register all strategies ───────────────────────────────────────────────
@@ -81,6 +86,11 @@ BotStrategyRegistry.register('newsvendor', newsvendorStrategy);
 BotStrategyRegistry.register('dutch_auction', dutchAuctionStrategy);
 BotStrategyRegistry.register('english_auction', englishAuctionStrategy);
 BotStrategyRegistry.register('discriminative_auction', discriminativeAuctionStrategy);
+BotStrategyRegistry.register('posted_offer', postedOfferStrategy);
+BotStrategyRegistry.register('lindahl', lindahlStrategy);
+BotStrategyRegistry.register('pg_auction', pgAuctionStrategy);
+BotStrategyRegistry.register('sealed_bid_offer', sealedBidOfferStrategy);
+BotStrategyRegistry.register('sponsored_search', sponsoredSearchStrategy);
 
 export { BotStrategyRegistry } from './BotStrategyRegistry';
 export type { BotStrategy } from './BotStrategyRegistry';

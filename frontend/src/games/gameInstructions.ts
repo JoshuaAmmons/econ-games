@@ -1154,4 +1154,212 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       ],
     },
   },
+
+  posted_offer: {
+    studentInstructions: {
+      premise:
+        'You are in a posted-offer market. Sellers post take-it-or-leave-it prices, then buyers choose which seller to buy from. Each seller can sell one unit per round.',
+      yourGoal:
+        'Sellers: set a price above your cost that attracts buyers. Buyers: choose the seller with the best price below your valuation.',
+      howToPlay: [
+        'Phase 1 (Posting): Sellers simultaneously post their prices.',
+        'Phase 2 (Shopping): Buyers see all posted prices and choose one seller to buy from.',
+        'If multiple buyers choose the same seller, one is randomly selected to trade.',
+        'Seller profit = Price - Cost (if sold). Buyer profit = Valuation - Price (if bought).',
+        'Unmatched players earn $0 for the round.',
+      ],
+      tips: [
+        'Sellers: pricing too high means no buyers; pricing too low means low profit.',
+        'Buyers: always buy from the cheapest seller below your valuation.',
+        'Compare prices across rounds — do they converge toward competitive levels?',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Seller profit = Price - Cost (if matched with buyer)',
+        'Buyer profit = Valuation - Price (if matched with seller)',
+        'Unmatched players: profit = 0',
+      ],
+      equilibrium:
+        'With sufficient competition, posted prices converge toward the competitive equilibrium from above (seller market power). Convergence is typically slower than in double auctions.',
+      keyParameters: [
+        'valueMin, valueMax — range for buyer valuations (default 10–100)',
+        'costMin, costMax — range for seller costs (default 10–100)',
+        'market_size — total players, split evenly between buyers and sellers',
+      ],
+      teachingNotes: [
+        'Compare convergence speed and efficiency to double auction markets.',
+        'Posted-offer markets tend to have higher prices (seller advantage) vs. posted-bid markets.',
+        'Based on Plott & Smith (1978) — one of the earliest posted-offer experiments.',
+        'Discuss real-world examples: retail pricing, catalog pricing, online stores.',
+      ],
+    },
+  },
+
+  lindahl: {
+    studentInstructions: {
+      premise:
+        'Your group shares a public good. Each player reports their willingness-to-pay (WTP) per unit. The provision level depends on total WTP relative to the marginal cost.',
+      yourGoal:
+        'Report your WTP honestly to achieve the efficient level of the public good. Under-reporting saves you money but reduces provision for everyone.',
+      howToPlay: [
+        'You receive a private per-unit value for the public good (only you know this).',
+        'Report your willingness-to-pay per unit of the public good.',
+        'Provision level = total WTP ÷ marginal cost (capped at max quantity).',
+        'Your payment = your WTP × provision level.',
+        'Your profit = (your value × provision level) - your payment.',
+      ],
+      tips: [
+        'Reporting your true value is efficient but costly — tempting to free-ride.',
+        'If everyone under-reports, the public good is under-provided and everyone loses.',
+        'Think about the trade-off between personal savings and group benefit.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Provision level G = min(Σ WTP_i / marginalCost, maxQuantity)',
+        'Payment_i = WTP_i × G',
+        'Profit_i = Value_i × G - Payment_i',
+      ],
+      equilibrium:
+        'Efficient level G* = Σ values / marginalCost (Samuelson condition). The dominant strategy is to under-report WTP (free-ride), leading to under-provision.',
+      keyParameters: [
+        'marginalCostPG — cost per unit of public good (default 10)',
+        'valueMin, valueMax — range for private per-unit values (default 2–20)',
+        'maxQuantity — maximum provision level (default 50)',
+      ],
+      teachingNotes: [
+        'Illustrates the Lindahl equilibrium concept and its incentive problems.',
+        'Compare reported WTP to true values — how much free-riding occurs?',
+        'Track provision levels vs. the efficient benchmark across rounds.',
+        'Discuss why Lindahl pricing is theoretically efficient but practically difficult.',
+      ],
+    },
+  },
+
+  pg_auction: {
+    studentInstructions: {
+      premise:
+        'A public project needs funding. Each player bids a contribution amount. If total bids meet the provision cost, the project is funded and everyone benefits.',
+      yourGoal:
+        'Contribute enough to help fund the project while keeping your bid as low as possible. Your profit = your value - your bid (if funded).',
+      howToPlay: [
+        'You receive a private value for the public good (your benefit if funded).',
+        'Submit a sealed bid — your contribution to the project.',
+        'If total bids ≥ provision cost: the project is funded, and each player pays their bid.',
+        'If total bids < provision cost: the project fails.',
+        'Under "money back" rules, failed bids are refunded. Under "no refund," bids are lost.',
+      ],
+      tips: [
+        'Bidding too low risks the project failing — everyone loses.',
+        'Bidding your full value leaves you no profit even if funded.',
+        'With money-back guarantee, there is less risk to bidding higher.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'If funded: Profit = Value_i - Bid_i',
+        'If not funded (money_back): Profit = 0',
+        'If not funded (no_refund): Profit = -Bid_i',
+      ],
+      equilibrium:
+        'Multiple Nash equilibria exist. The provision point mechanism can improve efficiency vs. voluntary contribution, especially with money-back guarantees.',
+      keyParameters: [
+        'provisionCost — total cost to provide the public good (default 100)',
+        'valueMin, valueMax — range for private values (default 10–40)',
+        'refundRule — "money_back" or "no_refund" (default money_back)',
+      ],
+      teachingNotes: [
+        'Compare funding rates under money-back vs. no-refund rules.',
+        'Does the provision point mechanism solve the free-rider problem?',
+        'Based on Isaac, Schmidtz & Walker (1989) — provision point mechanisms.',
+        'Track how bids change across rounds as players learn the threshold.',
+      ],
+    },
+  },
+
+  sealed_bid_offer: {
+    studentInstructions: {
+      premise:
+        'You are in a sealed-bid clearing market. Buyers submit sealed bids, sellers submit sealed asks. The market clears where supply meets demand.',
+      yourGoal:
+        'Buyers: bid strategically to trade at a favorable clearing price. Sellers: set asks above your cost to earn a profit if the market clears.',
+      howToPlay: [
+        'Buyers receive a private valuation; sellers receive a private cost.',
+        'Buyers submit sealed bids (max willingness to pay). Sellers submit sealed asks (min willingness to accept).',
+        'Bids are ranked highest-to-lowest; asks are ranked lowest-to-highest.',
+        'The market clears where the highest remaining bid meets the lowest remaining ask.',
+        'Clearing price = average of the marginal bid and marginal ask.',
+        'All inframarginal traders trade at the clearing price.',
+      ],
+      tips: [
+        'Buyers: bidding your true valuation ensures you trade but earns less profit.',
+        'Sellers: asking your true cost ensures you trade but earns less profit.',
+        'This is a one-shot clearing — compare your results to continuous trading!',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Buyer profit = Valuation - Clearing Price (if inframarginal)',
+        'Seller profit = Clearing Price - Cost (if inframarginal)',
+        'Extramarginal traders: profit = 0',
+      ],
+      equilibrium:
+        'The clearing price converges to the competitive equilibrium. Efficiency depends on how closely bids/asks reveal true values.',
+      keyParameters: [
+        'valueMin, valueMax — range for buyer valuations (default 10–100)',
+        'costMin, costMax — range for seller costs (default 10–100)',
+        'market_size — total players, split evenly between buyers and sellers',
+      ],
+      teachingNotes: [
+        'Compare efficiency and price convergence to continuous double auction.',
+        'Based on Smith (1962) and subsequent sealed-bid experiments.',
+        'One-shot clearing markets are used in electricity, spectrum, and financial markets.',
+        'Track bid/ask shading — do buyers under-bid and sellers over-ask?',
+      ],
+    },
+  },
+
+  sponsored_search: {
+    studentInstructions: {
+      premise:
+        'You are an advertiser bidding for ad positions on a search results page. Higher positions get more clicks. You bid per click, and the auction uses Generalized Second Price (GSP) rules.',
+      yourGoal:
+        'Win a profitable ad position. You want clicks at a cost below your value per click.',
+      howToPlay: [
+        'You receive a private value per click (your revenue from each click).',
+        'Submit a bid per click — your maximum willingness to pay per click.',
+        'Highest bidder gets Position #1 (most clicks), next gets #2, etc.',
+        'GSP rule: each position pays the BID of the next-lower position.',
+        'Profit = clicks × (your value - your payment per click).',
+        'Advertisers who don\'t win a position earn $0.',
+      ],
+      tips: [
+        'Unlike second-price auctions, truthful bidding is NOT always optimal in GSP.',
+        'Bid shading (bidding below your value) can increase profits.',
+        'Consider which position gives you the best profit, not just the most clicks.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Position j pays: bid of position j+1 (GSP)',
+        'Profit = clickRate[j] × (value_per_click - payment_per_click)',
+        'Non-winners: profit = 0',
+      ],
+      equilibrium:
+        'GSP has multiple Nash equilibria. The "locally envy-free" equilibrium mimics VCG outcomes. Unlike VCG/second-price, truthful bidding is NOT a dominant strategy — bid shading is optimal.',
+      keyParameters: [
+        'numPositions — number of ad positions available (default 3)',
+        'clickRates — clicks per position (default: geometric decay from 100)',
+        'valueMin, valueMax — range for value per click (default 1–10)',
+      ],
+      teachingNotes: [
+        'Compare GSP to VCG mechanism — GSP is not truthful but widely used.',
+        'Based on Edelman, Ostrovsky & Schwarz (2007) AER and Varian (2007) IJIO.',
+        'Used by Google, Bing, and other search engines for ad auctions.',
+        'Track bid shading behavior — do students shade more with experience?',
+        'Discuss why Google chose GSP over VCG despite its theoretical disadvantages.',
+      ],
+    },
+  },
 };
