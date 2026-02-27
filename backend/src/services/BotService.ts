@@ -178,7 +178,7 @@ export class BotService {
     if (DA_TYPES.has(gameType)) {
       // DA games: schedule periodic bid/ask submissions
       for (const bot of bots) {
-        this.scheduleDABotActions(bot, roundId, sessionCode, config, io, timers);
+        this.scheduleDABotActions(bot, roundId, sessionCode, gameType, config, io, timers);
       }
     } else if (SEQUENTIAL_TYPES.has(gameType)) {
       // Sequential games: only first-movers act now; second-movers respond reactively
@@ -311,11 +311,11 @@ export class BotService {
     bot: Player,
     roundId: string,
     sessionCode: string,
+    gameType: string,
     config: Record<string, any>,
     io: Server,
     timers: NodeJS.Timeout[]
   ): void {
-    const gameType = config.game_type || 'double_auction';
     const strategy = BotStrategyRegistry.get(gameType);
     if (!strategy?.getDAAction) return;
 
