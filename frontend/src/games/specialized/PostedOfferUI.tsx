@@ -57,7 +57,7 @@ const PostedOfferUI: React.FC<GameUIProps> = ({
   const role = player?.role as 'buyer' | 'seller';
   const isSeller = role === 'seller';
   const privateValue = isSeller
-    ? Number((player as any)?.cost ?? player?.production_cost ?? 0)
+    ? Number(player?.production_cost ?? 0)
     : Number(player?.valuation ?? 0);
 
   const priceNum = parseFloat(price) || 0;

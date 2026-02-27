@@ -118,7 +118,7 @@ export const postedOfferStrategy: BotStrategy = {
     const role = (player as any).role;
     if (role === 'seller') {
       // Sellers: post price = cost × 1.2–1.5 markup
-      const cost = Number((player as any).cost) || rand(20, 60);
+      const cost = Number((player as any).production_cost) || rand(20, 60);
       const markup = rand(1.2, 1.5);
       return { price: r2(clamp(cost * markup, 0, 999)) };
     } else {
@@ -155,7 +155,7 @@ export const sealedBidOfferStrategy: BotStrategy = {
     const role = (player as any).role;
     if (role === 'seller') {
       // Sellers: ask 110–140% of cost
-      const cost = Number((player as any).cost) || rand(20, 60);
+      const cost = Number((player as any).production_cost) || rand(20, 60);
       const markup = rand(1.1, 1.4);
       return { ask: r2(clamp(cost * markup, 0, 999)) };
     } else {
