@@ -82,7 +82,7 @@ const SponsoredSearchUI: React.FC<GameUIProps> = ({
       const myResult = data.results.find(r => r.playerId === playerId);
       if (myResult) {
         if (myResult.isWinner && myResult.position != null) {
-          toast.success(`Position #${myResult.position + 1}! Profit: $${Number(myResult.profit).toFixed(2)}`);
+          toast.success(`Position #${myResult.position}! Profit: $${Number(myResult.profit).toFixed(2)}`);
         } else {
           toast(`No ad position this round. Profit: $0`, { icon: '😞' });
         }
@@ -225,7 +225,7 @@ const SponsoredSearchUI: React.FC<GameUIProps> = ({
                     {myResult.isWinner && <Award className="w-4 h-4 text-yellow-500" />}
                     <span className="font-medium text-gray-700">
                       {myResult.isWinner
-                        ? `You won Position #${(myResult.position ?? 0) + 1}!`
+                        ? `You won Position #${myResult.position}!`
                         : 'You did not win a position this round.'}
                     </span>
                   </div>
@@ -253,7 +253,7 @@ const SponsoredSearchUI: React.FC<GameUIProps> = ({
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-teal-100 text-teal-700 font-bold flex items-center justify-center text-sm">
-                          #{(r.position ?? 0) + 1}
+                          #{r.position}
                         </div>
                         <div>
                           <span className="font-medium">
