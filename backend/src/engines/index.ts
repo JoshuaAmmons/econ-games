@@ -26,6 +26,11 @@ import { MatchingPenniesEngine } from './simultaneous/MatchingPenniesEngine';
 import { TrustGameEngine } from './sequential/TrustGameEngine';
 import { BargainingEngine } from './sequential/BargainingEngine';
 import { AuctionEngine } from './specialized/AuctionEngine';
+import { EllsbergEngine } from './simultaneous/EllsbergEngine';
+import { NewsvendorEngine } from './simultaneous/NewsvendorEngine';
+import { DutchAuctionEngine } from './specialized/DutchAuctionEngine';
+import { EnglishAuctionEngine } from './specialized/EnglishAuctionEngine';
+import { DiscriminativeAuctionEngine } from './specialized/DiscriminativeAuctionEngine';
 
 // Register all available game engines
 GameRegistry.register(new DoubleAuctionEngine());
@@ -51,6 +56,11 @@ GameRegistry.register(new MatchingPenniesEngine());
 GameRegistry.register(new TrustGameEngine());
 GameRegistry.register(new BargainingEngine());
 GameRegistry.register(new AuctionEngine());
+GameRegistry.register(new EllsbergEngine());
+GameRegistry.register(new NewsvendorEngine());
+GameRegistry.register(new DutchAuctionEngine());
+GameRegistry.register(new EnglishAuctionEngine());
+GameRegistry.register(new DiscriminativeAuctionEngine());
 
 export { GameRegistry } from './GameRegistry';
 export type { GameEngine, GameType, UIConfig } from './GameEngine';

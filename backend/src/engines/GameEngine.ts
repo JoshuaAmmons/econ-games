@@ -26,7 +26,12 @@ export type GameType =
   | 'common_pool_resource'
   | 'stag_hunt'
   | 'dictator'
-  | 'matching_pennies';
+  | 'matching_pennies'
+  | 'ellsberg'
+  | 'newsvendor'
+  | 'dutch_auction'
+  | 'english_auction'
+  | 'discriminative_auction';
 
 /**
  * Result of validating a game config

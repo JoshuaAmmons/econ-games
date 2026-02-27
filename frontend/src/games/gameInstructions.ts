@@ -954,4 +954,204 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       ],
     },
   },
+
+  ellsberg: {
+    studentInstructions: {
+      premise:
+        'You face two urns containing colored balls. The Known Urn has exactly 50 red and 50 black balls. The Ambiguous Urn has 100 balls with an unknown mix of red and black.',
+      yourGoal:
+        'Win the prize by correctly guessing which color ball will be drawn from your chosen urn.',
+      howToPlay: [
+        'Choose which urn to draw from: the Known Urn (50/50) or the Ambiguous Urn (unknown mix).',
+        'Choose which color to bet on: Red or Black.',
+        'A ball is drawn from each urn. If the drawn ball from YOUR chosen urn matches your color, you win the prize.',
+        'Both urns have the same expected probability of each color — the only difference is whether you know the exact odds.',
+      ],
+      tips: [
+        'Think about whether the known vs. unknown probability affects your choice.',
+        'Mathematically, the expected value is identical for both urns — but most people have a preference.',
+        'This experiment reveals "ambiguity aversion" — people dislike uncertain probabilities.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Correct guess: player receives the prize amount',
+        'Incorrect guess: player receives $0',
+      ],
+      equilibrium:
+        'Expected value is identical for both urns. A risk-neutral, ambiguity-neutral agent should be indifferent. The Ellsberg Paradox predicts systematic preference for the known urn.',
+      keyParameters: [
+        'prize — reward for correct guess (default $10)',
+      ],
+      teachingNotes: [
+        'Track the percentage choosing Known vs. Ambiguous — most subjects prefer the known urn.',
+        'This violates subjective expected utility theory (Savage axioms).',
+        'Discuss Ellsberg (1961) and how ambiguity aversion differs from risk aversion.',
+        'Run multiple rounds to see if the pattern persists or if learning occurs.',
+      ],
+    },
+  },
+
+  newsvendor: {
+    studentInstructions: {
+      premise:
+        'You manage a newsstand and must decide how many newspapers to order each day BEFORE knowing how many customers will show up. Unsold papers have low salvage value; unmet demand means lost sales.',
+      yourGoal:
+        'Maximize profit by choosing the right order quantity. Balance the risk of ordering too many (leftover costs) against ordering too few (lost sales).',
+      howToPlay: [
+        'Each round, choose how many units to order.',
+        'After all orders are placed, actual customer demand is revealed (random, same for everyone).',
+        'Revenue = units sold × selling price.',
+        'Salvage = unsold units × salvage value.',
+        'Cost = units ordered × unit cost.',
+        'Profit = Revenue + Salvage − Cost.',
+      ],
+      tips: [
+        'The "critical ratio" determines the optimal order: (selling price − cost) / (selling price − salvage).',
+        'Most people order too close to the average demand — this is the "pull-to-center" bias.',
+        'If profit margin is high, you should order MORE than average demand.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Profit = min(Q, D) × P + max(0, Q − D) × S − Q × C',
+        'where Q = order, D = demand, P = selling price, S = salvage, C = unit cost',
+      ],
+      equilibrium:
+        'Optimal Q* = F^{-1}(critical ratio), where critical ratio = (P − C)/(P − S). For uniform demand, Q* = demandMin + (demandMax − demandMin) × critical ratio.',
+      keyParameters: [
+        'unitCost — wholesale cost per unit (default $5)',
+        'sellingPrice — retail price per unit sold (default $10)',
+        'salvageValue — value per unsold unit (default $1)',
+        'demandMin, demandMax — range of uniform demand (default 0–100)',
+      ],
+      teachingNotes: [
+        'The "pull-to-center" bias: subjects order too close to mean demand regardless of cost structure.',
+        'When critical ratio > 0.5, optimal order exceeds the mean — but subjects under-order.',
+        'When critical ratio < 0.5, optimal order is below the mean — but subjects over-order.',
+        'Compare average orders to the theoretical optimum across rounds.',
+        'Based on Schweitzer & Cachon (2000) Management Science.',
+      ],
+    },
+  },
+
+  dutch_auction: {
+    studentInstructions: {
+      premise:
+        'In a Dutch (descending-clock) auction, the price starts very high and gradually decreases. The first bidder to "stop the clock" wins the item at that price. Here, you submit the price at which you would stop the clock.',
+      yourGoal:
+        'Win the item at a price below your private value. You pay your own stop price, so bid strategically!',
+      howToPlay: [
+        'You are assigned a private value — the most the item is worth to you.',
+        'Submit a "stop price" — the descending price at which you would stop the clock.',
+        'The bidder with the highest stop price wins the item.',
+        'The winner pays their own stop price (first-price rule).',
+        'Winner profit = Your Value − Your Stop Price.',
+        'Non-winners earn $0.',
+      ],
+      tips: [
+        'Bidding your true value guarantees zero profit if you win — shade your bid below your value.',
+        'Bid too low and you lose; bid too high and your profit shrinks.',
+        'This is strategically equivalent to a first-price sealed-bid auction.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Winner profit = Valuation − Stop Price',
+        'Loser profit = 0',
+      ],
+      equilibrium:
+        'With n bidders and uniform valuations on [0, V], the symmetric Bayesian Nash equilibrium bid is b(v) = v × (n−1)/n. Revenue equivalence holds with first-price sealed bid.',
+      keyParameters: [
+        'valueMin, valueMax — range of private valuations (default 10–100)',
+        'market_size — number of bidders',
+      ],
+      teachingNotes: [
+        'Compare bidding behavior to the theoretical shading factor (n−1)/n.',
+        'Based on Coppinger, Smith & Titus (1980) Economic Inquiry.',
+        'Contrast with English auction to test revenue equivalence theorem.',
+        'Look for overbidding relative to Nash — a common finding in experiments.',
+      ],
+    },
+  },
+
+  english_auction: {
+    studentInstructions: {
+      premise:
+        'In an English (ascending) auction, the price rises until only one bidder remains. Here, you submit your maximum willingness to pay (proxy bid). The highest bidder wins but pays the SECOND-highest bid.',
+      yourGoal:
+        'Win the item profitably. Since you pay the second-highest bid (not your own), bidding your true value is the dominant strategy!',
+      howToPlay: [
+        'You are assigned a private value — the most the item is worth to you.',
+        'Submit your maximum bid — the highest price you would pay.',
+        'The bidder with the highest maximum bid wins.',
+        'The winner pays the second-highest bid (not their own).',
+        'Winner profit = Your Value − Second-Highest Bid.',
+        'Non-winners earn $0.',
+      ],
+      tips: [
+        'Bidding your true value is the dominant strategy — you can never lose money by being truthful.',
+        'Unlike first-price auctions, there is no incentive to shade your bid.',
+        'This is strategically equivalent to a Vickrey (second-price sealed-bid) auction.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Winner profit = Valuation − Second-Highest Bid',
+        'Loser profit = 0',
+      ],
+      equilibrium:
+        'Truthful bidding (bid = valuation) is a weakly dominant strategy. The winner pays the second-highest valuation. Revenue equivalence holds with Dutch/first-price auctions.',
+      keyParameters: [
+        'valueMin, valueMax — range of private valuations (default 10–100)',
+        'market_size — number of bidders',
+      ],
+      teachingNotes: [
+        'Test whether students bid truthfully (compare bids to assigned valuations).',
+        'Based on Coppinger, Smith & Titus (1980) Economic Inquiry.',
+        'Compare revenue with Dutch auction to test the Revenue Equivalence Theorem.',
+        'Overbidding in second-price auctions is well-documented experimentally.',
+      ],
+    },
+  },
+
+  discriminative_auction: {
+    studentInstructions: {
+      premise:
+        'Multiple identical units are for sale. All bidders submit sealed bids for one unit each. The top bidders win — but each winner pays their OWN bid (pay-as-bid / discriminative pricing).',
+      yourGoal:
+        'Win a unit at a price below your value. Since you pay your own bid, shade strategically — but not too much or you lose!',
+      howToPlay: [
+        'You are assigned a private value for one unit.',
+        'Submit a sealed bid for one unit.',
+        'Bids are ranked from highest to lowest. The top N bidders each win one unit.',
+        'Each winner pays their OWN bid (discriminative / pay-as-bid rule).',
+        'Winner profit = Your Value − Your Bid. Non-winners earn $0.',
+      ],
+      tips: [
+        'With multiple units, your chance of winning is higher than a single-unit auction.',
+        'But you still pay your own bid, so shade below your value.',
+        'Think about where the cutoff bid is likely to be.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Winner profit = Valuation − Own Bid',
+        'Loser profit = 0',
+      ],
+      equilibrium:
+        'No simple closed-form equilibrium exists for discriminative auctions with private values. Expected bid shading decreases with more units (closer to truthful with more supply).',
+      keyParameters: [
+        'valueMin, valueMax — range of private valuations (default 10–100)',
+        'numUnits — units available per round (default 3)',
+        'market_size — number of bidders (default 6)',
+      ],
+      teachingNotes: [
+        'Compare revenue to a uniform-price auction to test format efficiency.',
+        'Based on Cox, Smith & Walker (1984) Journal of Finance.',
+        'Used by the U.S. Treasury for bond auctions — discuss real-world applications.',
+        'Track how bid shading changes as the number of units increases relative to bidders.',
+      ],
+    },
+  },
 };

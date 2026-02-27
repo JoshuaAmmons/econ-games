@@ -20,6 +20,11 @@ const GAME_ROLES: Record<string, string> = {
   monopoly: 'monopolist',
   market_for_lemons: 'seller',
   discovery_process: 'producer',
+  ellsberg: 'chooser',
+  newsvendor: 'manager',
+  dutch_auction: 'bidder',
+  english_auction: 'bidder',
+  discriminative_auction: 'bidder',
 };
 
 // Games where players alternate between two roles

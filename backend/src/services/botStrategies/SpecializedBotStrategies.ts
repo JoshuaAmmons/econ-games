@@ -53,6 +53,65 @@ export const auctionStrategy: BotStrategy = {
   },
 };
 
+// ─── Ellsberg Urn Choice Task ──────────────────────────────────────────
+export const ellsbergStrategy: BotStrategy = {
+  getSimultaneousAction(_player, _config) {
+    // Bots randomly choose urn and color
+    const urn = Math.random() < 0.5 ? 'known' : 'ambiguous';
+    const color = Math.random() < 0.5 ? 'red' : 'black';
+    return { urn, color };
+  },
+};
+
+// ─── Newsvendor Problem ───────────────────────────────────────────────
+export const newsvendorStrategy: BotStrategy = {
+  getSimultaneousAction(_player, config) {
+    const demandMin = config.demandMin ?? 0;
+    const demandMax = config.demandMax ?? 100;
+    const unitCost = config.unitCost ?? 5;
+    const sellingPrice = config.sellingPrice ?? 10;
+    const salvageValue = config.salvageValue ?? 1;
+
+    // Compute optimal (critical-ratio) quantity with some noise
+    const criticalRatio = (sellingPrice - unitCost) / (sellingPrice - salvageValue);
+    const optimal = demandMin + (demandMax - demandMin) * criticalRatio;
+    // Add noise: ±15% of range around optimal (simulates pull-to-center bias)
+    const noise = rand(-0.15, 0.15) * (demandMax - demandMin);
+    const order = Math.round(clamp(optimal + noise, 0, demandMax * 2));
+    return { orderQuantity: order };
+  },
+};
+
+// ─── Dutch Auction ────────────────────────────────────────────────────
+export const dutchAuctionStrategy: BotStrategy = {
+  getSimultaneousAction(player, _config) {
+    // First-price logic: shade valuation by 50–80%
+    const valuation = Number((player as any).valuation) || rand(30, 80);
+    const shade = rand(0.5, 0.8);
+    return { stopPrice: r2(clamp(valuation * shade, 0, 999)) };
+  },
+};
+
+// ─── English Auction ──────────────────────────────────────────────────
+export const englishAuctionStrategy: BotStrategy = {
+  getSimultaneousAction(player, _config) {
+    // Second-price logic: bid near true valuation (dominant strategy is truthful)
+    const valuation = Number((player as any).valuation) || rand(30, 80);
+    const noise = rand(-1, 1);
+    return { maxBid: r2(clamp(valuation + noise, 0, 999)) };
+  },
+};
+
+// ─── Discriminative Multi-Unit Auction ────────────────────────────────
+export const discriminativeAuctionStrategy: BotStrategy = {
+  getSimultaneousAction(player, _config) {
+    // Pay-as-bid: shade valuation like first-price (50–80%)
+    const valuation = Number((player as any).valuation) || rand(30, 80);
+    const shade = rand(0.5, 0.8);
+    return { bid: r2(clamp(valuation * shade, 0, 999)) };
+  },
+};
+
 // ─── Discovery Process ─────────────────────────────────────────────────────
 export const discoveryProcessStrategy: BotStrategy = {
   getSpecializedActions(player, config) {

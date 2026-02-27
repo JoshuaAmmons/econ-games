@@ -38,6 +38,11 @@ const GAME_ROLES: Record<string, string> = {
   dictator: 'player',
   matching_pennies: 'player',
   auction: 'bidder',
+  ellsberg: 'chooser',
+  newsvendor: 'manager',
+  dutch_auction: 'bidder',
+  english_auction: 'bidder',
+  discriminative_auction: 'bidder',
 };
 
 // Sequential game types (need first-mover / second-mover handling)

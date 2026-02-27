@@ -60,6 +60,11 @@ const gameUIRegistry: Record<string, React.LazyExoticComponent<React.ComponentTy
   monopoly: React.lazy(() => import('./specialized/MonopolyUI')),
   market_for_lemons: React.lazy(() => import('./specialized/MarketForLemonsUI')),
   discovery_process: React.lazy(() => import('./specialized/DiscoveryProcessUI')),
+  ellsberg: React.lazy(() => import('./simultaneous/EllsbergUI')),
+  newsvendor: React.lazy(() => import('./simultaneous/NewsvendorUI')),
+  dutch_auction: React.lazy(() => import('./simultaneous/DutchAuctionUI')),
+  english_auction: React.lazy(() => import('./simultaneous/EnglishAuctionUI')),
+  discriminative_auction: React.lazy(() => import('./simultaneous/DiscriminativeAuctionUI')),
 };
 
 /**
