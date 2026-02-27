@@ -444,7 +444,7 @@ const TownView: React.FC<TownViewProps> = ({
     <div className="relative">
       {selected && !drag && (
         <div className="absolute top-0 right-0 z-10 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded shadow">
-          Selected {selected.good} — click a house to place it
+          Selected {selected.good}
           <button
             className="ml-2 text-blue-600 underline"
             onClick={() => setSelected(null)}
@@ -455,7 +455,7 @@ const TownView: React.FC<TownViewProps> = ({
       )}
       {drag && (
         <div className="absolute top-0 right-0 z-10 bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded shadow">
-          Dragging {drag.good} — drop on a house
+          Dragging {drag.good}
         </div>
       )}
       <svg

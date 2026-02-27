@@ -63,25 +63,21 @@ export const discoveryProcessStrategy: BotStrategy = {
     const good1 = config.good1Name || 'Orange';
     const good2 = config.good2Name || 'Blue';
 
-    // Use default 50/50 allocation — produces a mix of both goods
+    // Set allocation — bots use default 50/50 (produces a mix of both goods)
     actions.push({
       action: { type: 'set_production', allocation: [50, 50] },
       delayMs: 500 + Math.random() * 500,
     });
 
-    // Start production
-    actions.push({
-      action: { type: 'start_production' },
-      delayMs: 1500 + Math.random() * 500,
-    });
+    // Do NOT send start_production — let the production timer handle it
+    // so human players have the full production phase to adjust their slider.
 
-    // After production phase ends → move phase starts.
+    // After production timer fires → move phase starts.
     // Move produced goods from field to own house in small batches.
-    // We don't know exact amounts, so use batch size of 5 and retry.
-    // Typical production with 50/50 is 10–30 units per good.
+    // With diminishing-returns production params, typical 50/50 yields ~3–6 per good.
     const moveBase = productionLength + 2000 + Math.random() * 2000;
-    const batchSize = 5;
-    const numBatches = 6; // up to 30 units per good
+    const batchSize = 2;
+    const numBatches = 5; // up to 10 units per good
 
     for (let i = 0; i < numBatches; i++) {
       for (const good of [good1, good2]) {
