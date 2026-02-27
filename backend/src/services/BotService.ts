@@ -231,11 +231,13 @@ export class BotService {
       // Specialized games with custom action sequences
       for (const bot of bots) {
         const actions = strategy.getSpecializedActions(bot, config, {}, 1);
+        botLog(`[BotService] ${bot.name}: ${actions.length} specialized actions scheduled for ${gameType}`);
         for (const { action, delayMs } of actions) {
           const timer = setTimeout(async () => {
             try {
               const engine = GameRegistry.get(gameType);
-              await engine.handleAction(roundId, bot.id, action, sessionCode, io);
+              const result = await engine.handleAction(roundId, bot.id, action, sessionCode, io);
+              botLog(`[BotService] ${bot.name} action ${action.type}: ${result?.success ? 'OK' : result?.error || 'fail'}`);
             } catch (err) {
               console.error(`BotService: Error in specialized action for bot ${bot.name}:`, err);
             }
