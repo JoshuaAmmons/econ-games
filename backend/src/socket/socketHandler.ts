@@ -6,6 +6,7 @@ import { TradeModel } from '../models/Trade';
 import { SessionModel } from '../models/Session';
 import { PlayerModel } from '../models/Player';
 import { GameRegistry } from '../engines/GameRegistry';
+import { BotService } from '../services/BotService';
 
 // Delay between round end and auto-starting the next round (milliseconds)
 const AUTO_ADVANCE_DELAY_MS = 5000;
@@ -141,6 +142,9 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
 
         console.log(`[AutoTimer] Auto-ending round for ${sessionCode}`);
 
+        // Clean up bot timers before ending the round
+        BotService.getInstance().onRoundEnd(roundId);
+
         const engine = GameRegistry.get(gameType);
         const endedRound = await RoundModel.end(roundId);
         if (!endedRound) return;
@@ -252,6 +256,12 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
 
         // Schedule server-side auto-end timer for this new round
         scheduleRoundEndTimer(nextRound.id, sessionCode, session, gameType);
+
+        // Trigger bot actions for the new round
+        if (session.bot_enabled) {
+          BotService.getInstance().onRoundStart(nextRound.id, sessionCode, session, io)
+            .catch(err => console.error('BotService auto-advance round start error:', err));
+        }
 
         // Broadcast initial timer to players
         io.to(`market-${sessionCode}`).emit('timer-update', {
@@ -469,6 +479,12 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
         // Schedule server-side auto-end timer for this round
         scheduleRoundEndTimer(round.id, sessionCode, session, gameType);
 
+        // Trigger bot actions for this round
+        if (session.bot_enabled) {
+          BotService.getInstance().onRoundStart(round.id, sessionCode, session, io)
+            .catch(err => console.error('BotService round start error:', err));
+        }
+
         console.log(`Round ${roundNumber} started for session ${sessionCode}`);
       } catch (error) {
         console.error('Error starting round:', error);
@@ -510,6 +526,9 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
             console.log(`Round ${roundId} already ended, skipping duplicate end-round`);
             return;
           }
+
+          // Clean up bot timers before ending the round
+          BotService.getInstance().onRoundEnd(roundId);
 
           // Let the engine process end-of-round logic
           const gameType = await getSessionGameType(sessionCode);

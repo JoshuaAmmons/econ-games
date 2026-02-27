@@ -5,6 +5,7 @@ import { PlayerModel } from '../models/Player';
 import { RoundModel } from '../models/Round';
 import { CreateSessionRequest, ApiResponse } from '../types';
 import { GameRegistry } from '../engines';
+import { BotService } from '../services/BotService';
 
 export class SessionController {
   // Create new session
@@ -202,6 +203,13 @@ export class SessionController {
         const gameType = session.game_type || 'double_auction';
         try {
           const engine = GameRegistry.get(gameType);
+
+          // If bots enabled, create bot players to fill remaining slots
+          if (session.bot_enabled) {
+            const botService = BotService.getInstance();
+            await botService.createBotsForSession(session);
+          }
+
           const activePlayers = await PlayerModel.findActiveBySession(id);
           await engine.setupPlayers(id, activePlayers.length, session.game_config || {});
         } catch (engineError) {

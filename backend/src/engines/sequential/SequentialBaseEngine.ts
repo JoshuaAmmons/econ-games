@@ -211,6 +211,14 @@ export abstract class SequentialBaseEngine implements GameEngine {
           playerName: player.name,
           action: this.sanitizeFirstMoveForBroadcast(action),
         });
+
+        // If the partner is a bot, trigger their automated response
+        const partner = await PlayerModel.findById(partnerId);
+        if (partner?.is_bot) {
+          const { BotService } = await import('../../services/BotService');
+          BotService.getInstance().onFirstMoveSubmitted(roundId, partnerId, action, session, io)
+            .catch(err => console.error('BotService second-move error:', err));
+        }
       }
 
       // Check if all active pairs are complete

@@ -529,7 +529,7 @@ export const CreateSession: React.FC = () => {
                 className="w-4 h-4 rounded border-gray-300"
               />
               <label htmlFor="bot_enabled" className="text-sm">
-                Enable bot replacement for disconnected players
+                Enable Bots — fill empty slots with AI players
               </label>
             </div>
 
