@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/shared/Button';
 import { Input } from '../components/shared/Input';
 import { Card } from '../components/shared/Card';
+import { LandingScene } from '../components/LandingScene';
 import { playersApi } from '../api/players';
 import { sessionsApi } from '../api/sessions';
 import { ArrowLeft, Lock } from 'lucide-react';
@@ -66,8 +67,9 @@ export const JoinSession: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-50 to-sky-100">
-      <div className="max-w-md w-full mx-4">
+    <div className="min-h-screen flex flex-col items-center justify-start pt-[10vh] sm:pt-[12vh] relative overflow-hidden">
+      <LandingScene />
+      <div className="relative z-10 max-w-md w-full mx-4">
         <Button
           variant="secondary"
           onClick={() => navigate('/')}
