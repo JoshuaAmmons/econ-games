@@ -73,6 +73,8 @@ const gameUIRegistry: Record<string, React.LazyExoticComponent<React.ComponentTy
   asset_bubble: React.lazy(() => import('./specialized/AssetBubbleUI')),
   contestable_market: React.lazy(() => import('./specialized/ContestableMarketUI')),
   double_dutch_auction: React.lazy(() => import('./simultaneous/DoubleDutchAuctionUI')),
+  wool_export_punishment: React.lazy(() => import('./specialized/WoolExportPunishmentUI')),
+  three_village_trade: React.lazy(() => import('./specialized/ThreeVillageTradeUI')),
 };
 
 /**

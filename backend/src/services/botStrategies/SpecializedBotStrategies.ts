@@ -310,3 +310,108 @@ export const contestableMarketStrategy: BotStrategy = {
     return null as any;
   },
 };
+
+// ─── Wool Export Punishment ───────────────────────────────────────────────
+export const woolExportPunishmentStrategy: BotStrategy = {
+  getSpecializedActions(player, config, _gameState, _roundNumber) {
+    const actions: Array<{ action: Record<string, any>; delayMs: number }> = [];
+    const role = (player as any).game_data?.role || (player as any).role;
+
+    if (role === 'smuggler') {
+      // Smuggle with 60% probability (matching paper's observed rates)
+      const decision = Math.random() < 0.6 ? 'smuggle' : 'trade_locally';
+      actions.push({
+        action: { type: decision },
+        delayMs: 1000 + Math.random() * 2000,
+      });
+    } else if (role === 'harbor_watch') {
+      // Reporting depends on punishment level
+      const punishmentLevel = config?.punishment_level || 'low';
+      // Low punishment: 80% report. High punishment: 15% report (matching paper)
+      const reportProb = punishmentLevel === 'high' ? 0.15 : 0.80;
+      const decision = Math.random() < reportProb ? 'report' : 'blind_eye';
+      actions.push({
+        action: { type: decision },
+        delayMs: 1500 + Math.random() * 2000,
+      });
+    }
+    // port_merchant and foreign_contact are passive — no action needed
+
+    return actions;
+  },
+};
+
+// ─── Three Village Trade ─────────────────────────────────────────────────
+export const threeVillageTradeStrategy: BotStrategy = {
+  getSpecializedActions(player, config, gameState, _roundNumber) {
+    const actions: Array<{ action: Record<string, any>; delayMs: number }> = [];
+    const phase = gameState?.phase;
+    const playerType = (player as any).game_data?.playerType;
+    const village = (player as any).game_data?.village;
+
+    if (phase === 'production') {
+      // Specialize based on type: Type A -> 85-95% first good, Type B -> 5-15% first good
+      const allocation = playerType === 'A'
+        ? 85 + Math.floor(Math.random() * 11)  // 85-95
+        : 5 + Math.floor(Math.random() * 11);   // 5-15
+      actions.push({
+        action: { type: 'set_production', allocation },
+        delayMs: 500 + Math.random() * 1500,
+      });
+    }
+
+    if (phase === 'trade') {
+      const inventory = gameState?.inventory || {};
+      const villageGoods = gameState?.villageGoods || [];
+      const importGood = gameState?.importGood;
+
+      // Find good with most surplus
+      let maxGood = villageGoods[0];
+      let maxAmount = inventory[maxGood] || 0;
+      for (const g of villageGoods) {
+        if ((inventory[g] || 0) > maxAmount) {
+          maxGood = g;
+          maxAmount = inventory[g] || 0;
+        }
+      }
+
+      if (maxAmount >= 2) {
+        const offerAmount = Math.floor(maxAmount * 0.4);
+        if (offerAmount >= 1) {
+          // Want the other local good or import good
+          const wantGood = importGood && Math.random() < 0.4
+            ? importGood
+            : villageGoods.find((g: string) => g !== maxGood) || villageGoods[0];
+          const scope = wantGood === importGood ? 'global' : 'local';
+          actions.push({
+            action: {
+              type: 'post_offer',
+              offerGood: maxGood,
+              offerAmount,
+              wantGood,
+              wantAmount: Math.max(1, Math.floor(offerAmount * 0.8)),
+              scope,
+            },
+            delayMs: 1000 + Math.random() * 2000,
+          });
+        }
+      }
+
+      // Try to accept an existing offer
+      const offers = gameState?.tradeOffers || [];
+      const acceptableOffer = offers.find((o: any) =>
+        o.status === 'open' &&
+        o.playerId !== player.id &&
+        (inventory[o.wantGood] || 0) >= o.wantAmount
+      );
+      if (acceptableOffer) {
+        actions.push({
+          action: { type: 'accept_offer', offerId: acceptableOffer.id },
+          delayMs: 3000 + Math.random() * 2000,
+        });
+      }
+    }
+
+    return actions;
+  },
+};

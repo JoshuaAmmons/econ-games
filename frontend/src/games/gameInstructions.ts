@@ -1486,4 +1486,93 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       ],
     },
   },
+
+  wool_export_punishment: {
+    studentInstructions: {
+      premise:
+        'The Crown has banned the export of raw wool, but smugglers see a fortune to be made shipping fleeces to foreign ports. You are part of a four-person ring: a smuggler, a port merchant, a foreign contact, and a harbor watch officer. The smuggler must decide whether to risk running contraband past the harbor watch.',
+      yourGoal:
+        'Smugglers: maximize profit by choosing when to smuggle and when to trade locally. Harbor Watch: decide whether to report smuggling or turn a blind eye. The punishment level determines the stakes for everyone involved.',
+      howToPlay: [
+        'Each round, the smuggler decides: smuggle (high reward if undetected, harsh penalty if caught) or trade locally (safe, modest profit).',
+        'The harbor watch officer simultaneously decides: report any suspicious activity (earns a bounty if smuggling occurred) or turn a blind eye (earns a bribe from the ring if smuggling succeeded).',
+        'The port merchant and foreign contact are passive roles whose payoffs depend on whether the smuggle succeeds or fails.',
+        'If the smuggler smuggles and the watch reports, the smuggler is caught and fined. If the watch turns a blind eye, the ring profits.',
+        'Punishment levels (low or high) change the severity of fines and the size of the bounty for reporting.',
+      ],
+      tips: [
+        'As a smuggler, watch the punishment level carefully — high punishment makes getting caught devastating.',
+        'As harbor watch, consider that turning a blind eye is profitable when smuggling succeeds, but reporting earns a guaranteed bounty.',
+        'The equilibrium depends on the punishment level — observe how behavior changes across rounds.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Smuggle + Report: Smuggler = -Fine, Watch = Bounty',
+        'Smuggle + Blind Eye: Smuggler = ExportProfit - Bribe, Watch = Bribe',
+        'Trade Locally + Report: Smuggler = LocalProfit, Watch = 0',
+        'Trade Locally + Blind Eye: Smuggler = LocalProfit, Watch = 0',
+      ],
+      equilibrium:
+        'Mixed strategy Nash equilibrium where smuggling probability decreases with punishment severity. At high punishment, the watch rarely reports (low expected gain), and smugglers rarely smuggle (high expected cost).',
+      keyParameters: [
+        'punishment_level — "low" or "high" (affects fine and bounty magnitudes)',
+        'export_profit — profit from successful smuggling (default varies)',
+        'local_profit — safe profit from local trade (default varies)',
+        'fine — penalty when caught smuggling (scales with punishment level)',
+        'bounty — reward for harbor watch reporting successful smuggling',
+      ],
+      teachingNotes: [
+        'Demonstrates how punishment severity affects compliance in a mixed-strategy setting.',
+        'Compare observed smuggling rates to theoretical mixed-strategy equilibrium.',
+        'Discuss parallels to modern regulatory enforcement and compliance games.',
+        'Based on historical English wool export prohibitions (Staple Acts, 14th-15th century).',
+      ],
+    },
+  },
+
+  three_village_trade: {
+    studentInstructions: {
+      premise:
+        'Three port villages sit along the coast, each producing two local goods but lacking a third that can only be obtained through inter-village trade. Within your village, you and your neighbors must decide how to split your labor between two goods, then trade locally or with foreign merchants from other villages.',
+      yourGoal:
+        'Maximize your total wealth by producing wisely and trading profitably. Specialize in what your type is good at, trade your surplus for what you need, and seek out the rare imported good that only other villages can supply.',
+      howToPlay: [
+        'Phase 1 (Production): Allocate your labor between two local goods using a slider. Your player type (A or B) determines which good you produce more efficiently.',
+        'Phase 2 (Trade): Post trade offers specifying what you offer and what you want. Offers can be "local" (within your village) or "global" (across villages for the import good).',
+        'Other players can accept your offers if they have the requested goods.',
+        'Your final score is based on the total value of goods in your inventory at round end.',
+        'The import good (available only from other villages) carries a bonus value.',
+      ],
+      tips: [
+        'Specialize in the good your type produces best — you will produce more total output.',
+        'Trade your surplus local good for the one you did not produce.',
+        'The import good is scarce and valuable — seek inter-village trades when possible.',
+        'Watch the trade board for profitable offers from other villages.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Score = sum of (quantity x value) for each good in final inventory',
+        'Import good has a bonus multiplier to incentivize inter-village trade',
+        'Production follows diminishing returns: output = labor^alpha',
+      ],
+      equilibrium:
+        'Full specialization and trade yields higher total surplus than autarky. With three villages and comparative advantage, inter-village trade for the import good further increases welfare.',
+      keyParameters: [
+        'numVillages — number of villages (default 3)',
+        'playersPerVillage — players in each village',
+        'good1Value, good2Value — base values of the two local goods',
+        'importBonusMultiplier — value multiplier for the import good (default 1.5)',
+        'productionAlpha — diminishing returns exponent (default 0.7)',
+      ],
+      teachingNotes: [
+        'Demonstrates gains from specialization and trade at both local and inter-village levels.',
+        'Students discover comparative advantage organically through production and trade.',
+        'The import good creates incentives for inter-village (international) trade.',
+        'Compare welfare under autarky, local-only trade, and full inter-village trade.',
+        'Inspired by Vernon Smith multi-market experiments and village economy models.',
+      ],
+    },
+  },
 };

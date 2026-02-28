@@ -39,7 +39,9 @@ export type GameType =
   | 'sponsored_search'
   | 'double_dutch_auction'
   | 'asset_bubble'
-  | 'contestable_market';
+  | 'contestable_market'
+  | 'wool_export_punishment'
+  | 'three_village_trade';
 
 /**
  * Result of validating a game config
