@@ -17,8 +17,8 @@ import { SimultaneousBaseEngine } from '../simultaneous/SimultaneousBaseEngine';
  *
  * game_config: {
  *   laborUnits: number,          // total labor per country (default 100)
- *   good1Name: string,           // name of good 1 (default "Food")
- *   good2Name: string,           // name of good 2 (default "Clothing")
+ *   good1Name: string,           // name of good 1 (default "Rum")
+ *   good2Name: string,           // name of good 2 (default "Spices")
  *   productivityVariation: number, // how much productivities vary (default 2)
  * }
  */
@@ -129,8 +129,8 @@ export class ComparativeAdvantageEngine extends SimultaneousBaseEngine {
     allPlayers: any[]
   ): Array<{ playerId: string; profit: number; resultData: Record<string, any> }> {
     const laborUnits = config.laborUnits ?? 100;
-    const good1Name = config.good1Name ?? 'Food';
-    const good2Name = config.good2Name ?? 'Clothing';
+    const good1Name = config.good1Name ?? 'Rum';
+    const good2Name = config.good2Name ?? 'Spices';
 
     // Build a stable player index from ALL players (sorted by ID) so
     // productivity assignments don't shift when some players don't submit.

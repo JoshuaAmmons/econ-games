@@ -184,8 +184,8 @@ export const discoveryProcessStrategy: BotStrategy = {
     const productionLength = (config.productionLength ?? 10) * 1000; // ms
 
     // Good names from config
-    const good1 = config.good1Name || 'Orange';
-    const good2 = config.good2Name || 'Blue';
+    const good1 = config.good1Name || 'Rum';
+    const good2 = config.good2Name || 'Spices';
 
     // Set allocation — bots use default 50/50 (produces a mix of both goods)
     actions.push({

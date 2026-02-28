@@ -22,9 +22,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
   double_auction: {
     studentInstructions: {
       premise:
-        'You are in a market with buyers and sellers. Buyers have private valuations (the most they are willing to pay), and sellers have private costs (the least they are willing to accept).',
+        'You are at the port trading house. Merchants with cargo to sell and buyers with gold to spend meet to haggle over goods. Buyers have a private valuation (the most they will pay), and sellers have a private cost (the least they will accept).',
       yourGoal:
-        'Maximize your profit by trading at favorable prices. Buyers want to buy low; sellers want to sell high.',
+        'Strike the best bargain you can. Buyers profit by paying less than their valuation; sellers profit by selling above their cost.',
       howToPlay: [
         'Buyers submit bids (offers to buy) and sellers submit asks (offers to sell).',
         'A trade happens automatically when a bid meets or exceeds an ask.',
@@ -428,18 +428,18 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
   comparative_advantage: {
     studentInstructions: {
       premise:
-        'You represent a country with a fixed amount of labor to allocate between producing two goods. Different countries have different productivities — some are better at making one good than the other.',
+        'You represent a port town with a fixed number of workers to allocate between producing two goods. Different towns have different productivities — some are better at making one good than the other.',
       yourGoal:
-        'Maximize your utility (well-being) by allocating your labor wisely. Your utility depends on how much of BOTH goods you produce.',
+        'Maximize your town\'s well-being by allocating workers wisely. Your utility depends on how much of BOTH goods you produce.',
       howToPlay: [
-        'Each round, allocate your labor between Good 1 and Good 2.',
+        'Each round, allocate your workers between Rum and Spices.',
         'Your production of each good = labor allocated x your productivity for that good.',
-        'Your utility = square root of (Good 1 produced x Good 2 produced).',
-        'Countries with even-numbered positions are better at Good 1; odd-numbered are better at Good 2.',
+        'Your utility = square root of (Rum produced x Spices produced).',
+        'Towns with even-numbered positions are better at Rum; odd-numbered are better at Spices.',
       ],
       tips: [
         'Splitting labor 50/50 is one strategy, but is it the best?',
-        'Think about what you\'re relatively better at producing (your comparative advantage).',
+        'Think about what your town is relatively better at producing (your comparative advantage).',
         'In this simplified version, you consume what you produce — specialization helps when trade is possible.',
       ],
     },
@@ -556,21 +556,21 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
   discovery_process: {
     studentInstructions: {
       premise:
-        'You are a person in a small village economy. You and others each have a field that produces goods and a house where goods are stored. Each period has a production phase and a move phase.',
+        'You are a settler in a small port village. You and your neighbors each have a workshop that produces trade goods and a storehouse where goods are kept. Each period has a production phase and a move phase.',
       yourGoal:
-        'Maximize your earnings. When the move phase clock expires, you earn cash based upon the number of complete sets of goods that have been moved to your house.',
+        'Maximize your earnings. When the trading day ends, you earn coin based on the complete sets of goods stored in your storehouse.',
       howToPlay: [
         'During the Production Phase, use the slider to decide how to split your production time between goods.',
-        'Your field produces goods automatically based on your slider setting.',
+        'Your workshop produces goods automatically based on your slider setting.',
         'During the Move Phase, items can be moved by dragging them with the mouse. Items that are highlighted can be selected by clicking on them.',
-        'Goods in your HOUSE count toward earnings. Goods left in your field do NOT earn anything.',
-        'Earnings = number of complete sets of goods in your house × earning amount per set.',
+        'Goods in your STOREHOUSE count toward earnings. Goods left in your workshop do NOT earn anything.',
+        'Earnings = number of complete sets of goods in your storehouse × earning amount per set.',
         'Leftover goods that don\'t form complete sets are wasted.',
-        'You can communicate with other villagers using the chat.',
+        'You can communicate with other settlers using the chat.',
       ],
       tips: [
-        'Experiment with your production slider to learn what your field produces most efficiently.',
-        'Pay attention to your earning requirements — you need the right combination of goods in your house.',
+        'Experiment with your production slider to learn what your workshop produces most efficiently.',
+        'Pay attention to your earning requirements — you need the right combination of goods in your storehouse.',
       ],
     },
     instructorNotes: {
@@ -1158,9 +1158,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
   posted_offer: {
     studentInstructions: {
       premise:
-        'You are in a posted-offer market. Sellers post take-it-or-leave-it prices, then buyers choose which seller to buy from. Each seller can sell one unit per round.',
+        'You are at the harbor market. Merchants set prices on their stalls and display their wares. Buyers walk the market and choose which stall to purchase from. Each seller can sell one unit per round.',
       yourGoal:
-        'Sellers: set a price above your cost that attracts buyers. Buyers: choose the seller with the best price below your valuation.',
+        'Sellers: post a price above your cost that lures buyers to your stall. Buyers: find the best deal among the posted prices.',
       howToPlay: [
         'Phase 1 (Posting): Sellers simultaneously post their prices.',
         'Phase 2 (Shopping): Buyers see all posted prices and choose one seller to buy from.',
@@ -1281,9 +1281,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
   sealed_bid_offer: {
     studentInstructions: {
       premise:
-        'You are in a sealed-bid clearing market. Buyers submit sealed bids, sellers submit sealed asks. The market clears where supply meets demand.',
+        'A prize cargo has arrived at port. Buyers submit sealed bids and sellers submit sealed asks. The harbor master clears the market where supply meets demand.',
       yourGoal:
-        'Buyers: bid strategically to trade at a favorable clearing price. Sellers: set asks above your cost to earn a profit if the market clears.',
+        'Buyers: bid shrewdly — too low and you miss the cargo. Sellers: set asks above your cost to profit when the market clears.',
       howToPlay: [
         'Buyers receive a private valuation; sellers receive a private cost.',
         'Buyers submit sealed bids (max willingness to pay). Sellers submit sealed asks (min willingness to accept).',

@@ -259,12 +259,12 @@ export class DiscoveryProcessEngine implements GameEngine {
 
     const configBlock = {
       numGoods: parseInt(config.numGoods, 10) || 2,
-      good1Name: config.good1Name || 'Orange',
-      good1Color: config.good1Color || '#FF5733',
-      good2Name: config.good2Name || 'Blue',
-      good2Color: config.good2Color || '#6495ED',
-      good3Name: config.good3Name || 'Pink',
-      good3Color: config.good3Color || '#FF1493',
+      good1Name: config.good1Name || 'Rum',
+      good1Color: config.good1Color || '#C5A059',
+      good2Name: config.good2Name || 'Spices',
+      good2Color: config.good2Color || '#8B4513',
+      good3Name: config.good3Name || 'Silk',
+      good3Color: config.good3Color || '#9B59B6',
       productionLength: config.productionLength ?? 10,
       moveLength: config.time_per_round ?? 90,
       allowStealing: config.allowStealing ?? false,
@@ -837,12 +837,12 @@ export class DiscoveryProcessEngine implements GameEngine {
         playerInfo,
         config: {
           numGoods: parseInt(config.numGoods, 10) || 2,
-          good1Name: config.good1Name || 'Orange',
-          good1Color: config.good1Color || '#FF5733',
-          good2Name: config.good2Name || 'Blue',
-          good2Color: config.good2Color || '#6495ED',
-          good3Name: config.good3Name || 'Pink',
-          good3Color: config.good3Color || '#FF1493',
+          good1Name: config.good1Name || 'Rum',
+          good1Color: config.good1Color || '#C5A059',
+          good2Name: config.good2Name || 'Spices',
+          good2Color: config.good2Color || '#8B4513',
+          good3Name: config.good3Name || 'Silk',
+          good3Color: config.good3Color || '#9B59B6',
           productionLength: config.productionLength ?? 10,
           moveLength: config.time_per_round ?? 90,
           allowStealing: config.allowStealing ?? false,
@@ -863,12 +863,12 @@ export class DiscoveryProcessEngine implements GameEngine {
     // No active in-memory state — try to reconstruct from database
     const configBlock = {
       numGoods: parseInt(config.numGoods, 10) || 2,
-      good1Name: config.good1Name || 'Orange',
-      good1Color: config.good1Color || '#FF5733',
-      good2Name: config.good2Name || 'Blue',
-      good2Color: config.good2Color || '#6495ED',
-      good3Name: config.good3Name || 'Pink',
-      good3Color: config.good3Color || '#FF1493',
+      good1Name: config.good1Name || 'Rum',
+      good1Color: config.good1Color || '#C5A059',
+      good2Name: config.good2Name || 'Spices',
+      good2Color: config.good2Color || '#8B4513',
+      good3Name: config.good3Name || 'Silk',
+      good3Color: config.good3Color || '#9B59B6',
       productionLength: config.productionLength ?? 10,
       moveLength: config.time_per_round ?? 90,
       allowStealing: config.allowStealing ?? false,
@@ -1201,11 +1201,11 @@ export class DiscoveryProcessEngine implements GameEngine {
   private getGoodNames(config: Record<string, any>): string[] {
     const numGoods = parseInt(config.numGoods, 10) || 2;
     const names = [
-      config.good1Name || 'Orange',
-      config.good2Name || 'Blue',
+      config.good1Name || 'Rum',
+      config.good2Name || 'Spices',
     ];
     if (numGoods >= 3) {
-      names.push(config.good3Name || 'Pink');
+      names.push(config.good3Name || 'Silk');
     }
     return names;
   }

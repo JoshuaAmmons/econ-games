@@ -41,8 +41,8 @@ const ComparativeAdvantageUI: React.FC<GameUIProps> = ({
 
   const gameConfig = session?.game_config || {};
   const laborUnits = Number(gameConfig.laborUnits ?? 100);
-  const good1Name = gameConfig.good1Name ?? 'Food';
-  const good2Name = gameConfig.good2Name ?? 'Clothing';
+  const good1Name = gameConfig.good1Name ?? 'Rum';
+  const good2Name = gameConfig.good2Name ?? 'Spices';
 
   useEffect(() => {
     if (roundActive && roundId) {
