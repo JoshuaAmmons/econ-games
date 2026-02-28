@@ -22,7 +22,8 @@ async function applyConstraintUpdates() {
       'ellsberg', 'newsvendor', 'dutch_auction', 'english_auction',
       'discriminative_auction',
       'posted_offer', 'lindahl', 'pg_auction', 'sealed_bid_offer',
-      'sponsored_search', 'asset_bubble', 'contestable_market', 'double_dutch_auction'
+      'sponsored_search', 'asset_bubble', 'contestable_market', 'double_dutch_auction',
+      'wool_export_punishment', 'three_village_trade'
     ))`);
 
     // Ensure role_check includes all roles
@@ -34,7 +35,8 @@ async function applyConstraintUpdates() {
       'producer', 'bidder', 'sender', 'receiver',
       'chooser', 'manager',
       'voter', 'advertiser', 'trader',
-      'incumbent', 'entrant'
+      'incumbent', 'entrant',
+      'smuggler', 'port_merchant', 'foreign_contact', 'harbor_watch', 'villager'
     ))`);
 
     // Ensure passcode column exists on sessions table

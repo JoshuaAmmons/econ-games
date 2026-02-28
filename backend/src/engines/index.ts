@@ -39,6 +39,8 @@ import { SponsoredSearchEngine } from './simultaneous/SponsoredSearchEngine';
 import { DoubleDutchAuctionEngine } from './simultaneous/DoubleDutchAuctionEngine';
 import { AssetBubbleEngine } from './specialized/AssetBubbleEngine';
 import { ContestableMarketEngine } from './specialized/ContestableMarketEngine';
+import { WoolExportPunishmentEngine } from './specialized/WoolExportPunishmentEngine';
+import { ThreeVillageTradeEngine } from './specialized/ThreeVillageTradeEngine';
 
 // Register all available game engines
 GameRegistry.register(new DoubleAuctionEngine());
@@ -77,6 +79,8 @@ GameRegistry.register(new SponsoredSearchEngine());
 GameRegistry.register(new DoubleDutchAuctionEngine());
 GameRegistry.register(new AssetBubbleEngine());
 GameRegistry.register(new ContestableMarketEngine());
+GameRegistry.register(new WoolExportPunishmentEngine());
+GameRegistry.register(new ThreeVillageTradeEngine());
 
 export { GameRegistry } from './GameRegistry';
 export type { GameEngine, GameType, UIConfig } from './GameEngine';
