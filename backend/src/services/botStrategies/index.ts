@@ -47,6 +47,9 @@ import {
   pgAuctionStrategy,
   sealedBidOfferStrategy,
   sponsoredSearchStrategy,
+  assetBubbleStrategy,
+  doubleDutchStrategy,
+  contestableMarketStrategy,
 } from './SpecializedBotStrategies';
 
 // ─── Register all strategies ───────────────────────────────────────────────
@@ -91,6 +94,9 @@ BotStrategyRegistry.register('lindahl', lindahlStrategy);
 BotStrategyRegistry.register('pg_auction', pgAuctionStrategy);
 BotStrategyRegistry.register('sealed_bid_offer', sealedBidOfferStrategy);
 BotStrategyRegistry.register('sponsored_search', sponsoredSearchStrategy);
+BotStrategyRegistry.register('asset_bubble', assetBubbleStrategy);
+BotStrategyRegistry.register('double_dutch_auction', doubleDutchStrategy);
+BotStrategyRegistry.register('contestable_market', contestableMarketStrategy);
 
 export { BotStrategyRegistry } from './BotStrategyRegistry';
 export type { BotStrategy } from './BotStrategyRegistry';

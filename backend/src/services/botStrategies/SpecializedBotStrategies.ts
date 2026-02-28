@@ -222,3 +222,91 @@ export const discoveryProcessStrategy: BotStrategy = {
     return actions;
   },
 };
+
+// ─── Asset Bubble (SSW) ───────────────────────────────────────────────────
+export const assetBubbleStrategy: BotStrategy = {
+  getDAAction(player, config, gameState, elapsedSeconds) {
+    // Compute fundamental value: E[dividend] × periods remaining
+    const expectedDividend = config.expectedDividend ?? 24;
+    const totalPeriods = config.numRounds ?? gameState.totalPeriods ?? 15;
+    const currentPeriod = gameState.currentPeriod ?? gameState.roundNumber ?? 1;
+    const periodsRemaining = Math.max(1, totalPeriods - currentPeriod + 1);
+    const FV = expectedDividend * periodsRemaining;
+
+    // Early in the round use wider spread, later tighter
+    const spreadFactor = elapsedSeconds < 20 ? 0.6 : 0.7;
+    const spreadRange = elapsedSeconds < 20 ? 0.8 : 0.6;
+
+    // 50% chance bid, 50% chance ask (noise trader)
+    if (Math.random() < 0.5) {
+      const price = Math.round(FV * (spreadFactor + Math.random() * spreadRange));
+      return { type: 'bid', price: Math.max(1, price) };
+    } else {
+      const price = Math.round(FV * (spreadFactor + Math.random() * spreadRange));
+      return { type: 'ask', price: Math.max(1, price) };
+    }
+  },
+};
+
+// ─── Double Dutch Auction ─────────────────────────────────────────────────
+export const doubleDutchStrategy: BotStrategy = {
+  getSimultaneousAction(player, _config) {
+    const role = (player as any).role;
+    if (role === 'seller') {
+      // Sellers: stop price = 100–130% of cost
+      const cost = Number((player as any).production_cost) || rand(20, 60);
+      const stopPrice = Math.round(cost * (1.0 + Math.random() * 0.3));
+      return { type: 'submit_stop_price', stopPrice: Math.max(1, stopPrice) };
+    } else {
+      // Buyers: stop price = 70–100% of valuation
+      const valuation = Number((player as any).valuation) || rand(30, 80);
+      const stopPrice = Math.round(valuation * (0.7 + Math.random() * 0.3));
+      return { type: 'submit_stop_price', stopPrice: Math.max(1, stopPrice) };
+    }
+  },
+};
+
+// ─── Contestable Market ───────────────────────────────────────────────────
+export const contestableMarketStrategy: BotStrategy = {
+  getSimultaneousAction(player, config, _roundNumber) {
+    const phase = (config as any).phase || (config as any).gamePhase;
+
+    if (phase === 'entry') {
+      // Entrants enter with ~70% probability
+      const role = (player as any).role;
+      if (role === 'entrant') {
+        return Math.random() < 0.7
+          ? { type: 'enter' }
+          : { type: 'stay_out' };
+      }
+      // Incumbent doesn't need to make entry decision
+      return null as any;
+    }
+
+    if (phase === 'posting') {
+      // Compute a price
+      const fixedCost = config.fixedCost ?? 500;
+      const variableCost = config.variableCost ?? 5;
+      const demandIntercept = config.demandIntercept ?? 100;
+      const demandSlope = config.demandSlope ?? 1;
+
+      // Monopoly price: maximize (P - VC) * (intercept - P) / slope
+      // FOC: P_monopoly = (intercept + VC) / 2
+      const monopolyPrice = (demandIntercept + variableCost) / 2;
+      const role = (player as any).role;
+
+      let price: number;
+      if (role === 'incumbent') {
+        // Incumbent prices slightly above competitive (VC) toward monopoly
+        price = variableCost + Math.random() * (monopolyPrice - variableCost);
+      } else {
+        // Entrant slightly undercuts or matches — price between VC and monopoly
+        price = variableCost + Math.random() * (monopolyPrice - variableCost);
+      }
+      return { type: 'post_price', price: r2(Math.max(variableCost, price)) };
+    }
+
+    // Other phases: no action needed
+    return null as any;
+  },
+};

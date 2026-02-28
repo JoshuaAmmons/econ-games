@@ -70,6 +70,9 @@ const gameUIRegistry: Record<string, React.LazyExoticComponent<React.ComponentTy
   pg_auction: React.lazy(() => import('./simultaneous/PGAuctionUI')),
   sealed_bid_offer: React.lazy(() => import('./simultaneous/SealedBidOfferUI')),
   sponsored_search: React.lazy(() => import('./simultaneous/SponsoredSearchUI')),
+  asset_bubble: React.lazy(() => import('./specialized/AssetBubbleUI')),
+  contestable_market: React.lazy(() => import('./specialized/ContestableMarketUI')),
+  double_dutch_auction: React.lazy(() => import('./simultaneous/DoubleDutchAuctionUI')),
 };
 
 /**

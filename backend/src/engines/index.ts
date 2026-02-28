@@ -36,6 +36,9 @@ import { LindahlEngine } from './simultaneous/LindahlEngine';
 import { PGAuctionEngine } from './simultaneous/PGAuctionEngine';
 import { SealedBidOfferEngine } from './simultaneous/SealedBidOfferEngine';
 import { SponsoredSearchEngine } from './simultaneous/SponsoredSearchEngine';
+import { DoubleDutchAuctionEngine } from './simultaneous/DoubleDutchAuctionEngine';
+import { AssetBubbleEngine } from './specialized/AssetBubbleEngine';
+import { ContestableMarketEngine } from './specialized/ContestableMarketEngine';
 
 // Register all available game engines
 GameRegistry.register(new DoubleAuctionEngine());
@@ -71,6 +74,9 @@ GameRegistry.register(new LindahlEngine());
 GameRegistry.register(new PGAuctionEngine());
 GameRegistry.register(new SealedBidOfferEngine());
 GameRegistry.register(new SponsoredSearchEngine());
+GameRegistry.register(new DoubleDutchAuctionEngine());
+GameRegistry.register(new AssetBubbleEngine());
+GameRegistry.register(new ContestableMarketEngine());
 
 export { GameRegistry } from './GameRegistry';
 export type { GameEngine, GameType, UIConfig } from './GameEngine';

@@ -1362,4 +1362,128 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       ],
     },
   },
+
+  asset_bubble: {
+    studentInstructions: {
+      premise:
+        'You are trading a rare treasure map that pays a random bounty each period. The map has a limited lifespan — after the final period it crumbles to dust and is worthless. As the expiration draws near, its true value shrinks.',
+      yourGoal:
+        'Maximize your final fortune by trading shares of the treasure map wisely. Buy low, sell high — but beware of speculative bubbles that can burst and leave you empty-handed!',
+      howToPlay: [
+        'Submit bids (offers to buy) and asks (offers to sell) at any time during the round.',
+        'Anyone can submit either bids or asks — there are no fixed roles.',
+        'Your portfolio of shares carries across rounds.',
+        'Each round ends with a random dividend paid to shareholders.',
+        'After the final round, all shares expire worthless — their value is only in the dividends they pay along the way.',
+      ],
+      tips: [
+        'The fundamental value of a share is roughly the expected dividend times the number of periods remaining.',
+        'If the price is far above fundamental value, you may be in a bubble — consider selling.',
+        'Watch the order book and recent trade prices to gauge market sentiment.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Dividend per period: random draw (e.g., {0, 8, 28, 60} each with 25% chance => E[div]=24)',
+        'Fundamental value = E[dividend] × periods remaining',
+        'Final wealth = cash + dividends received - purchases + sales',
+      ],
+      equilibrium:
+        'Under risk-neutral rational expectations, the asset should trade at fundamental value (FV = E[dividend] × periods remaining), declining linearly. In practice, bubbles and crashes are robustly observed.',
+      keyParameters: [
+        'numRounds — number of trading periods (typically 15)',
+        'expectedDividend — average dividend per period (e.g., 24)',
+        'Dividend distribution — set of possible dividend values',
+        'Initial endowment — shares and cash per trader',
+      ],
+      teachingNotes: [
+        'Based on Smith, Suchanek & Williams (1988) — the classic experimental asset bubble design.',
+        'Bubbles consistently emerge even with experienced subjects who know the fundamental value.',
+        'Plot the time series of trade prices against the declining FV line to visualize the bubble.',
+        'Discuss rational expectations, greater fool theory, and common knowledge of rationality.',
+      ],
+    },
+  },
+
+  double_dutch_auction: {
+    studentInstructions: {
+      premise:
+        'You are at a pirate call market where two price clocks run simultaneously — one descending for buyers and one ascending for sellers. The clocks converge from opposite ends until they meet.',
+      yourGoal:
+        'Submit a stop price that gets you a favorable deal. All trades clear at a single uniform price where the clocks meet.',
+      howToPlay: [
+        'Buyers submit a maximum price they are willing to pay (stop price).',
+        'Sellers submit a minimum price they are willing to accept (stop price).',
+        'The server finds the uniform clearing price where supply meets demand.',
+        'All trades execute at this single clearing price.',
+        'Buyer profit = Valuation - Clearing Price. Seller profit = Clearing Price - Cost.',
+      ],
+      tips: [
+        'You do not pay your stop price — you pay the uniform clearing price.',
+        'Bidding your true value is nearly optimal since you only pay the market price.',
+        'Think of it as a sealed-bid auction where everyone pays the same price.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Buyer profit = Valuation - Clearing Price (if buyer stop price >= clearing price)',
+        'Seller profit = Clearing Price - Cost (if seller stop price <= clearing price)',
+        'Non-trading participants earn $0',
+      ],
+      equilibrium:
+        'Under the uniform-price mechanism, truthful revelation is approximately a dominant strategy. The clearing price should converge to the competitive equilibrium.',
+      keyParameters: [
+        'Valuation range (min/max/increment) — defines buyer values',
+        'Cost range (min/max/increment) — defines seller costs',
+        'Number of buyers and sellers',
+      ],
+      teachingNotes: [
+        'Based on McCabe, Rassenti & Smith (1992) — the double Dutch / call market mechanism.',
+        'Compare efficiency and price discovery speed to continuous double auction.',
+        'The uniform clearing price eliminates the bid-ask spread entirely.',
+        'Discuss why uniform-price mechanisms encourage truthful bidding compared to pay-as-bid.',
+      ],
+    },
+  },
+
+  contestable_market: {
+    studentInstructions: {
+      premise:
+        'You sail in waters controlled by a monopoly port. The incumbent controls the harbor, but bold new captains can challenge them by entering the market. Fixed docking fees are high, but the variable cost of servicing each ship is low.',
+      yourGoal:
+        'If you are the incumbent: set prices to maximize profit while deterring entry. If you are an entrant: enter the market when it is profitable to do so.',
+      howToPlay: [
+        'Phase 1 (Entry): Potential entrants decide whether to enter the market or stay out. Entering means paying the fixed cost.',
+        'Phase 2 (Posting): Active sellers (incumbent and any entrants) post their prices.',
+        'Phase 3 (Resolution): The lowest price wins the market demand. If tied, demand is split.',
+        'Incumbent profit = Revenue - Fixed Cost - Variable Cost. Entrant profit = Revenue - Fixed Cost - Variable Cost (if entered).',
+      ],
+      tips: [
+        'Entrants: only enter if you think you can undercut the incumbent and still cover your fixed costs.',
+        'Incumbents: pricing too high invites entry; pricing too low sacrifices profit.',
+        'The threat of entry alone may be enough to discipline the monopolist.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Profit = P × Q(P) - FC - VC × Q(P) for the price-setting winner',
+        'Demand: Q(P) = demandIntercept - demandSlope × P',
+        'Losers (higher price) earn $0 revenue but still pay FC if they entered',
+      ],
+      equilibrium:
+        'Under perfect contestability, the incumbent prices at average cost (P = AC) to deter entry, earning zero economic profit. With sunk costs or imperfect contestability, the incumbent retains some pricing power.',
+      keyParameters: [
+        'fixedCost — fixed cost of operating (default 500)',
+        'variableCost — per-unit variable cost (default 5)',
+        'demandIntercept — demand curve intercept (default 100)',
+        'demandSlope — demand curve slope (default 1)',
+      ],
+      teachingNotes: [
+        'Based on Coursey, Isaac & Smith (1984) — tests the contestable markets hypothesis.',
+        'Key question: does the mere threat of entry discipline monopoly pricing?',
+        'Compare prices and profits when entry is possible vs. when it is blocked.',
+        'Discuss Baumol, Panzar & Willig (1982) contestable markets theory.',
+      ],
+    },
+  },
 };
