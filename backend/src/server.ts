@@ -39,6 +39,9 @@ async function applyConstraintUpdates() {
       'smuggler', 'port_merchant', 'foreign_contact', 'harbor_watch', 'villager'
     ))`);
 
+    // Ensure role column is wide enough for longer role names (port_merchant, foreign_contact, harbor_watch)
+    await pool.query(`ALTER TABLE players ALTER COLUMN role TYPE VARCHAR(30)`);
+
     // Ensure passcode column exists on sessions table
     await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS passcode VARCHAR(20) DEFAULT NULL`);
 
