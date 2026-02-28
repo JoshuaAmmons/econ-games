@@ -36,7 +36,10 @@ export type GameType =
   | 'lindahl'
   | 'pg_auction'
   | 'sealed_bid_offer'
-  | 'sponsored_search';
+  | 'sponsored_search'
+  | 'double_dutch_auction'
+  | 'asset_bubble'
+  | 'contestable_market';
 
 /**
  * Result of validating a game config
