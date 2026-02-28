@@ -1,14 +1,17 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/shared/Button';
+import { LandingScene } from '../components/LandingScene';
 import { Users, User } from 'lucide-react';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-50 to-sky-100">
-      <div className="max-w-md w-full mx-4">
+    <div className="min-h-screen flex flex-col items-center justify-start pt-[10vh] sm:pt-[12vh] relative overflow-hidden">
+      <LandingScene />
+
+      <div className="relative z-10 max-w-md w-full mx-4">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             Economics Game Platform

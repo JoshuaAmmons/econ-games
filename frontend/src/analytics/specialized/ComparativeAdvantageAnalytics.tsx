@@ -94,8 +94,8 @@ const ComparativeAdvantageAnalytics: React.FC<AnalyticsProps> = ({ data, complet
           <ResponsiveContainer width="100%" height={CHART_HEIGHT + 50}>
             <ScatterChart margin={{ ...CHART_MARGINS, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="good1" type="number" name={gameConfig.good1Name || 'Good 1'} label={{ value: gameConfig.good1Name || 'Good 1', position: 'insideBottom', offset: -5 }} />
-              <YAxis dataKey="good2" type="number" name={gameConfig.good2Name || 'Good 2'} label={{ value: gameConfig.good2Name || 'Good 2', angle: -90, position: 'insideLeft' }} />
+              <XAxis dataKey="good1" type="number" name={gameConfig.good1Name || 'Rum'} label={{ value: gameConfig.good1Name || 'Rum', position: 'insideBottom', offset: -5 }} />
+              <YAxis dataKey="good2" type="number" name={gameConfig.good2Name || 'Spices'} label={{ value: gameConfig.good2Name || 'Spices', angle: -90, position: 'insideLeft' }} />
               <Tooltip />
               <Legend />
               {ppfData.map((player, i) => (
