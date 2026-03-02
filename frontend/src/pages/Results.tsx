@@ -14,7 +14,10 @@ import {
   BarChart3,
   ChevronDown,
   ChevronUp,
+  BookOpen,
+  ExternalLink,
 } from 'lucide-react';
+import { gameInstructions } from '../games/gameInstructions';
 import toast from 'react-hot-toast';
 import { AdminPasswordGate } from '../components/shared/AdminPasswordGate';
 
@@ -212,6 +215,35 @@ const ResultsContent: React.FC = () => {
             </div>
           </div>
         </Card>
+
+        {/* Source Paper */}
+        {gameInstructions[data.session.gameType]?.papers && gameInstructions[data.session.gameType].papers!.length > 0 && (
+          <Card className="mb-6 bg-indigo-50 border-indigo-200">
+            <div className="flex items-start gap-3">
+              <BookOpen className="w-5 h-5 text-indigo-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-indigo-800 mb-1">Want to learn more? Read the original paper:</p>
+                {gameInstructions[data.session.gameType].papers!.map((paper, i) => (
+                  <a
+                    key={i}
+                    href={`https://doi.org/${paper.doi}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block group"
+                  >
+                    <span className="text-sm text-indigo-700 group-hover:text-indigo-900 group-hover:underline font-medium inline-flex items-center gap-1">
+                      {paper.title}
+                      <ExternalLink className="w-3 h-3" />
+                    </span>
+                    <span className="block text-xs text-indigo-500">
+                      {paper.authors} ({paper.year}){paper.journal ? `, ${paper.journal}` : ''}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Aggregate Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

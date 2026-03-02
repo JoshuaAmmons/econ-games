@@ -7,9 +7,11 @@ import { Spinner } from '../components/shared/Spinner';
 import { sessionsApi } from '../api/sessions';
 import { useSocket } from '../hooks/useSocket';
 import type { Session, Player, Round } from '../types';
-import { ArrowLeft, Play, Square, Users, Copy, Check, SkipForward, Clock, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Play, Square, Users, Copy, Check, SkipForward, Clock, BarChart3, Download } from 'lucide-react';
 import { GameInstructions } from '../components/shared/GameInstructions';
 import { AdminPasswordGate } from '../components/shared/AdminPasswordGate';
+import { QRCodeSVG } from 'qrcode.react';
+import { toPng } from 'html-to-image';
 import toast from 'react-hot-toast';
 
 const DA_GAME_TYPES = ['double_auction', 'double_auction_tax', 'double_auction_price_controls'];
@@ -132,6 +134,7 @@ const SessionMonitorContent: React.FC = () => {
   const [rounds, setRounds] = useState<Round[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const qrRef = useRef<HTMLDivElement>(null);
   const [currentRound, setCurrentRound] = useState<Round | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState(0);
@@ -533,8 +536,19 @@ const SessionMonitorContent: React.FC = () => {
         {session.status === 'waiting' && (
           <Card className="text-center mb-6">
             <p className="text-gray-600 mb-2">Share this code with students to join:</p>
-            <div className="flex items-center justify-center gap-3">
+            <div
+              ref={qrRef}
+              className="inline-block bg-white p-4 rounded-lg"
+            >
+              <QRCodeSVG
+                value={`${window.location.origin}/join?code=${session.code}`}
+                size={180}
+                level="M"
+                className="mx-auto mb-3"
+              />
               <p className="text-5xl font-mono font-bold text-sky-600 tracking-widest">{session.code}</p>
+            </div>
+            <div className="flex items-center justify-center gap-3 mt-3">
               <button
                 onClick={copyCode}
                 className="p-2 rounded hover:bg-gray-100 transition-colors"
@@ -546,9 +560,28 @@ const SessionMonitorContent: React.FC = () => {
                   <Copy className="w-6 h-6 text-gray-400" />
                 )}
               </button>
+              <button
+                onClick={() => {
+                  const el = qrRef.current;
+                  if (!el) return;
+                  toPng(el, { backgroundColor: '#ffffff', pixelRatio: 2 })
+                    .then((dataUrl) => {
+                      const link = document.createElement('a');
+                      link.download = `session-${session.code}.png`;
+                      link.href = dataUrl;
+                      link.click();
+                      toast.success('QR code downloaded!');
+                    })
+                    .catch(() => toast.error('Failed to download QR code'));
+                }}
+                className="p-2 rounded hover:bg-gray-100 transition-colors"
+                title="Download QR code as PNG"
+              >
+                <Download className="w-6 h-6 text-gray-400" />
+              </button>
             </div>
             <p className="text-sm text-gray-400 mt-2">
-              Students can join at the home page by clicking &quot;Join Session as Student&quot;
+              Students can scan the QR code or enter the code at the home page
             </p>
             {session.has_passcode && (
               <p className="text-sm text-amber-600 mt-2 font-medium">

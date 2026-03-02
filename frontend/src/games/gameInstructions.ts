@@ -3,6 +3,14 @@
  * Each game type maps to student-facing rules and instructor-facing technical notes.
  */
 
+export interface SourcePaper {
+  title: string;
+  authors: string;
+  year: number;
+  doi: string;
+  journal?: string;
+}
+
 export interface GameInstructionSet {
   studentInstructions: {
     premise: string;
@@ -16,6 +24,7 @@ export interface GameInstructionSet {
     keyParameters: string[];
     teachingNotes?: string[];
   };
+  papers?: SourcePaper[];
 }
 
 export const gameInstructions: Record<string, GameInstructionSet> = {
@@ -57,6 +66,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Total surplus = sum of all buyer + seller profits. Compare to maximum possible surplus.',
       ],
     },
+    papers: [
+      { title: 'An Experimental Study of Competitive Market Behavior', authors: 'Vernon L. Smith', year: 1962, doi: '10.1086/258609', journal: 'Journal of Political Economy' },
+    ],
   },
 
   double_auction_tax: {
@@ -97,6 +109,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Try running the same market first without tax, then with tax, to show the effect.',
       ],
     },
+    papers: [
+      { title: 'An Experimental Study of Competitive Market Behavior', authors: 'Vernon L. Smith', year: 1962, doi: '10.1086/258609', journal: 'Journal of Political Economy' },
+    ],
   },
 
   double_auction_price_controls: {
@@ -135,6 +150,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Good to run the base DA game first, then add the control to show the distortion.',
       ],
     },
+    papers: [
+      { title: 'On Nonbinding Price Controls in a Competitive Market', authors: 'Vernon L. Smith & Arlington W. Williams', year: 1981, doi: '10.2307/1803902', journal: 'American Economic Review' },
+    ],
   },
 
   bertrand: {
@@ -256,6 +274,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Discuss real-world public goods: national defense, clean air, open-source software.',
       ],
     },
+    papers: [
+      { title: 'Divergent Evidence on Free Riding: An Experimental Examination of Possible Explanations', authors: 'R. Mark Isaac, James M. Walker & Susan H. Thomas', year: 1984, doi: '10.1007/BF00118854', journal: 'Public Choice' },
+    ],
   },
 
   negative_externality: {
@@ -299,6 +320,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Relates to carbon taxes, pollution permits, and environmental policy.',
       ],
     },
+    papers: [
+      { title: 'Externalities and Corrective Policies in Experimental Markets', authors: 'Charles R. Plott', year: 1983, doi: '10.2307/1831942', journal: 'Economic Journal' },
+    ],
   },
 
   ultimatum: {
@@ -337,6 +361,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Discuss cultural differences in ultimatum game outcomes.',
       ],
     },
+    papers: [
+      { title: 'An Experimental Analysis of Ultimatum Bargaining', authors: 'Werner Guth, Rolf Schmittberger & Bernd Schwarze', year: 1982, doi: '10.1016/0167-2681(82)90011-7', journal: 'Journal of Economic Behavior & Organization' },
+    ],
   },
 
   gift_exchange: {
@@ -379,6 +406,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Discuss implications for real labor markets and employee motivation.',
       ],
     },
+    papers: [
+      { title: 'Does Fairness Prevent Market Clearing? An Experimental Investigation', authors: 'Ernst Fehr, Georg Kirchsteiger & Arno Riedl', year: 1993, doi: '10.2307/2118338', journal: 'Quarterly Journal of Economics' },
+    ],
   },
 
   principal_agent: {
@@ -551,6 +581,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Akerlof (1970) "The Market for Lemons" — Nobel Prize-winning paper.',
       ],
     },
+    papers: [
+      { title: 'The Market for "Lemons": Quality Uncertainty and the Market Mechanism', authors: 'George A. Akerlof', year: 1970, doi: '10.2307/1879431', journal: 'Quarterly Journal of Economics' },
+    ],
   },
 
   discovery_process: {
@@ -679,6 +712,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Level-k reasoning: Level-0 picks randomly (~50), Level-1 picks 33, Level-2 picks 22, etc.',
       ],
     },
+    papers: [
+      { title: 'Unraveling in Guessing Games: An Experimental Study', authors: 'Rosemarie Nagel', year: 1995, doi: '10.1257/aer.85.5.1313', journal: 'American Economic Review' },
+    ],
   },
 
   trust_game: {
@@ -719,6 +755,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Discuss how institutions and social norms affect trust in real economies.',
       ],
     },
+    papers: [
+      { title: 'Trust, Reciprocity, and Social History', authors: 'Joyce Berg, John Dickhaut & Kevin McCabe', year: 1995, doi: '10.1006/game.1995.1027', journal: 'Games and Economic Behavior' },
+    ],
   },
 
   auction: {
@@ -760,6 +799,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Compare observed revenue across formats to test revenue equivalence.',
       ],
     },
+    papers: [
+      { title: 'Counterspeculation, Auctions, and Competitive Sealed Tenders', authors: 'William Vickrey', year: 1961, doi: '10.1111/j.1540-6261.1961.tb02789.x', journal: 'Journal of Finance' },
+    ],
   },
 
   bargaining: {
@@ -840,6 +882,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Discuss solutions: property rights, quotas, Pigouvian taxes, communication.',
       ],
     },
+    papers: [
+      { title: 'Common-Pool Resources and the Science of Experimental Economics', authors: 'Elinor Ostrom', year: 2006, doi: '10.1126/science.1133085', journal: 'Science' },
+    ],
   },
 
   stag_hunt: {
@@ -915,6 +960,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Discuss social preferences: altruism, inequality aversion, warm glow.',
       ],
     },
+    papers: [
+      { title: 'Fairness in Simple Bargaining Experiments', authors: 'Robert Forsythe, Joel L. Horowitz, N. E. Savin & Martin Sefton', year: 1994, doi: '10.1006/game.1994.1021', journal: 'Games and Economic Behavior' },
+    ],
   },
 
   matching_pennies: {
@@ -990,6 +1038,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Run multiple rounds to see if the pattern persists or if learning occurs.',
       ],
     },
+    papers: [
+      { title: 'Risk, Ambiguity, and the Savage Axioms', authors: 'Daniel Ellsberg', year: 1961, doi: '10.2307/1884324', journal: 'Quarterly Journal of Economics' },
+    ],
   },
 
   newsvendor: {
@@ -1033,6 +1084,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Based on Schweitzer & Cachon (2000) Management Science.',
       ],
     },
+    papers: [
+      { title: 'Decision Bias in the Newsvendor Problem with a Known Demand Distribution', authors: 'Maurice E. Schweitzer & Gerard P. Cachon', year: 2000, doi: '10.1287/mnsc.46.3.404.12070', journal: 'Management Science' },
+    ],
   },
 
   dutch_auction: {
@@ -1073,6 +1127,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Look for overbidding relative to Nash — a common finding in experiments.',
       ],
     },
+    papers: [
+      { title: 'Incentives and Behavior in English, Dutch and Sealed-Bid Auctions', authors: 'Vicki M. Coppinger, Vernon L. Smith & Jon A. Titus', year: 1980, doi: '10.1111/j.1465-7295.1980.tb00556.x', journal: 'Economic Inquiry' },
+    ],
   },
 
   english_auction: {
@@ -1113,6 +1170,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Overbidding in second-price auctions is well-documented experimentally.',
       ],
     },
+    papers: [
+      { title: 'Incentives and Behavior in English, Dutch and Sealed-Bid Auctions', authors: 'Vicki M. Coppinger, Vernon L. Smith & Jon A. Titus', year: 1980, doi: '10.1111/j.1465-7295.1980.tb00556.x', journal: 'Economic Inquiry' },
+    ],
   },
 
   discriminative_auction: {
@@ -1153,6 +1213,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Track how bid shading changes as the number of units increases relative to bidders.',
       ],
     },
+    papers: [
+      { title: 'Theory and Behavior of Multiple Unit Discriminative Auctions', authors: 'James C. Cox, Vernon L. Smith & James M. Walker', year: 1984, doi: '10.1111/j.1540-6261.1984.tb03888.x', journal: 'Journal of Finance' },
+    ],
   },
 
   posted_offer: {
@@ -1194,6 +1257,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Discuss real-world examples: retail pricing, catalog pricing, online stores.',
       ],
     },
+    papers: [
+      { title: 'An Experimental Comparison of Two Exchange Institutions', authors: 'Charles R. Plott & Vernon L. Smith', year: 1978, doi: '10.2307/2296903', journal: 'Review of Economic Studies' },
+    ],
   },
 
   lindahl: {
@@ -1235,6 +1301,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Discuss why Lindahl pricing is theoretically efficient but practically difficult.',
       ],
     },
+    papers: [
+      { title: 'The Principle of Unanimity and Voluntary Consent in Social Choice', authors: 'Vernon L. Smith', year: 1977, doi: '10.1086/260804', journal: 'Journal of Political Economy' },
+    ],
   },
 
   pg_auction: {
@@ -1361,6 +1430,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Discuss why Google chose GSP over VCG despite its theoretical disadvantages.',
       ],
     },
+    papers: [
+      { title: 'Internet Advertising and the Generalized Second-Price Auction', authors: 'Benjamin Edelman, Michael Ostrovsky & Michael Schwarz', year: 2007, doi: '10.1257/aer.97.1.242', journal: 'American Economic Review' },
+    ],
   },
 
   asset_bubble: {
@@ -1403,6 +1475,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Discuss rational expectations, greater fool theory, and common knowledge of rationality.',
       ],
     },
+    papers: [
+      { title: 'Bubbles, Crashes, and Endogenous Expectations in Experimental Spot Asset Markets', authors: 'Vernon L. Smith, Gerry L. Suchanek & Arlington W. Williams', year: 1988, doi: '10.2307/1911361', journal: 'Econometrica' },
+    ],
   },
 
   double_dutch_auction: {
@@ -1444,6 +1519,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Discuss why uniform-price mechanisms encourage truthful bidding compared to pay-as-bid.',
       ],
     },
+    papers: [
+      { title: 'A Comparison of Uniform and Discriminative Price Auctions with Endogenous Entry', authors: 'Kevin A. McCabe, Stephen J. Rassenti & Vernon L. Smith', year: 1992, doi: '10.2307/2234848', journal: 'Economic Journal' },
+    ],
   },
 
   contestable_market: {
@@ -1485,6 +1563,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Discuss Baumol, Panzar & Willig (1982) contestable markets theory.',
       ],
     },
+    papers: [
+      { title: 'Natural Monopoly and Contestable Markets', authors: 'Don Coursey, R. Mark Isaac & Vernon L. Smith', year: 1984, doi: '10.1086/261212', journal: 'Journal of Law and Economics' },
+    ],
   },
 
   wool_export_punishment: {
@@ -1574,6 +1655,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Inspired by Vernon Smith multi-market experiments and village economy models.',
       ],
     },
+    papers: [
+      { title: 'Exchange, Theft, and the Social Formation of Property', authors: 'Erik O. Kimbrough, Vernon L. Smith & Bart J. Wilson', year: 2008, doi: '10.1257/jel.46.1.87', journal: 'Journal of Economic Literature' },
+    ],
   },
 
   offer_auction: {
@@ -1615,6 +1699,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Pair with bid_auction to show both sides of one-sided markets.',
       ],
     },
+    papers: [
+      { title: 'Effect of Market Organization on Competitive Equilibrium', authors: 'Vernon L. Smith', year: 1964, doi: '10.2307/1879569', journal: 'Quarterly Journal of Economics' },
+    ],
   },
 
   bid_auction: {
@@ -1656,6 +1743,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Revenue equivalence theorem can be tested across pricing formats.',
       ],
     },
+    papers: [
+      { title: 'Effect of Market Organization on Competitive Equilibrium', authors: 'Vernon L. Smith', year: 1964, doi: '10.2307/1879569', journal: 'Quarterly Journal of Economics' },
+    ],
   },
 
   electricity_market: {
@@ -1698,5 +1788,8 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Demand cycling shows how market power varies with load conditions.',
       ],
     },
+    papers: [
+      { title: 'Smart Computer-Assisted Markets', authors: 'Stephen J. Rassenti, Vernon L. Smith & Bart J. Wilson', year: 2003, doi: '10.1073/pnas.0536065100', journal: 'Proceedings of the National Academy of Sciences' },
+    ],
   },
 };
