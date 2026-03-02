@@ -333,16 +333,16 @@ const ElectricityMarketUI: React.FC<GameUIProps> = ({
 
               {/* My result highlight */}
               {myResult && (
-                <div className={`p-3 rounded-lg text-sm ${myResult.totalDispatchedMW > 0 ? 'bg-green-50 border border-green-200' : 'bg-gray-50'}`}>
+                <div className={`p-3 rounded-lg text-sm ${(myResult.totalDispatchedMW ?? 0) > 0 ? 'bg-green-50 border border-green-200' : 'bg-gray-50'}`}>
                   <div className="flex items-center gap-2 mb-2">
                     <Zap className="w-4 h-4 text-yellow-500" />
                     <span className="font-medium text-gray-700">
-                      {myResult.totalDispatchedMW > 0
+                      {(myResult.totalDispatchedMW ?? 0) > 0
                         ? `You dispatched ${myResult.totalDispatchedMW} MW`
                         : 'None of your plants were dispatched'}
                     </span>
                   </div>
-                  {myResult.blocks.map((block, i) => (
+                  {(myResult.blocks ?? []).map((block, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs text-gray-600 ml-6">
                       <div className="w-2 h-2 rounded-full" style={{ backgroundColor: BLOCK_COLORS[i] }} />
                       <span>{BLOCK_LABELS[i]}: offered ${block.offerPrice}/MWh</span>
@@ -371,21 +371,21 @@ const ElectricityMarketUI: React.FC<GameUIProps> = ({
                     className={`flex items-center justify-between px-4 py-3 rounded-lg ${
                       r.playerId === playerId
                         ? 'bg-sky-50 border border-sky-200'
-                        : r.totalDispatchedMW > 0
+                        : (r.totalDispatchedMW ?? 0) > 0
                         ? 'bg-green-50'
                         : 'bg-gray-50'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <TrendingUp className={`w-5 h-5 ${r.totalDispatchedMW > 0 ? 'text-green-500' : 'text-gray-400'}`} />
+                      <TrendingUp className={`w-5 h-5 ${(r.totalDispatchedMW ?? 0) > 0 ? 'text-green-500' : 'text-gray-400'}`} />
                       <div>
                         <span className="font-medium">
                           {r.playerId === playerId ? 'You' : r.playerName}
                           {r.isDominant && <span className="text-xs text-red-500 ml-1">(dominant)</span>}
                         </span>
                         <div className="text-xs text-gray-500">
-                          {r.totalDispatchedMW > 0
-                            ? `Dispatched ${r.totalDispatchedMW} MW | Revenue: $${Number(r.totalRevenue).toFixed(2)}`
+                          {(r.totalDispatchedMW ?? 0) > 0
+                            ? `Dispatched ${r.totalDispatchedMW} MW | Revenue: $${Number(r.totalRevenue ?? 0).toFixed(2)}`
                             : 'Not dispatched'}
                         </div>
                       </div>
