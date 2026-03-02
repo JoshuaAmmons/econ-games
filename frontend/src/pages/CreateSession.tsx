@@ -245,7 +245,7 @@ export const CreateSession: React.FC = () => {
   }, {} as Record<string, typeof gameTypes>);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-8 safe-top safe-bottom">
       <div className="max-w-3xl mx-auto px-4">
         <Button
           variant="secondary"

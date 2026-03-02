@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#1a2332"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f5d678"/>
+      <stop offset="100%" stop-color="#c9a84c"/>
+    </linearGradient>
+    <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8b6914"/>
+      <stop offset="100%" stop-color="#6b4f12"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <!-- Outer ring (ship's wheel rim) -->
+  <circle cx="256" cy="256" r="190" fill="none" stroke="url(#gold)" stroke-width="18"/>
+  <circle cx="256" cy="256" r="170" fill="none" stroke="url(#gold)" stroke-width="4"/>
+  <!-- Wheel handles (8 spokes extending beyond rim) -->
+  <g stroke="url(#gold)" stroke-width="14" stroke-linecap="round">
+    <line x1="256" y1="48" x2="256" y2="104"/>
+    <line x1="256" y1="408" x2="256" y2="464"/>
+    <line x1="48" y1="256" x2="104" y2="256"/>
+    <line x1="408" y1="256" x2="464" y2="256"/>
+    <line x1="109" y1="109" x2="148" y2="148"/>
+    <line x1="364" y1="364" x2="403" y2="403"/>
+    <line x1="403" y1="109" x2="364" y2="148"/>
+    <line x1="109" y1="403" x2="148" y2="364"/>
+  </g>
+  <!-- Handle knobs -->
+  <g fill="url(#gold)">
+    <circle cx="256" cy="44" r="16"/>
+    <circle cx="256" cy="468" r="16"/>
+    <circle cx="44" cy="256" r="16"/>
+    <circle cx="468" cy="256" r="16"/>
+    <circle cx="105" cy="105" r="14"/>
+    <circle cx="407" cy="407" r="14"/>
+    <circle cx="407" cy="105" r="14"/>
+    <circle cx="105" cy="407" r="14"/>
+  </g>
+  <!-- Spokes (inside to rim) -->
+  <g stroke="url(#wood)" stroke-width="10">
+    <line x1="256" y1="168" x2="256" y2="104"/>
+    <line x1="256" y1="344" x2="256" y2="408"/>
+    <line x1="168" y1="256" x2="104" y2="256"/>
+    <line x1="344" y1="256" x2="408" y2="256"/>
+    <line x1="194" y1="194" x2="148" y2="148"/>
+    <line x1="318" y1="318" x2="364" y2="364"/>
+    <line x1="318" y1="194" x2="364" y2="148"/>
+    <line x1="194" y1="318" x2="148" y2="364"/>
+  </g>
+  <!-- Center hub -->
+  <circle cx="256" cy="256" r="56" fill="url(#wood)" stroke="url(#gold)" stroke-width="6"/>
+  <!-- Dollar sign in center (economics) -->
+  <text x="256" y="274" text-anchor="middle" font-family="Georgia, serif" font-size="60" font-weight="bold" fill="url(#gold)">$</text>
+  <!-- Waves at bottom -->
+  <path d="M60 430 Q90 415 120 430 Q150 445 180 430 Q210 415 240 430 Q270 445 300 430 Q330 415 360 430 Q390 445 420 430 Q450 415 460 430" fill="none" stroke="#3b82f6" stroke-width="4" opacity="0.4"/>
+  <path d="M40 450 Q70 435 100 450 Q130 465 160 450 Q190 435 220 450 Q250 465 280 450 Q310 435 340 450 Q370 465 400 450 Q430 435 460 450 Q490 465 510 450" fill="none" stroke="#3b82f6" stroke-width="3" opacity="0.25"/>
+</svg>

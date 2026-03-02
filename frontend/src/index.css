@@ -589,6 +589,18 @@
   }
 }
 
+/* Prevent 300ms tap delay and accidental zoom on game surfaces */
+.touch-game {
+  touch-action: manipulation;
+}
+
+/* Apply touch-action: manipulation to all interactive game areas on mobile */
+@media (pointer: coarse) {
+  button, input, select, textarea, [role="button"] {
+    touch-action: manipulation;
+  }
+}
+
 /* Disable landing scene animations on small screens for performance */
 @media (max-width: 767px) {
   .scene-bird {

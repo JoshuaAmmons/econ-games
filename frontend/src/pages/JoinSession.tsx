@@ -68,7 +68,7 @@ export const JoinSession: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-start pt-[10vh] sm:pt-[12vh] relative overflow-hidden">
+    <div className="min-h-screen flex flex-col items-center justify-start pt-[10vh] sm:pt-[12vh] relative overflow-hidden safe-top safe-bottom">
       <LandingScene />
       <div className="relative z-10 max-w-md w-full mx-4">
         <Button

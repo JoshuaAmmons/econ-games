@@ -406,7 +406,7 @@ export const Market: React.FC = () => {
       </div>
 
       {/* Game UI */}
-      <div className="max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-6 safe-bottom">
+      <div className="max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-6 safe-bottom touch-game">
         <GameInstructions gameType={gameType} variant="student" />
         <Suspense fallback={
           <div className="flex items-center justify-center py-20">
