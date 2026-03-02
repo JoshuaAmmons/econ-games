@@ -3,7 +3,8 @@ import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
 import { Input } from '../../components/shared/Input';
 import type { GameUIProps } from '../GameUIRegistry';
-import { Building2, DoorOpen, DollarSign, Users, Trophy, TrendingUp } from 'lucide-react';
+import { Building2, DoorOpen, DollarSign, Trophy, TrendingUp } from 'lucide-react';
+import { WaitingIndicator } from '../../components/shared/WaitingIndicator';
 import toast from 'react-hot-toast';
 
 /* ------------------------------------------------------------------ */
@@ -221,9 +222,9 @@ const ContestableMarketUI: React.FC<GameUIProps> = ({
   const myResult = allSellers.find((s) => s.playerId === playerId);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
       {/* ====== LEFT: Role & Action ====== */}
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         {/* Role Card */}
         <Card className="bg-gray-800/80 border border-gray-700/50">
           <div className="text-center mb-3">
@@ -298,31 +299,17 @@ const ContestableMarketUI: React.FC<GameUIProps> = ({
           ) : phase === 'entry' ? (
             isIncumbent ? (
               /* Incumbent auto-participates */
-              <div className="text-center py-4">
-                <Building2 className="w-6 h-6 mx-auto text-amber-500 mb-2" />
-                <div className="text-amber-300 font-medium mb-1">You automatically participate</div>
-                <div className="text-xs text-gray-500">
-                  Waiting for entrants to decide...
-                </div>
-                {waitingCount.total > 0 && (
-                  <div className="flex items-center justify-center gap-2 text-sm text-gray-400 mt-2">
-                    <Users className="w-4 h-4" />
-                    <span>
-                      {waitingCount.submitted}/{waitingCount.total} decided
-                    </span>
-                  </div>
-                )}
-              </div>
+              <WaitingIndicator
+                message="You automatically participate"
+                submitted={waitingCount.submitted}
+                total={waitingCount.total}
+              />
             ) : submitted ? (
-              <div className="text-center py-4">
-                <div className="text-green-400 font-medium mb-2">Decision Submitted!</div>
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
-                  <Users className="w-4 h-4" />
-                  <span>
-                    {waitingCount.submitted}/{waitingCount.total} decided
-                  </span>
-                </div>
-              </div>
+              <WaitingIndicator
+                message="Decision Submitted!"
+                submitted={waitingCount.submitted}
+                total={waitingCount.total}
+              />
             ) : (
               <div className="space-y-3">
                 <p className="text-xs text-gray-400 text-center mb-2">
@@ -361,15 +348,11 @@ const ContestableMarketUI: React.FC<GameUIProps> = ({
                 )}
               </div>
             ) : submitted ? (
-              <div className="text-center py-4">
-                <div className="text-green-400 font-medium mb-2">Price Posted!</div>
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
-                  <Users className="w-4 h-4" />
-                  <span>
-                    {waitingCount.submitted}/{waitingCount.total} sellers posted
-                  </span>
-                </div>
-              </div>
+              <WaitingIndicator
+                message="Price Posted!"
+                submitted={waitingCount.submitted}
+                total={waitingCount.total}
+              />
             ) : (
               <form onSubmit={handlePostPrice} className="space-y-3">
                 <Input

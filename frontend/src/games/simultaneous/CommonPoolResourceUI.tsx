@@ -3,7 +3,8 @@ import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
 import { Input } from '../../components/shared/Input';
 import type { GameUIProps } from '../GameUIRegistry';
-import { DollarSign, Users, Droplets, Fish, BarChart3 } from 'lucide-react';
+import { DollarSign, Droplets, Fish, BarChart3 } from 'lucide-react';
+import { WaitingIndicator } from '../../components/shared/WaitingIndicator';
 import toast from 'react-hot-toast';
 
 interface RoundResult {
@@ -112,9 +113,9 @@ const CommonPoolResourceUI: React.FC<GameUIProps> = ({
     : 0;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
       {/* Left: Game Info & Submit */}
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         {/* Game Parameters */}
         <Card>
           <div className="space-y-2 text-sm">
@@ -149,13 +150,11 @@ const CommonPoolResourceUI: React.FC<GameUIProps> = ({
         <Card title="Your Extraction">
           {roundActive && roundId ? (
             submitted ? (
-              <div className="text-center py-4">
-                <div className="text-green-600 font-medium mb-2">Extraction Submitted!</div>
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                  <Users className="w-4 h-4" />
-                  <span>{waitingCount.submitted}/{waitingCount.total} players submitted</span>
-                </div>
-              </div>
+              <WaitingIndicator
+                message="Extraction Submitted!"
+                submitted={waitingCount.submitted}
+                total={waitingCount.total}
+              />
             ) : (
               <form onSubmit={handleSubmit} className="space-y-3">
                 <Input

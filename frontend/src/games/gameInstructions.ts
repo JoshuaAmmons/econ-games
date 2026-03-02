@@ -1575,4 +1575,128 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       ],
     },
   },
+
+  offer_auction: {
+    studentInstructions: {
+      premise:
+        'You are a seller with a private production cost. A fixed number of units are demanded by the market. All sellers submit sealed offer prices simultaneously.',
+      yourGoal:
+        'Sell your unit at a price above your cost. Balance high offers (more profit if you win) against low offers (more likely to win).',
+      howToPlay: [
+        'You are assigned a private production cost (only you know it).',
+        'Submit a sealed offer price for one unit.',
+        'Offers are ranked lowest to highest. The lowest N offers win.',
+        'Uniform pricing: all winners are paid the highest accepted offer. Discriminative: each is paid their own offer.',
+        'Winner profit = Price Received - Your Cost. Non-winners earn $0.',
+      ],
+      tips: [
+        'Never offer below your cost — you would lose money if you win.',
+        'Higher offers mean more profit per unit, but less chance of winning.',
+        'Think about how many units are demanded versus how many sellers there are.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Uniform: Winner profit = Highest Accepted Offer - Cost',
+        'Discriminative: Winner profit = Own Offer - Cost',
+        'Loser profit = 0',
+      ],
+      equilibrium:
+        'Under uniform pricing, competitive equilibrium predicts offers near marginal cost. Under discriminative pricing, strategic markup above cost is expected.',
+      keyParameters: [
+        'costMin, costMax — range of seller costs (default 10-100)',
+        'numUnits — units demanded per round (default 3)',
+        'pricingRule — uniform or discriminative',
+      ],
+      teachingNotes: [
+        'Based on Smith (1964) "Effect of Market Organization on Competitive Equilibrium."',
+        'Compare seller markups under uniform vs discriminative pricing.',
+        'Track how offer strategies evolve across rounds.',
+        'Pair with bid_auction to show both sides of one-sided markets.',
+      ],
+    },
+  },
+
+  bid_auction: {
+    studentInstructions: {
+      premise:
+        'You are a buyer with a private valuation. A fixed number of units are supplied by the market. All buyers submit sealed bid prices simultaneously.',
+      yourGoal:
+        'Buy a unit at a price below your valuation. Balance low bids (more profit if you win) against high bids (more likely to win).',
+      howToPlay: [
+        'You are assigned a private valuation (only you know it).',
+        'Submit a sealed bid price for one unit.',
+        'Bids are ranked highest to lowest. The top N bids win.',
+        'Uniform pricing: all winners pay the lowest accepted bid. Discriminative: each pays their own bid.',
+        'Winner profit = Your Valuation - Price Paid. Non-winners earn $0.',
+      ],
+      tips: [
+        'Never bid above your valuation — you would lose money if you win.',
+        'Lower bids save you money, but decrease your chance of winning.',
+        'Think about how many units are supplied versus how many buyers there are.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Uniform: Winner profit = Valuation - Lowest Accepted Bid',
+        'Discriminative: Winner profit = Valuation - Own Bid',
+        'Loser profit = 0',
+      ],
+      equilibrium:
+        'Under uniform pricing, truthful bidding is closer to optimal. Under discriminative pricing, bid shading (bidding below valuation) is the strategic response.',
+      keyParameters: [
+        'valueMin, valueMax — range of buyer valuations (default 10-100)',
+        'numUnits — units supplied per round (default 3)',
+        'pricingRule — uniform or discriminative',
+      ],
+      teachingNotes: [
+        'Based on Smith (1964) — the mirror of the offer auction.',
+        'Compare bid shading under uniform vs discriminative pricing.',
+        'Pair with offer_auction for a complete market design comparison.',
+        'Revenue equivalence theorem can be tested across pricing formats.',
+      ],
+    },
+  },
+
+  electricity_market: {
+    studentInstructions: {
+      premise:
+        'You are a generator company (Genco) with a portfolio of power plants at different costs. Each round, you submit offer prices for each plant to sell electricity into the grid.',
+      yourGoal:
+        'Maximize profit by setting offer prices above your marginal costs. But offer too high and your plants may not be dispatched.',
+      howToPlay: [
+        'You have 3 capacity blocks, each with a MW capacity and marginal cost.',
+        'For each block, set an offer price (must be at or above marginal cost).',
+        'The system dispatches the cheapest offers first until demand is met (merit order).',
+        'Uniform pricing: all dispatched plants are paid the clearing price. Discriminative: each is paid their own offer.',
+        'Profit per block = (Price Received - Marginal Cost) x MW Dispatched.',
+      ],
+      tips: [
+        'Your cheap base-load plants are likely to be dispatched — but how much can you mark them up?',
+        'Expensive peak plants may only run when demand is high.',
+        'If you control a large share of capacity, you may be able to raise prices by withholding.',
+      ],
+    },
+    instructorNotes: {
+      payoffFunctions: [
+        'Block profit = (Price Received - Marginal Cost) x Dispatched MW',
+        'Total profit = Sum of block profits',
+        'Undispatched blocks earn $0',
+      ],
+      equilibrium:
+        'Under perfect competition, offers equal marginal cost and the clearing price equals the marginal cost of the marginal unit. Market power allows generators to profitably raise offers above marginal cost.',
+      keyParameters: [
+        'baseDemand — peak demand level in MW (default 400)',
+        'demandPattern — fixed or cycling (off-peak/shoulder/peak)',
+        'pricingRule — uniform or discriminative',
+        'showMarketPower — give one generator 40% of capacity',
+      ],
+      teachingNotes: [
+        'Based on Rassenti, Smith & Wilson (2003) electricity market experiments.',
+        'Compare prices and efficiency under uniform vs discriminative pricing.',
+        'The showMarketPower option demonstrates capacity withholding.',
+        'Demand cycling shows how market power varies with load conditions.',
+      ],
+    },
+  },
 };

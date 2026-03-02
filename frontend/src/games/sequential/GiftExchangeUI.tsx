@@ -130,9 +130,9 @@ const GiftExchangeUI: React.FC<GameUIProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
       {/* Left: Game & Action */}
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         <Card>
           <div className="text-center">
             <div className="mt-1 px-3 py-1 inline-block rounded-full text-sm font-medium bg-purple-100 text-purple-700">

@@ -1,0 +1,16 @@
+{
+  "name": "Economics Game Platform",
+  "short_name": "Econ Games",
+  "description": "Real-time market experiments for students",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

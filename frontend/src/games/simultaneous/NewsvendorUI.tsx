@@ -3,7 +3,8 @@ import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
 import { Input } from '../../components/shared/Input';
 import type { GameUIProps } from '../GameUIRegistry';
-import { Package, DollarSign, Users, TrendingUp } from 'lucide-react';
+import { Package, DollarSign, TrendingUp } from 'lucide-react';
+import { WaitingIndicator } from '../../components/shared/WaitingIndicator';
 import toast from 'react-hot-toast';
 
 interface RoundResult {
@@ -127,9 +128,9 @@ const NewsvendorUI: React.FC<GameUIProps> = ({
   const optimalQty = Math.round(demandMin + (demandMax - demandMin) * criticalRatio);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
       {/* Left: Info & Submit */}
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         <Card>
           <div className="text-center mb-3">
             <Package className="w-8 h-8 mx-auto text-orange-600 mb-1" />
@@ -164,14 +165,11 @@ const NewsvendorUI: React.FC<GameUIProps> = ({
         <Card title="Place Your Order">
           {roundActive && roundId ? (
             submitted ? (
-              <div className="text-center py-4">
-                <div className="text-green-600 font-medium mb-2">Order Placed!</div>
-                <div className="text-xl font-bold text-gray-700 mb-2">{orderNum} units</div>
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                  <Users className="w-4 h-4" />
-                  <span>{waitingCount.submitted}/{waitingCount.total} submitted</span>
-                </div>
-              </div>
+              <WaitingIndicator
+                message="Order Placed!"
+                submitted={waitingCount.submitted}
+                total={waitingCount.total}
+              />
             ) : (
               <form onSubmit={handleSubmit} className="space-y-3">
                 <Input

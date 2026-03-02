@@ -23,7 +23,8 @@ async function applyConstraintUpdates() {
       'discriminative_auction',
       'posted_offer', 'lindahl', 'pg_auction', 'sealed_bid_offer',
       'sponsored_search', 'asset_bubble', 'contestable_market', 'double_dutch_auction',
-      'wool_export_punishment', 'three_village_trade'
+      'wool_export_punishment', 'three_village_trade',
+      'electricity_market', 'offer_auction', 'bid_auction'
     ))`);
 
     // Ensure role_check includes all roles
@@ -36,7 +37,8 @@ async function applyConstraintUpdates() {
       'chooser', 'manager',
       'voter', 'advertiser', 'trader',
       'incumbent', 'entrant',
-      'smuggler', 'port_merchant', 'foreign_contact', 'harbor_watch', 'villager'
+      'smuggler', 'port_merchant', 'foreign_contact', 'harbor_watch', 'villager',
+      'generator'
     ))`);
 
     // Ensure role column is wide enough for longer role names (port_merchant, foreign_contact, harbor_watch)

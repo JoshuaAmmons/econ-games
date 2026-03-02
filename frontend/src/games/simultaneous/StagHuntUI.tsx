@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
 import type { GameUIProps } from '../GameUIRegistry';
-import { DollarSign, Users, Target, Shield, BarChart3 } from 'lucide-react';
+import { DollarSign, Target, Shield, BarChart3 } from 'lucide-react';
+import { WaitingIndicator } from '../../components/shared/WaitingIndicator';
 import toast from 'react-hot-toast';
 
 interface RoundResult {
@@ -105,9 +106,9 @@ const StagHuntUI: React.FC<GameUIProps> = ({
   const myResult = results?.find(r => r.playerId === playerId);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
       {/* Left: Game Info & Submit */}
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         {/* Payoff Info */}
         <Card>
           <div className="space-y-3 text-sm">
@@ -141,23 +142,11 @@ const StagHuntUI: React.FC<GameUIProps> = ({
         <Card title="Make Your Choice">
           {roundActive && roundId ? (
             submitted ? (
-              <div className="text-center py-4">
-                <div className="text-green-600 font-medium mb-1">
-                  {choice === 'stag' ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Target className="w-5 h-5" /> Hunting Stag
-                    </span>
-                  ) : (
-                    <span className="flex items-center justify-center gap-2">
-                      <Shield className="w-5 h-5" /> Hunting Hare
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-500 mt-2">
-                  <Users className="w-4 h-4" />
-                  <span>{waitingCount.submitted}/{waitingCount.total} players submitted</span>
-                </div>
-              </div>
+              <WaitingIndicator
+                message={choice === 'stag' ? 'Stag Chosen!' : 'Hare Chosen!'}
+                submitted={waitingCount.submitted}
+                total={waitingCount.total}
+              />
             ) : (
               <div className="space-y-3">
                 <Button

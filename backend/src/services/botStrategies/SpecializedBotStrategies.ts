@@ -415,3 +415,39 @@ export const threeVillageTradeStrategy: BotStrategy = {
     return actions;
   },
 };
+
+// ─── Offer Auction (Sellers Only) ─────────────────────────────────────────
+export const offerAuctionStrategy: BotStrategy = {
+  getSimultaneousAction(player, _config) {
+    // Sellers: offer at 110–150% of cost (strategic markup)
+    const cost = Number((player as any).production_cost) || rand(20, 60);
+    const markup = rand(1.1, 1.5);
+    return { ask: r2(clamp(cost * markup, 0, 999)) };
+  },
+};
+
+// ─── Bid Auction (Buyers Only) ────────────────────────────────────────────
+export const bidAuctionStrategy: BotStrategy = {
+  getSimultaneousAction(player, _config) {
+    // Buyers: bid at 60–90% of valuation (strategic shading)
+    const valuation = Number((player as any).valuation) || rand(30, 80);
+    const shade = rand(0.6, 0.9);
+    return { bid: r2(clamp(valuation * shade, 0, 999)) };
+  },
+};
+
+// ─── Electricity Market ───────────────────────────────────────────────────
+export const electricityMarketStrategy: BotStrategy = {
+  getSimultaneousAction(player, _config) {
+    const blocks = (player as any).game_data?.blocks || [
+      { mw: 40, marginalCost: 15 },
+      { mw: 35, marginalCost: 40 },
+      { mw: 25, marginalCost: 75 },
+    ];
+    const offers = blocks.map((block: any, i: number) => ({
+      block: i,
+      price: r2(clamp(block.marginalCost * rand(1.05, 1.5), block.marginalCost, 999)),
+    }));
+    return { offers };
+  },
+};

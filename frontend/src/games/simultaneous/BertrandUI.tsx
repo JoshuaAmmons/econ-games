@@ -3,7 +3,8 @@ import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
 import { Input } from '../../components/shared/Input';
 import type { GameUIProps } from '../GameUIRegistry';
-import { DollarSign, Users, Trophy, BarChart3 } from 'lucide-react';
+import { DollarSign, Trophy, BarChart3 } from 'lucide-react';
+import { WaitingIndicator } from '../../components/shared/WaitingIndicator';
 import toast from 'react-hot-toast';
 
 interface RoundResult {
@@ -111,9 +112,9 @@ const BertrandUI: React.FC<GameUIProps> = ({
   const myResult = results?.find(r => r.playerId === playerId);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
       {/* Left: Game Info & Submit */}
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         {/* Game Parameters */}
         <Card>
           <div className="space-y-2 text-sm">
@@ -136,13 +137,11 @@ const BertrandUI: React.FC<GameUIProps> = ({
         <Card title="Set Your Price">
           {roundActive && roundId ? (
             submitted ? (
-              <div className="text-center py-4">
-                <div className="text-green-600 font-medium mb-2">Price Submitted!</div>
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                  <Users className="w-4 h-4" />
-                  <span>Waiting: {waitingCount.submitted}/{waitingCount.total} players submitted</span>
-                </div>
-              </div>
+              <WaitingIndicator
+                message="Price Submitted!"
+                submitted={waitingCount.submitted}
+                total={waitingCount.total}
+              />
             ) : (
               <form onSubmit={handleSubmit} className="space-y-3">
                 <Input

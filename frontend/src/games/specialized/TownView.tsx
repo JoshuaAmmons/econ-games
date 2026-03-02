@@ -255,6 +255,23 @@ const TownView: React.FC<TownViewProps> = ({
               handleDragStart(e, good.name, good.color, location, playerId);
             }
           }}
+          onTouchStart={(e) => {
+            if (canPick) {
+              e.preventDefault();
+              e.stopPropagation();
+              const touch = e.touches[0];
+              const svgPt = screenToSvg(touch.clientX, touch.clientY);
+              setDrag({
+                good: good.name,
+                goodColor: good.color,
+                fromLocation: location,
+                fromPlayerId: playerId,
+                svgX: svgPt.x,
+                svgY: svgPt.y,
+              });
+              setSelected(null);
+            }
+          }}
           onClick={(e) => {
             e.stopPropagation();
             if (canPick && !drag) {
@@ -471,7 +488,34 @@ const TownView: React.FC<TownViewProps> = ({
             setHoverTarget(null);
           }
         }}
-        style={{ cursor: drag ? 'grabbing' : 'default' }}
+        onTouchMove={(e) => {
+          if (!drag) return;
+          e.preventDefault();
+          const touch = e.touches[0];
+          const svgPt = screenToSvg(touch.clientX, touch.clientY);
+          setDrag(prev => prev ? { ...prev, svgX: svgPt.x, svgY: svgPt.y } : null);
+          setHoverTarget(findHouseAtPoint(svgPt.x, svgPt.y));
+        }}
+        onTouchEnd={(e) => {
+          if (!drag || !onMoveGoods) {
+            setDrag(null);
+            setHoverTarget(null);
+            return;
+          }
+          const touch = e.changedTouches[0];
+          const svgPt = screenToSvg(touch.clientX, touch.clientY);
+          const targetPlayerId = findHouseAtPoint(svgPt.x, svgPt.y);
+          if (targetPlayerId) {
+            onMoveGoods(drag.good, 1, drag.fromLocation, drag.fromPlayerId, targetPlayerId);
+          }
+          setDrag(null);
+          setHoverTarget(null);
+        }}
+        onTouchCancel={() => {
+          setDrag(null);
+          setHoverTarget(null);
+        }}
+        style={{ cursor: drag ? 'grabbing' : 'default', touchAction: 'none' }}
       >
         {/* Left column */}
         {leftCol.map((player, i) => {

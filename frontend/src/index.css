@@ -241,6 +241,15 @@
   pointer-events: none;
 }
 
+/* Disable heavy SVG turbulence filter on mobile — use simple gradient instead */
+@media (max-width: 767px) {
+  .water-backdrop::before {
+    filter: none !important;
+    animation: none !important;
+    opacity: 0.8;
+  }
+}
+
 .water-backdrop::before {
   content: '';
   position: absolute;
@@ -565,5 +574,30 @@
   }
   .scene-bird {
     display: none;
+  }
+}
+
+/* ── Mobile-specific styles ── */
+
+/* Safe area inset utilities for iOS notch / home bar */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Disable landing scene animations on small screens for performance */
+@media (max-width: 767px) {
+  .scene-bird {
+    display: none;
+  }
+  .scene-wave {
+    animation-duration: 20s !important;
+  }
+  .scene-ship-wrapper {
+    animation-duration: 12s !important;
   }
 }

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
 import type { GameUIProps } from '../GameUIRegistry';
-import { DollarSign, Users, CircleDot, Coins, BarChart3 } from 'lucide-react';
+import { DollarSign, CircleDot, Coins, BarChart3 } from 'lucide-react';
+import { WaitingIndicator } from '../../components/shared/WaitingIndicator';
 import toast from 'react-hot-toast';
 
 interface RoundResult {
@@ -115,9 +116,9 @@ const MatchingPenniesUI: React.FC<GameUIProps> = ({
   const myResult = results?.find(r => r.playerId === playerId);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
       {/* Left: Game Info & Submit */}
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         {/* Role & Payoff Info */}
         <Card>
           <div className="space-y-3 text-sm">
@@ -170,18 +171,11 @@ const MatchingPenniesUI: React.FC<GameUIProps> = ({
         <Card title="Choose Your Side">
           {roundActive && roundId ? (
             submitted ? (
-              <div className="text-center py-4">
-                <div className="text-green-600 font-medium mb-1">
-                  <span className="flex items-center justify-center gap-2">
-                    <Coins className="w-5 h-5" />
-                    {choice === 'heads' ? 'Heads' : 'Tails'} Selected
-                  </span>
-                </div>
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-500 mt-2">
-                  <Users className="w-4 h-4" />
-                  <span>{waitingCount.submitted}/{waitingCount.total} players submitted</span>
-                </div>
-              </div>
+              <WaitingIndicator
+                message={choice === 'heads' ? 'Heads Chosen!' : 'Tails Chosen!'}
+                submitted={waitingCount.submitted}
+                total={waitingCount.total}
+              />
             ) : (
               <div className="space-y-3">
                 <Button

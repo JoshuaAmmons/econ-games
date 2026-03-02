@@ -52,6 +52,9 @@ import {
   contestableMarketStrategy,
   woolExportPunishmentStrategy,
   threeVillageTradeStrategy,
+  offerAuctionStrategy,
+  bidAuctionStrategy,
+  electricityMarketStrategy,
 } from './SpecializedBotStrategies';
 
 // ─── Register all strategies ───────────────────────────────────────────────
@@ -101,6 +104,9 @@ BotStrategyRegistry.register('double_dutch_auction', doubleDutchStrategy);
 BotStrategyRegistry.register('contestable_market', contestableMarketStrategy);
 BotStrategyRegistry.register('wool_export_punishment', woolExportPunishmentStrategy);
 BotStrategyRegistry.register('three_village_trade', threeVillageTradeStrategy);
+BotStrategyRegistry.register('offer_auction', offerAuctionStrategy);
+BotStrategyRegistry.register('bid_auction', bidAuctionStrategy);
+BotStrategyRegistry.register('electricity_market', electricityMarketStrategy);
 
 export { BotStrategyRegistry } from './BotStrategyRegistry';
 export type { BotStrategy } from './BotStrategyRegistry';

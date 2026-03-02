@@ -12,20 +12,23 @@ interface RoundResult {
   playerName: string;
   profit: number;
   bid: number;
-  isWinner: boolean;
-  pricePaid: number;
   valuation: number;
+  isWinner: boolean;
+  pricePaid: number | null;
   rank: number;
   numUnits: number;
-  numBidders: number;
+  numBuyers: number;
+  clearingPrice: number;
   cutoffBid: number;
+  efficiency: number;
+  pricingRule: string;
 }
 
 /**
- * Discriminative Multi-Unit Auction UI
- * Multiple units for sale — top N bidders each win one unit and pay their own bid.
+ * Bid Auction (Buyers Only) UI
+ * Based on Smith (1964). Buyers submit sealed bids; highest bids win.
  */
-const DiscriminativeAuctionUI: React.FC<GameUIProps> = ({
+const BidAuctionUI: React.FC<GameUIProps> = ({
   session,
   player,
   playerId,
@@ -43,6 +46,7 @@ const DiscriminativeAuctionUI: React.FC<GameUIProps> = ({
 
   const gameConfig = session?.game_config || {};
   const numUnits = gameConfig.numUnits ?? 3;
+  const pricingRule = gameConfig.pricingRule ?? 'uniform';
   const privateValue = Number(player?.valuation ?? 0);
   const bidNum = parseFloat(bid) || 0;
   const isBiddingAboveValue = bid !== '' && bidNum > privateValue;
@@ -80,7 +84,7 @@ const DiscriminativeAuctionUI: React.FC<GameUIProps> = ({
         if (myResult.isWinner) {
           toast.success(`You won a unit! Paid $${Number(myResult.pricePaid).toFixed(2)}. Profit: $${Number(myResult.profit).toFixed(2)}`);
         } else {
-          toast(`You did not win a unit. Profit: $0`, { icon: '😞' });
+          toast(`Your bid was not accepted. Profit: $0`, { icon: '😞' });
         }
       }
     }));
@@ -111,20 +115,24 @@ const DiscriminativeAuctionUI: React.FC<GameUIProps> = ({
       <div className="space-y-3 md:space-y-4">
         <Card>
           <div className="text-center mb-3">
-            <Gavel className="w-8 h-8 mx-auto text-indigo-600 mb-1" />
-            <div className="text-sm text-gray-500">Discriminative Auction</div>
-            <div className="text-lg font-bold text-indigo-700">Multi-Unit • Pay-As-Bid</div>
+            <Gavel className="w-8 h-8 mx-auto text-blue-600 mb-1" />
+            <div className="text-sm text-gray-500">Bid Auction</div>
+            <div className="text-lg font-bold text-blue-700">
+              Buyers Only {pricingRule === 'uniform' ? '• Uniform Price' : '• Pay-As-Bid'}
+            </div>
           </div>
-          <div className="flex items-center justify-center gap-2 bg-indigo-50 rounded-lg p-3 mb-3">
-            <Package className="w-5 h-5 text-indigo-600" />
-            <span className="text-lg font-bold text-indigo-700">{numUnits} units</span>
-            <span className="text-sm text-gray-500">available</span>
+          <div className="flex items-center justify-center gap-2 bg-blue-50 rounded-lg p-3 mb-3">
+            <Package className="w-5 h-5 text-blue-600" />
+            <span className="text-lg font-bold text-blue-700">{numUnits} units</span>
+            <span className="text-sm text-gray-500">supplied</span>
           </div>
-          <div className="text-xs p-2 rounded text-center bg-indigo-50 text-indigo-700">
-            Top {numUnits} bidders each win 1 unit and pay their own bid
+          <div className="text-xs p-2 rounded text-center bg-blue-50 text-blue-700">
+            {pricingRule === 'uniform'
+              ? `Top ${numUnits} bids win — all pay the lowest accepted bid`
+              : `Top ${numUnits} bids win — each pays their own bid`}
           </div>
           <div className="mt-3 bg-amber-50 rounded-lg p-3 text-center">
-            <div className="text-sm text-gray-500">Your Private Value</div>
+            <div className="text-sm text-gray-500">Your Private Valuation</div>
             <div className="text-3xl font-bold text-amber-700">${privateValue.toFixed(2)}</div>
             <p className="text-xs text-gray-400 mt-1">Only you know this value</p>
           </div>
@@ -141,18 +149,18 @@ const DiscriminativeAuctionUI: React.FC<GameUIProps> = ({
             ) : (
               <form onSubmit={handleSubmit} className="space-y-3">
                 <Input
-                  label="Your Bid ($)"
+                  label="Your Bid Price ($)"
                   type="number"
                   step="0.01"
                   min="0"
                   value={bid}
                   onChange={(e) => setBid(e.target.value)}
-                  placeholder="Enter your bid for one unit"
+                  placeholder="Enter your bid price"
                   required
                 />
                 {isBiddingAboveValue && (
                   <div className="bg-red-50 border border-red-200 rounded p-2 text-xs text-red-700">
-                    <span className="font-medium">Warning:</span> Bidding above your value risks a loss!
+                    <span className="font-medium">Warning:</span> Bidding above your valuation risks a loss!
                   </div>
                 )}
                 {bid && !isNaN(bidNum) && bidNum >= 0 && (
@@ -162,17 +170,17 @@ const DiscriminativeAuctionUI: React.FC<GameUIProps> = ({
                       <span className="font-medium">${bidNum.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Your value:</span>
+                      <span>Your valuation:</span>
                       <span className="font-medium">${privateValue.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Profit if you win:</span>
+                      <span>Profit if you win{pricingRule === 'uniform' ? ' (min)' : ''}:</span>
                       <span className={`font-medium ${privateValue - bidNum >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         ${(privateValue - bidNum).toFixed(2)}
                       </span>
                     </div>
                     <div className="text-gray-400 italic">
-                      You need to be in the top {numUnits} bidders to win
+                      You need to be in the top {numUnits} bids to win
                     </div>
                   </div>
                 )}
@@ -203,13 +211,13 @@ const DiscriminativeAuctionUI: React.FC<GameUIProps> = ({
         <Card title="Auction Results">
           {results ? (
             <div className="space-y-3">
-              {/* Summary */}
-              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-sm text-center">
-                <strong>{winnersCount}</strong> of {numUnits} units sold to top bidders
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-center">
+                <strong>{winnersCount}</strong> of {numUnits} units sold
+                {myResult && pricingRule === 'uniform' && (
+                  <span className="ml-2">| Clearing price: ${Number(myResult.clearingPrice).toFixed(2)}</span>
+                )}
                 {myResult && (
-                  <span className="ml-2">
-                    | Cutoff bid: ${Number(myResult.cutoffBid).toFixed(2)}
-                  </span>
+                  <span className="ml-2">| Efficiency: {Number(myResult.efficiency).toFixed(1)}%</span>
                 )}
               </div>
 
@@ -218,18 +226,17 @@ const DiscriminativeAuctionUI: React.FC<GameUIProps> = ({
                   <div className="flex items-center gap-2 mb-1">
                     {myResult.isWinner && <Trophy className="w-4 h-4 text-yellow-500" />}
                     <span className="font-medium text-gray-700">
-                      {myResult.isWinner ? `You won a unit! (Rank #${myResult.rank})` : `You did not win. (Rank #${myResult.rank})`}
+                      {myResult.isWinner ? `You won a unit! (Rank #${myResult.rank})` : `Your bid was not accepted. (Rank #${myResult.rank})`}
                     </span>
                   </div>
                   {myResult.isWinner && (
                     <p className="text-gray-600 text-xs">
-                      Price paid: ${Number(myResult.pricePaid).toFixed(2)} | Your value: ${Number(myResult.valuation).toFixed(2)} | Profit: ${Number(myResult.profit).toFixed(2)}
+                      Price paid: ${Number(myResult.pricePaid).toFixed(2)} | Your valuation: ${Number(myResult.valuation).toFixed(2)} | Profit: ${Number(myResult.profit).toFixed(2)}
                     </p>
                   )}
                 </div>
               )}
 
-              {/* All bids sorted */}
               {[...results]
                 .filter(r => r.bid != null)
                 .sort((a, b) => Number(b.bid) - Number(a.bid))
@@ -248,7 +255,7 @@ const DiscriminativeAuctionUI: React.FC<GameUIProps> = ({
                       {r.isWinner && <Trophy className="w-5 h-5 text-yellow-500" />}
                       <div>
                         <span className="font-medium">
-                          {r.playerId === playerId ? 'You' : r.playerName || `Bidder ${i + 1}`}
+                          {r.playerId === playerId ? 'You' : r.playerName || `Buyer ${i + 1}`}
                         </span>
                         <div className="text-xs text-gray-500">
                           Rank #{r.rank} | Bid: ${Number(r.bid).toFixed(2)}
@@ -267,7 +274,7 @@ const DiscriminativeAuctionUI: React.FC<GameUIProps> = ({
 
               {results.filter(r => r.bid == null).length > 0 && (
                 <div className="text-xs text-gray-400 italic mt-2">
-                  {results.filter(r => r.bid == null).length} player(s) did not submit a bid
+                  {results.filter(r => r.bid == null).length} buyer(s) did not submit a bid
                 </div>
               )}
             </div>
@@ -286,4 +293,4 @@ const DiscriminativeAuctionUI: React.FC<GameUIProps> = ({
   );
 };
 
-export default DiscriminativeAuctionUI;
+export default BidAuctionUI;

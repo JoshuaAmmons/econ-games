@@ -3,7 +3,8 @@ import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
 import { Input } from '../../components/shared/Input';
 import type { GameUIProps } from '../GameUIRegistry';
-import { DollarSign, Users, Globe } from 'lucide-react';
+import { DollarSign, Globe } from 'lucide-react';
+import { WaitingIndicator } from '../../components/shared/WaitingIndicator';
 import toast from 'react-hot-toast';
 
 interface RoundResult {
@@ -96,8 +97,8 @@ const ComparativeAdvantageUI: React.FC<GameUIProps> = ({
   const laborGood2 = laborGood1 ? laborUnits - parseFloat(laborGood1) : laborUnits;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="space-y-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="space-y-3 md:space-y-4">
         <Card>
           <div className="text-center">
             <Globe className="w-8 h-8 mx-auto text-sky-600 mb-2" />
@@ -118,13 +119,11 @@ const ComparativeAdvantageUI: React.FC<GameUIProps> = ({
         <Card title="Allocate Labor">
           {roundActive && roundId ? (
             submitted ? (
-              <div className="text-center py-4">
-                <div className="text-green-600 font-medium mb-2">Allocation Submitted!</div>
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                  <Users className="w-4 h-4" />
-                  <span>{waitingCount.submitted}/{waitingCount.total} countries submitted</span>
-                </div>
-              </div>
+              <WaitingIndicator
+                message="Allocation Submitted!"
+                submitted={waitingCount.submitted}
+                total={waitingCount.total}
+              />
             ) : (
               <form onSubmit={handleSubmit} className="space-y-3">
                 <Input

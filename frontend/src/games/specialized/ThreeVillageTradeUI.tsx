@@ -3,7 +3,8 @@ import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
 import { Input } from '../../components/shared/Input';
 import type { GameUIProps } from '../GameUIRegistry';
-import { DollarSign, Users, Package, ArrowRightLeft, BarChart3, Anchor } from 'lucide-react';
+import { DollarSign, Package, ArrowRightLeft, BarChart3, Anchor } from 'lucide-react';
+import { WaitingIndicator } from '../../components/shared/WaitingIndicator';
 import toast from 'react-hot-toast';
 
 /* ------------------------------------------------------------------ */
@@ -386,7 +387,7 @@ const ThreeVillageTradeUI: React.FC<GameUIProps> = ({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
       {/* ====== LEFT COLUMN: Player Info ====== */}
-      <div className="lg:col-span-3 space-y-4">
+      <div className="lg:col-span-3 space-y-3 md:space-y-4">
         {/* Village Card */}
         <Card className={`bg-gray-800/80 border-2 ${villageInfo.borderColor}`}>
           <div className="text-center mb-3">
@@ -494,18 +495,11 @@ const ThreeVillageTradeUI: React.FC<GameUIProps> = ({
           ) : phase === 'production' ? (
             /* ---- Production Phase ---- */
             submitted ? (
-              <div className="text-center py-8">
-                <div className="text-green-400 font-medium text-lg mb-2">
-                  Production Plan Submitted!
-                </div>
-                <p className="text-gray-500 text-sm">Your workers are busy at the docks...</p>
-                {waitingCount.total > 0 && (
-                  <div className="flex items-center justify-center gap-2 text-sm text-gray-500 mt-4">
-                    <Users className="w-4 h-4" />
-                    <span>{waitingCount.submitted}/{waitingCount.total} ports ready</span>
-                  </div>
-                )}
-              </div>
+              <WaitingIndicator
+                message="Production Plan Submitted!"
+                submitted={waitingCount.submitted}
+                total={waitingCount.total}
+              />
             ) : (
               <div className="space-y-5">
                 <p className="text-sm text-gray-400 text-center">

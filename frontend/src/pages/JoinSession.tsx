@@ -89,6 +89,8 @@ export const JoinSession: React.FC = () => {
               maxLength={6}
               required
               autoFocus
+              autoComplete="off"
+              autoCapitalize="characters"
             />
 
             <Input

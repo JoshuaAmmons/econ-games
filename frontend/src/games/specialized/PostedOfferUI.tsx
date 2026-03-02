@@ -3,7 +3,8 @@ import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
 import { Input } from '../../components/shared/Input';
 import type { GameUIProps } from '../GameUIRegistry';
-import { DollarSign, Users, Store, ShoppingCart, Trophy } from 'lucide-react';
+import { DollarSign, Store, ShoppingCart, Trophy } from 'lucide-react';
+import { WaitingIndicator } from '../../components/shared/WaitingIndicator';
 import toast from 'react-hot-toast';
 
 interface PostedPrice {
@@ -157,9 +158,9 @@ const PostedOfferUI: React.FC<GameUIProps> = ({
   const myResult = results?.find(r => r.playerId === playerId);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
       {/* Left: Role Info & Action */}
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         {/* Role & Value */}
         <Card>
           <div className="text-center mb-3">
@@ -260,13 +261,11 @@ const PostedOfferUI: React.FC<GameUIProps> = ({
             </div>
           ) : !isSeller && phase === 'shopping' ? (
             submitted ? (
-              <div className="text-center py-4">
-                <div className="text-green-600 font-medium mb-2">Choice Submitted!</div>
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                  <Users className="w-4 h-4" />
-                  <span>{waitingCount.submitted}/{waitingCount.total} buyers chose</span>
-                </div>
-              </div>
+              <WaitingIndicator
+                message="Choice Submitted!"
+                submitted={waitingCount.submitted}
+                total={waitingCount.total}
+              />
             ) : (
               <div className="space-y-2">
                 <p className="text-sm text-gray-600 mb-2">Select a seller to buy from:</p>

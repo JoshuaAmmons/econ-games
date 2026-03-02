@@ -56,7 +56,8 @@ function App() {
       <div className="water-backdrop" aria-hidden="true" />
       <RouterProvider router={router} />
       <Toaster
-        position="top-right"
+        position="top-center"
+        containerStyle={{ top: 'env(safe-area-inset-top, 8px)' }}
         toastOptions={{
           duration: 3000,
           style: {
@@ -65,6 +66,8 @@ function App() {
             color: '#e6e1d6',
             border: '1px solid #30363d',
             fontFamily: "'Crimson Pro', Georgia, serif",
+            maxWidth: '90vw',
+            fontSize: '0.875rem',
           },
           success: {
             style: {

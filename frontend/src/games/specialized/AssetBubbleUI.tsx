@@ -289,7 +289,7 @@ const AssetBubbleUI: React.FC<GameUIProps> = ({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* ====== LEFT COLUMN ====== */}
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         {/* Portfolio */}
         <Card className="bg-gradient-to-br from-amber-900/60 to-amber-800/40 border border-amber-700/50">
           <div className="flex items-center gap-2 mb-3">

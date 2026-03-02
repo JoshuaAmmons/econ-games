@@ -3,7 +3,8 @@ import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
 import { Input } from '../../components/shared/Input';
 import type { GameUIProps } from '../GameUIRegistry';
-import { Gavel, DollarSign, Users, TrendingUp, Trophy } from 'lucide-react';
+import { Gavel, DollarSign, TrendingUp, Trophy } from 'lucide-react';
+import { WaitingIndicator } from '../../components/shared/WaitingIndicator';
 import toast from 'react-hot-toast';
 
 /* ------------------------------------------------------------------ */
@@ -148,9 +149,9 @@ const DoubleDutchAuctionUI: React.FC<GameUIProps> = ({
   const matches = myResult?.matches ?? [];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
       {/* ====== LEFT: Role & Submit ====== */}
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         {/* Role Card */}
         <Card className="bg-gray-800/80 border border-gray-700/50">
           <div className="text-center mb-3">
@@ -188,15 +189,11 @@ const DoubleDutchAuctionUI: React.FC<GameUIProps> = ({
 
           {roundActive && roundId ? (
             submitted ? (
-              <div className="text-center py-4">
-                <div className="text-green-400 font-medium mb-2">Price Submitted!</div>
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
-                  <Users className="w-4 h-4" />
-                  <span>
-                    {waitingCount.submitted}/{waitingCount.total} players submitted
-                  </span>
-                </div>
-              </div>
+              <WaitingIndicator
+                message="Price Submitted!"
+                submitted={waitingCount.submitted}
+                total={waitingCount.total}
+              />
             ) : (
               <form onSubmit={handleSubmit} className="space-y-3">
                 <Input
