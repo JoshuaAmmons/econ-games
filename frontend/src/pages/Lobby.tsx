@@ -313,7 +313,7 @@ export const Lobby: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center safe-top safe-bottom">
       <div className="max-w-2xl w-full mx-3 md:mx-4">
         <Card>
           <div className="text-center">

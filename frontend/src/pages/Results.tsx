@@ -164,7 +164,7 @@ const ResultsContent: React.FC = () => {
   const playerMap = new Map(data.players.map((p) => [p.id, p]));
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-8 safe-top safe-bottom">
       <div className="max-w-6xl mx-auto px-4">
         <Button variant="secondary" onClick={() => navigate(`/session/${code}/monitor`)} className="mb-4">
           <ArrowLeft className="w-4 h-4 inline mr-2" />
