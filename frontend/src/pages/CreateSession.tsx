@@ -5,7 +5,8 @@ import { Input } from '../components/shared/Input';
 import { Card } from '../components/shared/Card';
 import { sessionsApi } from '../api/sessions';
 import type { CreateSessionData, GameTypeConfig } from '../types';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { gameInstructions } from '../games/gameInstructions';
 import toast from 'react-hot-toast';
 
 // Fallback game type list (used if API isn't available)
@@ -280,6 +281,23 @@ export const CreateSession: React.FC = () => {
               {selectedGame && (
                 <p className="text-xs text-gray-500 mt-1">{selectedGame.description}</p>
               )}
+              {selectedGame && gameInstructions[selectedGame.value]?.papers?.[0] && (() => {
+                const paper = gameInstructions[selectedGame.value].papers![0];
+                return (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Based on:{' '}
+                    <a
+                      href={`https://doi.org/${paper.doi}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-500 hover:text-indigo-700 hover:underline inline-flex items-center gap-0.5"
+                    >
+                      {paper.authors} ({paper.year})
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </p>
+                );
+              })()}
             </div>
 
             {/* Common Settings — hide fields that the game config section will render */}

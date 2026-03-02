@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HelpCircle, ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
+import { HelpCircle, ChevronDown, ChevronUp, BookOpen, ExternalLink } from 'lucide-react';
 import { gameInstructions } from '../../games/gameInstructions';
 import type { GameInstructionSet } from '../../games/gameInstructions';
 
@@ -173,6 +173,30 @@ function InstructorNotes({
                   <li key={i} className="flex gap-2 text-sm text-gray-700">
                     <span className="text-green-500 mt-0.5 flex-shrink-0">&#10003;</span>
                     <span>{note}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {instructions.papers && instructions.papers.length > 0 && (
+            <div>
+              <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Source Papers</div>
+              <ul className="space-y-2">
+                {instructions.papers.map((paper, i) => (
+                  <li key={i} className="bg-indigo-50 rounded-md p-2">
+                    <a
+                      href={`https://doi.org/${paper.doi}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-indigo-700 hover:text-indigo-900 hover:underline flex items-start gap-1"
+                    >
+                      {paper.title}
+                      <ExternalLink className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                    </a>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {paper.authors} ({paper.year}){paper.journal ? `, ${paper.journal}` : ''}
+                    </p>
                   </li>
                 ))}
               </ul>

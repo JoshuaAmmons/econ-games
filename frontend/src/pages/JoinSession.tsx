@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../components/shared/Button';
 import { Input } from '../components/shared/Input';
 import { Card } from '../components/shared/Card';
@@ -11,7 +11,8 @@ import toast from 'react-hot-toast';
 
 export const JoinSession: React.FC = () => {
   const navigate = useNavigate();
-  const [code, setCode] = useState('');
+  const [searchParams] = useSearchParams();
+  const [code, setCode] = useState(searchParams.get('code')?.toUpperCase() || '');
   const [name, setName] = useState('');
   const [passcode, setPasscode] = useState('');
   const [needsPasscode, setNeedsPasscode] = useState(false);
