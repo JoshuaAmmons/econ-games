@@ -3,7 +3,8 @@ import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
 import { Input } from '../../components/shared/Input';
 import type { GameUIProps } from '../GameUIRegistry';
-import { DollarSign, Users, Crown } from 'lucide-react';
+import { DollarSign, Crown } from 'lucide-react';
+import { WaitingIndicator } from '../../components/shared/WaitingIndicator';
 import toast from 'react-hot-toast';
 
 interface RoundResult {
@@ -101,8 +102,8 @@ const MonopolyUI: React.FC<GameUIProps> = ({
   const myResult = results?.find(r => r.playerId === playerId);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="space-y-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="space-y-3 md:space-y-4">
         <Card>
           <div className="text-center mb-2">
             <Crown className="w-8 h-8 mx-auto text-yellow-500 mb-1" />
@@ -128,13 +129,11 @@ const MonopolyUI: React.FC<GameUIProps> = ({
         <Card title="Set Your Price">
           {roundActive && roundId ? (
             submitted ? (
-              <div className="text-center py-4">
-                <div className="text-green-600 font-medium mb-2">Price Set!</div>
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                  <Users className="w-4 h-4" />
-                  <span>{waitingCount.submitted}/{waitingCount.total} monopolists submitted</span>
-                </div>
-              </div>
+              <WaitingIndicator
+                message="Price Set!"
+                submitted={waitingCount.submitted}
+                total={waitingCount.total}
+              />
             ) : (
               <form onSubmit={handleSubmit} className="space-y-3">
                 <Input

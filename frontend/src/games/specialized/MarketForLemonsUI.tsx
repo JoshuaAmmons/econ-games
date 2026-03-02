@@ -125,8 +125,8 @@ const MarketForLemonsUI: React.FC<GameUIProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="space-y-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+      <div className="space-y-3 md:space-y-4">
         <Card>
           <div className="text-center">
             <Car className="w-8 h-8 mx-auto text-sky-600 mb-2" />

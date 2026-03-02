@@ -10,8 +10,15 @@ export const Input: React.FC<InputProps> = ({
   label,
   error,
   className,
+  type,
+  step,
   ...props
 }) => {
+  // Derive mobile-friendly inputMode from type/step
+  const inputMode = type === 'number'
+    ? (step && parseFloat(String(step)) % 1 !== 0 ? 'decimal' as const : 'numeric' as const)
+    : undefined;
+
   return (
     <div className="w-full">
       {label && (
@@ -20,8 +27,11 @@ export const Input: React.FC<InputProps> = ({
         </label>
       )}
       <input
+        type={type}
+        step={step}
+        inputMode={inputMode}
         className={clsx(
-          'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500',
+          'w-full px-3 py-3 md:py-2 text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500',
           error ? 'border-red-500' : 'border-gray-300',
           className
         )}

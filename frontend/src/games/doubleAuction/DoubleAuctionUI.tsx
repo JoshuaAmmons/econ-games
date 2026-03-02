@@ -55,9 +55,9 @@ const DoubleAuctionUI: React.FC<DAGameUIProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
       {/* Left: Player Info & Submit */}
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         {/* Private Value */}
         <Card>
           <div className="text-center">

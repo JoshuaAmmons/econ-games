@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from '../../components/shared/Card';
 import type { GameUIProps } from '../GameUIRegistry';
-import { DollarSign, Users, Anchor, Eye, Ship } from 'lucide-react';
+import { DollarSign, Anchor, Eye, Ship } from 'lucide-react';
+import { WaitingIndicator } from '../../components/shared/WaitingIndicator';
 import toast from 'react-hot-toast';
 
 /* ------------------------------------------------------------------ */
@@ -261,9 +262,9 @@ const WoolExportPunishmentUI: React.FC<GameUIProps> = ({
       : '');
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
       {/* ====== LEFT: Role Card & Payoff Table ====== */}
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         {/* Role Card */}
         <Card className="bg-gray-800/80 border border-gray-700/50">
           <div className="text-center mb-4">
@@ -402,20 +403,11 @@ const WoolExportPunishmentUI: React.FC<GameUIProps> = ({
               /* -- Smuggler Decision Stage -- */
               role === 'smuggler' ? (
                 submitted ? (
-                  <div className="text-center py-12">
-                    <div className="text-amber-400 text-lg font-semibold mb-2">
-                      Your orders have been given.
-                    </div>
-                    <p className="text-gray-500 text-sm">
-                      The crew awaits what comes next...
-                    </p>
-                    {waitingCount.total > 0 && (
-                      <div className="flex items-center justify-center gap-2 text-sm text-gray-500 mt-4">
-                        <Users className="w-4 h-4" />
-                        <span>{waitingCount.submitted}/{waitingCount.total} decided</span>
-                      </div>
-                    )}
-                  </div>
+                  <WaitingIndicator
+                    message="Your orders have been given."
+                    submitted={waitingCount.submitted}
+                    total={waitingCount.total}
+                  />
                 ) : (
                   <div className="space-y-6">
                     <div className="text-center">
@@ -468,27 +460,11 @@ const WoolExportPunishmentUI: React.FC<GameUIProps> = ({
                 )
               ) : (
                 /* Other roles waiting for smuggler */
-                <div className="text-center py-12">
-                  <div className="relative inline-block mb-4">
-                    <Ship className="w-12 h-12 text-amber-500/60 animate-pulse" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-300 mb-2">
-                    Waiting for the Captain's decision...
-                  </h3>
-                  <p className="text-gray-500 text-sm max-w-sm mx-auto">
-                    {role === 'harbor_watch'
-                      ? 'You scan the horizon from your post, watching for any suspicious movement...'
-                      : role === 'port_merchant'
-                      ? 'You wait at the docks, hoping for a fair trade today...'
-                      : 'Across the sea, you await word from your contact...'}
-                  </p>
-                  {waitingCount.total > 0 && (
-                    <div className="flex items-center justify-center gap-2 text-sm text-gray-500 mt-4">
-                      <Users className="w-4 h-4" />
-                      <span>{waitingCount.submitted}/{waitingCount.total} decided</span>
-                    </div>
-                  )}
-                </div>
+                <WaitingIndicator
+                  message="Waiting for the Captain's decision..."
+                  submitted={waitingCount.submitted}
+                  total={waitingCount.total}
+                />
               )
             ) : stage === 'harbor_watch_decision' ? (
               /* -- Harbor Watch Decision Stage -- */

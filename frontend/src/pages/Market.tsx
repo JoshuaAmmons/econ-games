@@ -351,39 +351,62 @@ export const Market: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold">Session {code}</h1>
-            <span className="px-2 py-1 rounded bg-purple-100 text-purple-800 text-xs font-medium">
-              {gameNames[gameType] || gameType}
-            </span>
+      {/* Floating mobile timer — visible when scrolled */}
+      {timeRemaining > 0 && <Timer seconds={timeRemaining} floating />}
+
+      {/* Header — responsive two-row layout on mobile */}
+      <div className="bg-white shadow-sm border-b safe-top">
+        <div className="max-w-7xl mx-auto px-3 md:px-4 py-2 md:py-3">
+          {/* Desktop: single row with everything */}
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2 md:gap-4 min-w-0">
+              <h1 className="text-lg md:text-xl font-bold shrink-0">Session {code}</h1>
+              <span className="px-2 py-1 rounded bg-purple-100 text-purple-800 text-xs font-medium hidden md:inline-block">
+                {gameNames[gameType] || gameType}
+              </span>
+              {roundActive && (
+                <span className="px-2 py-1 rounded bg-sky-100 text-sky-800 text-sm font-medium hidden md:inline-block">
+                  Round {roundNumber}{numRounds > 0 ? ` / ${numRounds}` : ''}
+                </span>
+              )}
+              <span className={`px-2 py-1 rounded text-sm font-medium hidden md:inline-block ${
+                connected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              }`}>
+                {connected ? 'Connected' : 'Disconnected'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 md:gap-4">
+              {/* Timer (visible in header on all sizes; also has floating duplicate for mobile scroll) */}
+              {timeRemaining > 0 && <Timer seconds={timeRemaining} />}
+              <div className="text-sm text-gray-600 hidden md:block">
+                <span className="font-medium capitalize px-2 py-0.5 rounded bg-sky-100 text-sky-700">
+                  {player?.role}
+                </span>
+                {player?.name && <span className="ml-2">({player.name})</span>}
+              </div>
+            </div>
+          </div>
+          {/* Row 2 (mobile only): Round, Role, Connection dot */}
+          <div className="flex items-center gap-2 mt-1.5 md:hidden flex-wrap">
             {roundActive && (
-              <span className="px-2 py-1 rounded bg-sky-100 text-sky-800 text-sm font-medium">
-                Round {roundNumber}{numRounds > 0 ? ` / ${numRounds}` : ''}
+              <span className="px-2 py-0.5 rounded bg-sky-100 text-sky-800 text-xs font-medium">
+                Round {roundNumber}{numRounds > 0 ? `/${numRounds}` : ''}
               </span>
             )}
-            <span className={`px-2 py-1 rounded text-sm font-medium ${
-              connected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-            }`}>
-              {connected ? 'Connected' : 'Disconnected'}
+            <span className="font-medium capitalize px-2 py-0.5 rounded bg-sky-100 text-sky-700 text-xs">
+              {player?.role}
             </span>
-          </div>
-          <div className="flex items-center gap-4">
-            {timeRemaining > 0 && <Timer seconds={timeRemaining} />}
-            <div className="text-sm text-gray-600">
-              <span className="font-medium capitalize px-2 py-0.5 rounded bg-sky-100 text-sky-700">
-                {player?.role}
-              </span>
-              {player?.name && <span className="ml-2">({player.name})</span>}
-            </div>
+            {player?.name && <span className="text-xs text-gray-500">{player.name}</span>}
+            <span
+              className={`w-2 h-2 rounded-full ml-auto shrink-0 ${connected ? 'bg-green-500' : 'bg-red-500'}`}
+              title={connected ? 'Connected' : 'Disconnected'}
+            />
           </div>
         </div>
       </div>
 
       {/* Game UI */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-6 safe-bottom">
         <GameInstructions gameType={gameType} variant="student" />
         <Suspense fallback={
           <div className="flex items-center justify-center py-20">

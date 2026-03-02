@@ -6,6 +6,7 @@ import type { GameInstructionSet } from '../../games/gameInstructions';
 interface GameInstructionsProps {
   gameType: string;
   variant?: 'student' | 'instructor';
+  defaultExpanded?: boolean;
 }
 
 /**
@@ -13,8 +14,8 @@ interface GameInstructionsProps {
  * - 'student' variant: shows how-to-play instructions (for the Market page)
  * - 'instructor' variant: shows payoff functions, equilibrium, and teaching notes (for the Monitor page)
  */
-export const GameInstructions: React.FC<GameInstructionsProps> = ({ gameType, variant = 'student' }) => {
-  const [expanded, setExpanded] = useState(false);
+export const GameInstructions: React.FC<GameInstructionsProps> = ({ gameType, variant = 'student', defaultExpanded = false }) => {
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const instructions = gameInstructions[gameType];
 
   if (!instructions) return null;

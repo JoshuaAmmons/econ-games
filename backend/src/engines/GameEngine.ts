@@ -41,7 +41,10 @@ export type GameType =
   | 'asset_bubble'
   | 'contestable_market'
   | 'wool_export_punishment'
-  | 'three_village_trade';
+  | 'three_village_trade'
+  | 'electricity_market'
+  | 'offer_auction'
+  | 'bid_auction';
 
 /**
  * Result of validating a game config

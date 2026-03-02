@@ -314,7 +314,7 @@ export const Lobby: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="max-w-2xl w-full mx-4">
+      <div className="max-w-2xl w-full mx-3 md:mx-4">
         <Card>
           <div className="text-center">
             <h1 className="text-3xl font-bold mb-1">Session {code}</h1>
@@ -332,7 +332,7 @@ export const Lobby: React.FC = () => {
             </div>
 
             <div className="text-left mb-6">
-              <GameInstructions gameType={gameType} variant="student" />
+              <GameInstructions gameType={gameType} variant="student" defaultExpanded />
             </div>
 
             <div className="bg-gray-50 rounded-lg p-6">
