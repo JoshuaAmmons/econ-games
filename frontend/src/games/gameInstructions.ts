@@ -275,7 +275,7 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       ],
     },
     papers: [
-      { title: 'Divergent Evidence on Free Riding: An Experimental Examination of Possible Explanations', authors: 'R. Mark Isaac, James M. Walker & Susan H. Thomas', year: 1984, doi: '10.1007/BF00118854', journal: 'Public Choice' },
+      { title: 'Divergent Evidence on Free Riding: An Experimental Examination of Possible Explanations', authors: 'R. Mark Isaac, James M. Walker & Susan H. Thomas', year: 1984, doi: '10.1007/BF00140829', journal: 'Public Choice' },
     ],
   },
 
@@ -321,7 +321,7 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       ],
     },
     papers: [
-      { title: 'Externalities and Corrective Policies in Experimental Markets', authors: 'Charles R. Plott', year: 1983, doi: '10.2307/1831942', journal: 'Economic Journal' },
+      { title: 'Externalities and Corrective Policies in Experimental Markets', authors: 'Charles R. Plott', year: 1983, doi: '10.2307/2232168', journal: 'Economic Journal' },
     ],
   },
 
@@ -883,7 +883,7 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       ],
     },
     papers: [
-      { title: 'Common-Pool Resources and the Science of Experimental Economics', authors: 'Elinor Ostrom', year: 2006, doi: '10.1126/science.1133085', journal: 'Science' },
+      { title: 'The Value-Added of Laboratory Experiments for the Study of Institutions and Common-Pool Resources', authors: 'Elinor Ostrom', year: 2006, doi: '10.1016/j.jebo.2005.02.008', journal: 'Journal of Economic Behavior & Organization' },
     ],
   },
 
@@ -1258,7 +1258,7 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       ],
     },
     papers: [
-      { title: 'An Experimental Comparison of Two Exchange Institutions', authors: 'Charles R. Plott & Vernon L. Smith', year: 1978, doi: '10.2307/2296903', journal: 'Review of Economic Studies' },
+      { title: 'An Experimental Examination of Two Exchange Institutions', authors: 'Charles R. Plott & Vernon L. Smith', year: 1978, doi: '10.2307/2297090', journal: 'Review of Economic Studies' },
     ],
   },
 
@@ -1302,7 +1302,7 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       ],
     },
     papers: [
-      { title: 'The Principle of Unanimity and Voluntary Consent in Social Choice', authors: 'Vernon L. Smith', year: 1977, doi: '10.1086/260804', journal: 'Journal of Political Economy' },
+      { title: 'An Experimental Comparison of Three Public Good Decision Mechanisms', authors: 'Vernon L. Smith', year: 1979, doi: '10.2307/3439960', journal: 'Scandinavian Journal of Economics' },
     ],
   },
 
@@ -1564,7 +1564,7 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       ],
     },
     papers: [
-      { title: 'Natural Monopoly and Contestable Markets', authors: 'Don Coursey, R. Mark Isaac & Vernon L. Smith', year: 1984, doi: '10.1086/261212', journal: 'Journal of Law and Economics' },
+      { title: 'Market Contestability in the Presence of Sunk (Entry) Cost', authors: 'Don Coursey, R. Mark Isaac & Vernon L. Smith', year: 1984, doi: '10.1086/467059', journal: 'RAND Journal of Economics' },
     ],
   },
 
@@ -1656,7 +1656,7 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       ],
     },
     papers: [
-      { title: 'Exchange, Theft, and the Social Formation of Property', authors: 'Erik O. Kimbrough, Vernon L. Smith & Bart J. Wilson', year: 2008, doi: '10.1257/jel.46.1.87', journal: 'Journal of Economic Literature' },
+      { title: 'Historical Property Rights, Sociality, and the Emergence of Impersonal Exchange in Long-Distance Trade', authors: 'Erik O. Kimbrough, Vernon L. Smith & Bart J. Wilson', year: 2008, doi: '10.1257/aer.98.3.1009', journal: 'American Economic Review' },
     ],
   },
 
@@ -1700,7 +1700,7 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       ],
     },
     papers: [
-      { title: 'Effect of Market Organization on Competitive Equilibrium', authors: 'Vernon L. Smith', year: 1964, doi: '10.2307/1879569', journal: 'Quarterly Journal of Economics' },
+      { title: 'Effect of Market Organization on Competitive Equilibrium', authors: 'Vernon L. Smith', year: 1964, doi: '10.2307/1879322', journal: 'Quarterly Journal of Economics' },
     ],
   },
 
@@ -1744,7 +1744,7 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       ],
     },
     papers: [
-      { title: 'Effect of Market Organization on Competitive Equilibrium', authors: 'Vernon L. Smith', year: 1964, doi: '10.2307/1879569', journal: 'Quarterly Journal of Economics' },
+      { title: 'Effect of Market Organization on Competitive Equilibrium', authors: 'Vernon L. Smith', year: 1964, doi: '10.2307/1879322', journal: 'Quarterly Journal of Economics' },
     ],
   },
 
@@ -1789,7 +1789,7 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       ],
     },
     papers: [
-      { title: 'Smart Computer-Assisted Markets', authors: 'Stephen J. Rassenti, Vernon L. Smith & Bart J. Wilson', year: 2003, doi: '10.1073/pnas.0536065100', journal: 'Proceedings of the National Academy of Sciences' },
+      { title: 'Controlling Market Power and Price Spikes in Electricity Networks: Demand-Side Bidding', authors: 'Stephen J. Rassenti, Vernon L. Smith & Bart J. Wilson', year: 2003, doi: '10.1073/pnas.0437942100', journal: 'Proceedings of the National Academy of Sciences' },
     ],
   },
 };

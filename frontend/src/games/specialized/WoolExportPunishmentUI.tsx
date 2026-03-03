@@ -36,9 +36,10 @@ const PAYOFF_MATRIX: {
   foreign_contact: number;
   harbor_watch: number;
 }[] = [
-  { scenario: 'Trade Locally', smuggler: 6, port_merchant: 6, foreign_contact: 2, harbor_watch: 4 },
-  { scenario: 'Smuggle + Blind Eye', smuggler: 12, port_merchant: 2, foreign_contact: 8, harbor_watch: 6 },
-  { scenario: 'Smuggle + Report', smuggler: -4, port_merchant: 4, foreign_contact: 0, harbor_watch: 8 },
+  { scenario: 'Trade Locally', smuggler: 20, port_merchant: 20, foreign_contact: 15, harbor_watch: 27 },
+  { scenario: 'Smuggle + Blind Eye', smuggler: 23, port_merchant: 15, foreign_contact: 17, harbor_watch: 27 },
+  { scenario: 'Smuggle + Report (Low)', smuggler: 19, port_merchant: 15, foreign_contact: 17, harbor_watch: 27 },
+  { scenario: 'Smuggle + Report (High)', smuggler: 0, port_merchant: 15, foreign_contact: 17, harbor_watch: 27 },
 ];
 
 /* ------------------------------------------------------------------ */
