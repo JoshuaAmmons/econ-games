@@ -2,9 +2,12 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
 import type { GameUIProps } from '../GameUIRegistry';
-import { DollarSign, Home, Send } from 'lucide-react';
+import { DollarSign, Home, Send, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import TownView from './TownView';
+
+const DISCOVERY_PROCESS_PASSWORD = 'password';
+const STORAGE_KEY = 'discovery_process_unlocked';
 
 // ============================================================================
 // Types
@@ -78,6 +81,11 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
   refreshPlayer,
   requestGameState,
 }) => {
+  // Password gate state (must be before any early returns per React hook rules)
+  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem(STORAGE_KEY) === 'true');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState(false);
+
   // State
   const [phase, setPhase] = useState<'production' | 'move' | 'complete' | 'waiting'>('waiting');
   const [phaseTimeRemaining, setPhaseTimeRemaining] = useState(0);
@@ -385,6 +393,49 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
 
   const phaseLabel =
     phase === 'production' ? 'Production' : phase === 'move' ? 'Active' : phase === 'complete' ? 'Complete' : 'Waiting';
+
+  // Password gate
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordInput === DISCOVERY_PROCESS_PASSWORD) {
+      sessionStorage.setItem(STORAGE_KEY, 'true');
+      setUnlocked(true);
+      setPasswordError(false);
+    } else {
+      setPasswordError(true);
+    }
+  };
+
+  if (!unlocked) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card title="Discovery Process">
+          <form onSubmit={handlePasswordSubmit} className="space-y-4 p-4 max-w-sm">
+            <div className="flex justify-center">
+              <Lock className="w-10 h-10 text-gray-400" />
+            </div>
+            <p className="text-sm text-gray-600 text-center">
+              Enter the password to access this game.
+            </p>
+            <input
+              type="password"
+              value={passwordInput}
+              onChange={(e) => { setPasswordInput(e.target.value); setPasswordError(false); }}
+              placeholder="Password"
+              className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-300 ${passwordError ? 'border-red-500' : 'border-gray-300'}`}
+              autoFocus
+            />
+            {passwordError && (
+              <p className="text-sm text-red-600 text-center">Incorrect password.</p>
+            )}
+            <Button type="submit" className="w-full">
+              Enter
+            </Button>
+          </form>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
