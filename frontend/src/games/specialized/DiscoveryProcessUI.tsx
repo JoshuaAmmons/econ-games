@@ -39,15 +39,11 @@ interface ContextMenuState {
 // ============================================================================
 
 const DiscoveryProcessUI: React.FC<GameUIProps> = ({
-  session,
-  player,
   playerId,
   roundId,
-  roundNumber,
   roundActive,
   onEvent,
   submitAction,
-  refreshPlayer,
   requestGameState,
 }) => {
   // Password gate state (must be before any early returns per React hook rules)

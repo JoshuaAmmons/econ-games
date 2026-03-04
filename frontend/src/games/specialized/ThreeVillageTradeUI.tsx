@@ -68,9 +68,9 @@ const VILLAGE_CONFIG: Record<
   number,
   { name: string; borderColor: string; bgColor: string; goods: [GoodType, GoodType] }
 > = {
-  1: { name: 'Port Crimson', borderColor: 'border-red-500/60', bgColor: 'bg-red-900/20', goods: ['red', 'blue'] },
-  2: { name: 'Port Azure', borderColor: 'border-blue-500/60', bgColor: 'bg-blue-900/20', goods: ['blue', 'pink'] },
-  3: { name: 'Port Rose', borderColor: 'border-pink-500/60', bgColor: 'bg-pink-900/20', goods: ['pink', 'red'] },
+  1: { name: 'Village 1 (Red/Blue)', borderColor: 'border-red-500/60', bgColor: 'bg-red-900/20', goods: ['red', 'blue'] },
+  2: { name: 'Village 2 (Blue/Pink)', borderColor: 'border-blue-500/60', bgColor: 'bg-blue-900/20', goods: ['blue', 'pink'] },
+  3: { name: 'Village 3 (Pink/Red)', borderColor: 'border-pink-500/60', bgColor: 'bg-pink-900/20', goods: ['pink', 'red'] },
 };
 
 const GOOD_STYLES: Record<GoodType, { badge: string; text: string; icon: string }> = {

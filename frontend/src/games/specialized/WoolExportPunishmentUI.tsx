@@ -54,7 +54,7 @@ const ROLE_ICONS: Record<Role, string> = {
 };
 
 const ROLE_LABELS: Record<Role, string> = {
-  smuggler: 'The Captain',
+  smuggler: 'Smuggler Captain',
   port_merchant: 'Port Merchant',
   foreign_contact: 'Foreign Contact',
   harbor_watch: 'Harbor Watch',
@@ -77,12 +77,12 @@ function buildNarrative(
   smugglerName: string
 ): string {
   if (smugglerDecision === 'trade_locally') {
-    return `${smugglerName} chose the cautious path, trading goods at the local port. The harbor stays quiet tonight. All parties receive their modest share of the honest trade.`;
+    return `${smugglerName} chose to trade locally. All parties receive their share of the honest trade.`;
   }
   if (harborWatchDecision === 'blind_eye') {
-    return `Under cover of darkness, ${smugglerName} slipped cargo past the harbor. The Watch saw everything... and looked the other way. Smuggled goods flow freely, and those in the know profit handsomely.`;
+    return `${smugglerName} smuggled cargo overseas. The Harbor Watch looked the other way. Smuggled goods flow freely, and those involved profit.`;
   }
-  return `${smugglerName} attempted to smuggle cargo overseas, but the Harbor Watch sounded the alarm! Authorities seized the contraband. The Captain pays dearly while the Watch earns a reward for their vigilance.`;
+  return `${smugglerName} attempted to smuggle cargo overseas, but the Harbor Watch reported it! Authorities seized the contraband. The smuggler pays a fine while the Watch earns a reward.`;
 }
 
 /* ------------------------------------------------------------------ */
