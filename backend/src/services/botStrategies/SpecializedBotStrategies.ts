@@ -177,46 +177,65 @@ export const sponsoredSearchStrategy: BotStrategy = {
   },
 };
 
-// ─── Discovery Process ─────────────────────────────────────────────────────
+// ─── Discovery Process (Hunter-Gatherer) ──────────────────────────────────
 export const discoveryProcessStrategy: BotStrategy = {
   getSpecializedActions(player, config) {
     const actions: Array<{ action: Record<string, any>; delayMs: number }> = [];
-    const productionLength = (config.productionLength ?? 10) * 1000; // ms
+    const huntingDuration = (config.huntingDuration ?? 30) * 1000; // ms
+    const tradingDuration = (config.tradingDuration ?? 60) * 1000;
+    const worldWidth = config.worldWidth ?? 10080;
+    const worldHeight = config.worldHeight ?? 1050;
+    const leftZoneEnd = config.leftZoneEnd ?? 3360;
+    const middleZoneEnd = config.middleZoneEnd ?? 6720;
 
-    // Good names from config
-    const good1 = config.good1Name || 'Rum';
-    const good2 = config.good2Name || 'Spices';
+    // Hunting phase: pick a side (50/50 large vs small prey) and move toward prey
+    const goLeft = Math.random() < 0.5;
+    const huntX = goLeft
+      ? 100 + Math.random() * (leftZoneEnd - 200)
+      : middleZoneEnd + 100 + Math.random() * (worldWidth - middleZoneEnd - 200);
+    const huntY = 100 + Math.random() * (worldHeight - 200);
 
-    // Set allocation — bots use default 50/50 (produces a mix of both goods)
+    // Move to hunting zone
     actions.push({
-      action: { type: 'set_production', allocation: [50, 50] },
-      delayMs: 500 + Math.random() * 500,
+      action: { type: 'set_target', x: huntX, y: huntY },
+      delayMs: 500 + Math.random() * 1000,
     });
 
-    // Do NOT send start_production — let the production timer handle it
-    // so human players have the full production phase to adjust their slider.
+    // Attempt captures periodically during hunting (server validates proximity)
+    for (let i = 0; i < 8; i++) {
+      actions.push({
+        action: { type: 'capture_prey', preyId: `prey_${1 + Math.floor(Math.random() * (goLeft ? 20 : 40))}` },
+        delayMs: 3000 + i * 3000 + Math.random() * 2000,
+      });
+      // Also wander a bit
+      const wanderX = goLeft
+        ? 100 + Math.random() * (leftZoneEnd - 200)
+        : middleZoneEnd + 100 + Math.random() * (worldWidth - middleZoneEnd - 200);
+      const wanderY = 100 + Math.random() * (worldHeight - 200);
+      actions.push({
+        action: { type: 'set_target', x: wanderX, y: wanderY },
+        delayMs: 2500 + i * 3000 + Math.random() * 1000,
+      });
+    }
 
-    // After production timer fires → move phase starts.
-    // Move produced goods from field to own house in small batches.
-    // With diminishing-returns production params, typical 50/50 yields ~3–6 per good.
-    const moveBase = productionLength + 2000 + Math.random() * 2000;
-    const batchSize = 2;
-    const numBatches = 5; // up to 10 units per good
+    // Trading phase: move to center
+    const tradeStartMs = huntingDuration + 1000;
+    const centerX = (leftZoneEnd + middleZoneEnd) / 2 + (Math.random() - 0.5) * 400;
+    const centerY = worldHeight / 2 + (Math.random() - 0.5) * 300;
 
-    for (let i = 0; i < numBatches; i++) {
-      for (const good of [good1, good2]) {
-        actions.push({
-          action: {
-            type: 'move_goods',
-            good,
-            amount: batchSize,
-            fromLocation: 'field',
-            fromPlayerId: player.id,
-            toPlayerId: player.id,
-          },
-          delayMs: moveBase + i * 800 + (good === good2 ? 400 : 0),
-        });
-      }
+    actions.push({
+      action: { type: 'set_target', x: centerX, y: centerY },
+      delayMs: tradeStartMs,
+    });
+
+    // Wander in middle zone during trading
+    for (let i = 0; i < 5; i++) {
+      const wx = leftZoneEnd + 100 + Math.random() * (middleZoneEnd - leftZoneEnd - 200);
+      const wy = 100 + Math.random() * (worldHeight - 200);
+      actions.push({
+        action: { type: 'set_target', x: wx, y: wy },
+        delayMs: tradeStartMs + 5000 + i * 10000 + Math.random() * 5000,
+      });
     }
 
     return actions;
