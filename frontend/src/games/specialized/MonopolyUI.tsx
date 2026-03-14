@@ -151,7 +151,7 @@ const MonopolyUI: React.FC<GameUIProps> = ({
                   <div className="text-xs space-y-1 bg-gray-50 rounded p-2">
                     <div>Quantity demanded: {previewQ.toFixed(1)} units</div>
                     <div>Revenue: ${previewRevenue.toFixed(2)}</div>
-                    <div className={`font-medium ${previewProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <div className={`font-medium ${previewProfit > 0 ? 'text-green-600' : previewProfit < 0 ? 'text-red-600' : 'text-gray-500'}`}>
                       Expected Profit: ${previewProfit.toFixed(2)}
                     </div>
                   </div>
@@ -172,7 +172,7 @@ const MonopolyUI: React.FC<GameUIProps> = ({
               <DollarSign className="w-5 h-5 text-green-600" />
               <span className="font-medium">Total Profit</span>
             </div>
-            <span className={`text-2xl font-bold ${(Number(player?.total_profit) || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <span className={`text-2xl font-bold ${(Number(player?.total_profit) || 0) > 0 ? 'text-green-600' : (Number(player?.total_profit) || 0) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
               ${Number(player?.total_profit || 0).toFixed(2)}
             </span>
           </div>
@@ -210,7 +210,7 @@ const MonopolyUI: React.FC<GameUIProps> = ({
                 <div key={r.playerId} className={`rounded-lg p-4 ${r.playerId === playerId ? 'bg-sky-50 border border-sky-200' : 'bg-gray-50'}`}>
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-medium">{r.playerId === playerId ? 'You' : r.playerName || `Monopolist ${i + 1}`}</span>
-                    <span className={`font-bold text-lg ${Number(r.profit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className={`font-bold text-lg ${Number(r.profit) > 0 ? 'text-green-600' : Number(r.profit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
                       ${Number(r.profit).toFixed(2)}
                     </span>
                   </div>

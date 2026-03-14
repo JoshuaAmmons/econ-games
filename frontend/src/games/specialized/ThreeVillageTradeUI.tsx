@@ -439,7 +439,7 @@ const ThreeVillageTradeUI: React.FC<GameUIProps> = ({
             </div>
             <span
               className={`text-2xl font-bold ${
-                (Number(player?.total_profit) || 0) >= 0 ? 'text-green-400' : 'text-red-400'
+                (Number(player?.total_profit) || 0) > 0 ? 'text-green-400' : (Number(player?.total_profit) || 0) < 0 ? 'text-red-400' : 'text-gray-400'
               }`}
             >
               ${Number(player?.total_profit || 0).toFixed(2)}

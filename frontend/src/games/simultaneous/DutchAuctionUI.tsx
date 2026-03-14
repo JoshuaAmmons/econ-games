@@ -165,7 +165,7 @@ const DutchAuctionUI: React.FC<GameUIProps> = ({
                     </div>
                     <div className="flex justify-between">
                       <span>Profit if you win:</span>
-                      <span className={`font-medium ${privateValue - priceNum >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className={`font-medium ${privateValue - priceNum > 0 ? 'text-green-600' : privateValue - priceNum < 0 ? 'text-red-600' : 'text-gray-500'}`}>
                         ${(privateValue - priceNum).toFixed(2)}
                       </span>
                     </div>
@@ -187,7 +187,7 @@ const DutchAuctionUI: React.FC<GameUIProps> = ({
               <DollarSign className="w-5 h-5 text-green-600" />
               <span className="font-medium">Total Profit</span>
             </div>
-            <span className={`text-2xl font-bold ${(Number(player?.total_profit) || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <span className={`text-2xl font-bold ${(Number(player?.total_profit) || 0) > 0 ? 'text-green-600' : (Number(player?.total_profit) || 0) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
               ${Number(player?.total_profit || 0).toFixed(2)}
             </span>
           </div>

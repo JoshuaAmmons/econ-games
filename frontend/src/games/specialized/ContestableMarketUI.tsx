@@ -387,7 +387,7 @@ const ContestableMarketUI: React.FC<GameUIProps> = ({
                       <span>Profit (if you win):</span>
                       <span
                         className={`font-medium ${
-                          previewProfit >= 0 ? 'text-green-400' : 'text-red-400'
+                          previewProfit > 0 ? 'text-green-400' : previewProfit < 0 ? 'text-red-400' : 'text-gray-400'
                         }`}
                       >
                         ${previewProfit.toFixed(2)}
@@ -450,7 +450,7 @@ const ContestableMarketUI: React.FC<GameUIProps> = ({
             </div>
             <span
               className={`text-2xl font-bold ${
-                (Number(player?.total_profit) || 0) >= 0 ? 'text-green-400' : 'text-red-400'
+                (Number(player?.total_profit) || 0) > 0 ? 'text-green-400' : (Number(player?.total_profit) || 0) < 0 ? 'text-red-400' : 'text-gray-400'
               }`}
             >
               ${Number(player?.total_profit || 0).toFixed(2)}
@@ -617,7 +617,7 @@ const ContestableMarketUI: React.FC<GameUIProps> = ({
                       )}
                       <div
                         className={`font-medium ${
-                          Number(myResult.profit) >= 0 ? 'text-green-400' : 'text-red-400'
+                          Number(myResult.profit) > 0 ? 'text-green-400' : Number(myResult.profit) < 0 ? 'text-red-400' : 'text-gray-400'
                         }`}
                       >
                         Profit: ${Number(myResult.profit).toFixed(2)}
