@@ -362,7 +362,7 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       ],
     },
     papers: [
-      { title: 'An Experimental Analysis of Ultimatum Bargaining', authors: 'Werner Guth, Rolf Schmittberger & Bernd Schwarze', year: 1982, doi: '10.1016/0167-2681(82)90011-7', journal: 'Journal of Economic Behavior & Organization' },
+      { title: 'An Experimental Analysis of Ultimatum Bargaining', authors: 'Werner Güth, Rolf Schmittberger & Bernd Schwarze', year: 1982, doi: '10.1016/0167-2681(82)90011-7', journal: 'Journal of Economic Behavior & Organization' },
     ],
   },
 
@@ -672,6 +672,9 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
         'Discuss real-world analogues: arms races, climate agreements, cartel stability.',
       ],
     },
+    papers: [
+      { title: 'Prisoner\'s Dilemma and Public Goods Experiments in the Classroom: An Experiment in Experimental Economics', authors: 'Charles A. Holt & Monica Capra', year: 2000, doi: '10.1080/00220480009596759', journal: 'Journal of Economic Education' },
+    ],
   },
 
   beauty_contest: {

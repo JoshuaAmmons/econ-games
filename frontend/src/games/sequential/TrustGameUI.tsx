@@ -153,10 +153,16 @@ const TrustGameUI: React.FC<GameUIProps> = ({
             isSender ? (
               // Sender UI
               submitted ? (
+                results ? (
+                  <div className="text-center py-4">
+                    <div className="text-green-600 font-medium">Results are in! See the panel on the right.</div>
+                  </div>
+                ) : (
                 <div className="text-center py-4">
                   <div className="text-green-600 font-medium mb-2">Amount Sent!</div>
                   <p className="text-sm text-gray-500">Waiting for your partner to respond...</p>
                 </div>
+                )
               ) : (
                 <form onSubmit={handleSenderSubmit} className="space-y-3">
                   <Input
@@ -196,7 +202,9 @@ const TrustGameUI: React.FC<GameUIProps> = ({
               // Receiver UI
               submitted ? (
                 <div className="text-center py-4">
-                  <div className="text-green-600 font-medium">Response Submitted!</div>
+                  <div className="text-green-600 font-medium">
+                    {results ? 'Results are in! See the panel on the right.' : 'Response Submitted!'}
+                  </div>
                 </div>
               ) : partnerAmount !== null ? (
                 <form onSubmit={handleReceiverSubmit} className="space-y-3">

@@ -166,9 +166,7 @@ export abstract class SimultaneousBaseEngine implements GameEngine {
     // Store results and update profits
     for (const result of results) {
       await GameResultModel.create(roundId, result.playerId, result.resultData, result.profit);
-      if (result.profit !== 0) {
-        await PlayerModel.updateProfit(result.playerId, result.profit);
-      }
+      await PlayerModel.updateProfit(result.playerId, result.profit);
     }
 
     // Broadcast results to all players

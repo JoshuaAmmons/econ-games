@@ -80,13 +80,21 @@ const AssetBubbleUI: React.FC<GameUIProps> = ({
 
   const priceNum = parseFloat(price) || 0;
 
-  // Derive portfolio from player data as fallback
+  // Derive portfolio from player game_data as fallback
   useEffect(() => {
     if (player) {
-      setPortfolio((prev) => ({
-        cash: (player as any).cash ?? prev.cash,
-        shares: (player as any).shares ?? prev.shares,
-      }));
+      const gd = (player as any).game_data;
+      if (gd?.cash != null || gd?.shares != null) {
+        setPortfolio((prev) => ({
+          cash: gd?.cash ?? prev.cash,
+          shares: gd?.shares ?? prev.shares,
+        }));
+      } else {
+        setPortfolio((prev) => ({
+          cash: (player as any).cash ?? prev.cash,
+          shares: (player as any).shares ?? prev.shares,
+        }));
+      }
     }
   }, [player]);
 

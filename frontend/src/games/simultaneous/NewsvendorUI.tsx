@@ -165,11 +165,17 @@ const NewsvendorUI: React.FC<GameUIProps> = ({
         <Card title="Place Your Order">
           {roundActive && roundId ? (
             submitted ? (
+              results ? (
+                <div className="text-center py-4">
+                  <div className="text-green-600 font-medium">Results are in! See the panel on the right.</div>
+                </div>
+              ) : (
               <WaitingIndicator
                 message="Order Placed!"
                 submitted={waitingCount.submitted}
                 total={waitingCount.total}
               />
+              )
             ) : (
               <form onSubmit={handleSubmit} className="space-y-3">
                 <Input

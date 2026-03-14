@@ -238,12 +238,21 @@ export class ContestableMarketEngine implements GameEngine {
       this.transitionToPosting(roundId, sessionCode, io);
     }, entryTime * 1000);
 
-    // Broadcast initial state
+    // Broadcast initial state (include cost/demand config for the UI)
+    const fixedCost = config.fixed_cost ?? 500;
+    const variableCost = config.variable_cost ?? 5;
+    const demandIntercept = config.demand_intercept ?? 100;
+    const demandSlope = config.demand_slope ?? 1;
+
     io.to(`market-${sessionCode}`).emit('game-state', {
       phase: 'entry',
       incumbentId: incumbent.id,
       entrantCount: entrantIds.size,
       timeRemaining: entryTime,
+      fixedCost,
+      variableCost,
+      demandIntercept,
+      demandSlope,
     });
 
     console.log(`[ContestableMarket] Round ${roundId} started - entry phase (${entryTime}s), ${entrantIds.size} potential entrants`);
@@ -450,11 +459,21 @@ export class ContestableMarketEngine implements GameEngine {
       this.resolveMarket(roundId, sessionCode, io);
     }, postingTime * 1000);
 
+    // Build active sellers array with player info for the UI
+    const allPlayers = await PlayerModel.findActiveBySession(state.sessionId);
+    const activeSellersList = allPlayers
+      .filter(p => state.activeSellers.has(p.id))
+      .map(p => ({
+        playerId: p.id,
+        playerName: p.name || 'Anonymous',
+        isIncumbent: p.id === state.incumbentId,
+      }));
+
     // Broadcast phase change
     io.to(`market-${sessionCode}`).emit('phase-change', {
       phase: 'posting',
       entryResults,
-      activeSellers: state.activeSellers.size,
+      activeSellers: activeSellersList,
       numEntrants,
       timeRemaining: postingTime,
     });
@@ -607,6 +626,37 @@ export class ContestableMarketEngine implements GameEngine {
       results: resultsSummary,
     });
 
+    // Emit round-results in the format the ContestableMarketUI expects
+    const sellersForUI = allPlayers.map(player => {
+      const pr = playerResults.find(r => r.playerId === player.id);
+      const rd = pr?.resultData || {};
+      return {
+        playerId: player.id,
+        playerName: player.name || 'Anonymous',
+        isIncumbent: player.id === state.incumbentId,
+        price: state.postedPrices.get(player.id) ?? 0,
+        isWinner: rd.isWinner ?? false,
+        quantity: rd.quantity ?? 0,
+        revenue: rd.revenue ?? 0,
+        variableCost: variableCost * (rd.quantity ?? 0),
+        fixedCost: rd.isActiveSeller ? fixedCost : 0,
+        totalCost: rd.totalCost ?? 0,
+        profit: pr?.profit ?? 0,
+        entered: rd.entered ?? false,
+      };
+    });
+
+    io.to(`market-${sessionCode}`).emit('round-results', {
+      sellers: sellersForUI,
+      benchmarks: {
+        monopolyPrice,
+        competitivePrice,
+        monopolyProfit,
+      },
+      totalDemand: Math.round(totalQ * 100) / 100,
+      efficiency: totalQ > 0 ? 1 : 0,
+    });
+
     console.log(`[ContestableMarket] Round ${roundId} resolved: lowest price=$${lowestPrice}, Q=${Math.round(totalQ * 100) / 100}, ${winners.length} winner(s), ${state.activeSellers.size} active sellers`);
 
     // Save results to DB
@@ -699,10 +749,15 @@ export class ContestableMarketEngine implements GameEngine {
       return { phase: 'unknown' };
     }
 
+    const config = state.config;
     const gameState: Record<string, any> = {
       phase: state.phase,
       incumbentId: state.incumbentId,
       numActiveSellers: state.activeSellers.size,
+      fixedCost: config.fixed_cost ?? 500,
+      variableCost: config.variable_cost ?? 5,
+      demandIntercept: config.demand_intercept ?? 100,
+      demandSlope: config.demand_slope ?? 1,
     };
 
     if (playerId) {
@@ -734,6 +789,16 @@ export class ContestableMarketEngine implements GameEngine {
         entryResults.push({ playerId: pid, entered });
       }
       gameState.entryResults = entryResults;
+
+      // Include active sellers with player info for the UI
+      const allPlayers = await PlayerModel.findActiveBySession(state.sessionId);
+      gameState.activeSellers = allPlayers
+        .filter(p => state.activeSellers.has(p.id))
+        .map(p => ({
+          playerId: p.id,
+          playerName: p.name || 'Anonymous',
+          isIncumbent: p.id === state.incumbentId,
+        }));
     }
 
     // Show posted prices only in results phase

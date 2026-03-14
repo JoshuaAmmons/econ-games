@@ -48,7 +48,7 @@ const FALLBACK_GAME_TYPES: Array<{
     { name: 'num_rounds', label: 'Number of Rounds', type: 'number' as const, default: 10, min: 1, max: 50 },
     { name: 'time_per_round', label: 'Time per Round (seconds)', type: 'number' as const, default: 60, min: 15, max: 300 },
     { name: 'maxNumber', label: 'Maximum Number', type: 'number' as const, default: 100, min: 10, max: 1000, step: 1 },
-    { name: 'fraction', label: 'Target Fraction', type: 'number' as const, default: 0.67, min: 0.01, max: 1, step: 0.01 },
+    { name: 'fraction', label: 'Target Fraction (2/3)', type: 'number' as const, default: 0.667, min: 0.01, max: 1, step: 0.01 },
     { name: 'prize', label: 'Prize', type: 'number' as const, default: 10, min: 1, max: 100, step: 1 },
   ]},
   { value: 'bertrand', label: 'Bertrand Competition', description: 'Firms simultaneously set prices', weekNumber: 17, category: 'Simultaneous Move', usesValuationCost: false, configFields: [] },
@@ -439,7 +439,7 @@ export const CreateSession: React.FC = () => {
                             onChange={(e) => handleConfigChange(field.name, Number(e.target.value))}
                             min={field.min}
                             max={field.max}
-                            step={field.step || 1}
+                            step="any"
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
                           />
                           {field.description && (
@@ -513,7 +513,7 @@ export const CreateSession: React.FC = () => {
                           onChange={(e) => handleConfigChange(field.name, Number(e.target.value))}
                           min={field.min}
                           max={field.max}
-                          step={field.step || 1}
+                          step="any"
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
                         />
                         {field.description && (

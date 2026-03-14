@@ -165,10 +165,16 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
           {roundActive && roundId ? (
             isPrincipal ? (
               submitted ? (
+                results ? (
+                  <div className="text-center py-4">
+                    <div className="text-green-600 font-medium">Results are in! See the panel on the right.</div>
+                  </div>
+                ) : (
                 <div className="text-center py-4">
                   <div className="text-green-600 font-medium mb-2">Contract Sent!</div>
                   <p className="text-sm text-gray-500">Waiting for agent to choose effort...</p>
                 </div>
+                )
               ) : (
                 <form onSubmit={handlePrincipalSubmit} className="space-y-3">
                   <Input
@@ -202,8 +208,10 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
             ) : (
               submitted ? (
                 <div className="text-center py-4">
-                  <div className="text-green-600 font-medium">Effort Choice Submitted!</div>
-                  <p className="text-sm text-gray-500 mt-1">Waiting for output to be revealed...</p>
+                  <div className="text-green-600 font-medium">
+                    {results ? 'Results are in! See the panel on the right.' : 'Effort Choice Submitted!'}
+                  </div>
+                  {!results && <p className="text-sm text-gray-500 mt-1">Waiting for output to be revealed...</p>}
                 </div>
               ) : partnerContract ? (
                 <div className="space-y-4">

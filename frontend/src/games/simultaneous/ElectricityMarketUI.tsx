@@ -87,6 +87,25 @@ const ElectricityMarketUI: React.FC<GameUIProps> = ({
     }
   }, [roundId, roundActive, refreshPlayer]);
 
+  // Retry loading player data if blocks are empty (race condition:
+  // session status is set to 'active' before setupPlayers finishes,
+  // so the frontend may arrive before game_data is populated)
+  useEffect(() => {
+    if (blocks.length > 0) return;
+    let cancelled = false;
+    const retryIntervals = [500, 1000, 2000, 4000];
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (const delay of retryIntervals) {
+      timers.push(setTimeout(() => {
+        if (!cancelled) refreshPlayer();
+      }, delay));
+    }
+    return () => {
+      cancelled = true;
+      timers.forEach(clearTimeout);
+    };
+  }, [blocks.length, refreshPlayer]);
+
   useEffect(() => {
     const cleanups: (() => void)[] = [];
 
@@ -222,11 +241,17 @@ const ElectricityMarketUI: React.FC<GameUIProps> = ({
         <Card title="Submit Offer Prices">
           {roundActive && roundId ? (
             submitted ? (
+              results ? (
+                <div className="text-center py-4">
+                  <div className="text-green-600 font-medium">Results are in! See the panel on the right.</div>
+                </div>
+              ) : (
               <WaitingIndicator
                 message="Offers Submitted!"
                 submitted={waitingCount.submitted}
                 total={waitingCount.total}
               />
+              )
             ) : blocks.length > 0 ? (
               <form onSubmit={handleSubmit} className="space-y-3">
                 {blocks.map((block, i) => (

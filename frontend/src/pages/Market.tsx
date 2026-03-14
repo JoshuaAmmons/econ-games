@@ -108,6 +108,28 @@ export const Market: React.FC = () => {
           setRoundId(completedRounds[0].id);
           setRoundNumber(completedRounds[0].round_number);
         }
+
+        // If session is active but no active round found (timing issue with
+        // round 1 which starts via HTTP without a socket event), retry after
+        // a short delay to pick up the round once it appears in the DB.
+        if (fullSession.status === 'active' && completedRounds.length === 0) {
+          setTimeout(() => {
+            sessionsApi.getRounds(fullSession.id).then((retryRounds: any[]) => {
+              const retryActive = retryRounds.find((r: any) => r.status === 'active');
+              if (retryActive) {
+                setRoundId(retryActive.id);
+                setRoundActive(true);
+                setRoundNumber(retryActive.round_number);
+                if (retryActive.started_at) {
+                  const elapsed = Math.floor((Date.now() - new Date(retryActive.started_at).getTime()) / 1000);
+                  const remaining = Math.max(0, fullSession.time_per_round - elapsed);
+                  setTimeRemaining(remaining);
+                }
+                refreshPlayer();
+              }
+            }).catch(console.error);
+          }, 1500);
+        }
       }
     } catch (err) {
       console.error('Failed to load player:', err);
@@ -233,12 +255,13 @@ export const Market: React.FC = () => {
 
       refreshPlayer();
 
+      const tradeId = data.trade.id || data.trade.bid_id;
       if (data.trade.buyer_id === playerId) {
-        toast.success(`Trade! You bought at $${Number(data.trade.price).toFixed(2)} — Profit: $${Number(data.trade.buyer_profit).toFixed(2)}`);
+        toast.success(`Trade! You bought at $${Number(data.trade.price).toFixed(2)} — Profit: $${Number(data.trade.buyer_profit).toFixed(2)}`, { id: `trade-${tradeId}` });
       } else if (data.trade.seller_id === playerId) {
-        toast.success(`Trade! You sold at $${Number(data.trade.price).toFixed(2)} — Profit: $${Number(data.trade.seller_profit).toFixed(2)}`);
+        toast.success(`Trade! You sold at $${Number(data.trade.price).toFixed(2)} — Profit: $${Number(data.trade.seller_profit).toFixed(2)}`, { id: `trade-${tradeId}` });
       } else {
-        toast('Trade executed at $' + Number(data.trade.price).toFixed(2), { icon: '🤝' });
+        toast('Trade executed at $' + Number(data.trade.price).toFixed(2), { icon: '🤝', id: `trade-${tradeId}` });
       }
     }));
 
@@ -262,7 +285,9 @@ export const Market: React.FC = () => {
       setBids([]);
       setAsks([]);
       setTrades([]);
-      toast(`Round ${data.roundNumber} started!`, { icon: '🔔' });
+      // Refresh player to get updated valuations/costs for the new round
+      refreshPlayer();
+      toast(`Round ${data.roundNumber} started!`, { icon: '🔔', id: `round-started-${data.roundNumber}` });
     }));
 
     cleanups.push(onEvent('round-ended', (data?: { trades?: Trade[] }) => {
@@ -278,7 +303,7 @@ export const Market: React.FC = () => {
           seller_profit: Number(t.seller_profit),
         })));
       }
-      toast('Round ended!', { icon: '🏁' });
+      toast('Round ended!', { icon: '🏁', id: 'round-ended' });
     }));
 
     cleanups.push(onEvent('timer-update', (data: { seconds_remaining: number }) => {
@@ -287,12 +312,12 @@ export const Market: React.FC = () => {
 
     cleanups.push(onEvent('auto-advance-scheduled', (data: { delayMs: number }) => {
       const seconds = Math.ceil(data.delayMs / 1000);
-      toast(`Next round starting in ${seconds}s...`, { icon: '⏭️', duration: data.delayMs });
+      toast(`Next round starting in ${seconds}s...`, { icon: '⏭️', duration: data.delayMs, id: 'auto-advance' });
     }));
 
     cleanups.push(onEvent('session-ended', () => {
       setRoundActive(false);
-      toast.success('Session complete!');
+      toast.success('Session complete!', { id: 'session-ended' });
       navigate(`/session/${code}/results`);
     }));
 
@@ -347,6 +372,24 @@ export const Market: React.FC = () => {
     trust_game: 'Trust Game',
     bargaining: 'Bargaining Game',
     auction: 'Sealed-Bid Auction',
+    ellsberg: 'Ellsberg Paradox',
+    newsvendor: 'Newsvendor',
+    dutch_auction: 'Dutch Auction',
+    discriminative_auction: 'Discriminative Auction',
+    lindahl: 'Lindahl Pricing',
+    pg_auction: 'Public Goods Auction',
+    sealed_bid_offer: 'Sealed-Bid Offer',
+    sponsored_search: 'Sponsored Search',
+    offer_auction: 'Offer Auction',
+    bid_auction: 'Bid Auction',
+    electricity_market: 'Electricity Market',
+    posted_offer: 'Posted Offer',
+    three_village_trade: 'Three Village Trade',
+    contestable_market: 'Contestable Market',
+    double_dutch_auction: 'Double Dutch Auction',
+    wool_export_punishment: 'Wool Export Punishment',
+    english_auction: 'English Auction',
+    asset_bubble: 'Asset Bubble',
   };
 
   return (

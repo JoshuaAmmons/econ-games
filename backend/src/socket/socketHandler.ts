@@ -224,6 +224,10 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
           // No more rounds — end the session
           console.log(`[AutoAdvance] No more rounds for ${sessionCode}, ending session`);
           await SessionModel.end(session.id);
+          BotService.getInstance().onSessionEnd(session.id);
+          // Clean up caches for this session
+          sessionGameTypeCache.delete(sessionCode);
+          adminAuthCache.delete(sessionCode);
           io.to(`session-${sessionCode}`).emit('session-ended', {});
           io.to(`market-${sessionCode}`).emit('session-ended', {});
           return;

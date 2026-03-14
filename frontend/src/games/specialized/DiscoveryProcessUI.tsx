@@ -47,7 +47,8 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
   requestGameState,
 }) => {
   // Password gate state (must be before any early returns per React hook rules)
-  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem(STORAGE_KEY) === 'true');
+  // Auto-unlock if the player already has an active round (instructor has started the game)
+  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem(STORAGE_KEY) === 'true' || (roundActive && !!roundId));
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState(false);
 
@@ -155,8 +156,13 @@ const DiscoveryProcessUI: React.FC<GameUIProps> = ({
   useEffect(() => {
     if (roundId && roundActive) {
       requestGameState(roundId);
+      // Auto-unlock password gate when round is active
+      if (!unlocked) {
+        sessionStorage.setItem(STORAGE_KEY, 'true');
+        setUnlocked(true);
+      }
     }
-  }, [roundId, roundActive, requestGameState]);
+  }, [roundId, roundActive, requestGameState, unlocked]);
 
   // Scroll chat to bottom
   useEffect(() => {
