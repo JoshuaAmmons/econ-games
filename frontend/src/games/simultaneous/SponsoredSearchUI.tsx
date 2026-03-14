@@ -154,11 +154,17 @@ const SponsoredSearchUI: React.FC<GameUIProps> = ({
         <Card title="Place Your Bid">
           {roundActive && roundId ? (
             submitted ? (
+              results ? (
+                <div className="text-center py-4">
+                  <div className="text-green-600 font-medium">Results are in! See the panel on the right.</div>
+                </div>
+              ) : (
               <WaitingIndicator
                 message="Bid Submitted!"
                 submitted={waitingCount.submitted}
                 total={waitingCount.total}
               />
+              )
             ) : (
               <form onSubmit={handleSubmit} className="space-y-3">
                 <Input
@@ -294,7 +300,7 @@ const SponsoredSearchUI: React.FC<GameUIProps> = ({
                           </span>
                           <div className="text-xs text-gray-500">Bid: ${Number(r.bid).toFixed(2)}/click</div>
                         </div>
-                        <div className="text-sm text-gray-500">$0.00</div>
+                        <div className="text-sm text-gray-500">${Number(r.profit).toFixed(2)}</div>
                       </div>
                     ))}
                 </div>

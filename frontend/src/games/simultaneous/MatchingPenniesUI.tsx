@@ -162,6 +162,7 @@ const MatchingPenniesUI: React.FC<GameUIProps> = ({
             </div>
             <div className="text-xs text-gray-400 p-2 bg-gray-50 rounded">
               Matchers want choices to match. Mismatchers want choices to differ.
+              Your payoff is averaged across all opponent pairings.
               The Nash equilibrium is to randomize 50/50.
             </div>
           </div>
@@ -171,11 +172,17 @@ const MatchingPenniesUI: React.FC<GameUIProps> = ({
         <Card title="Choose Your Side">
           {roundActive && roundId ? (
             submitted ? (
+              results ? (
+                <div className="text-center py-4">
+                  <div className="text-green-600 font-medium">Results are in! See the panel on the right.</div>
+                </div>
+              ) : (
               <WaitingIndicator
                 message={choice === 'heads' ? 'Heads Chosen!' : 'Tails Chosen!'}
                 submitted={waitingCount.submitted}
                 total={waitingCount.total}
               />
+              )
             ) : (
               <div className="space-y-3">
                 <Button

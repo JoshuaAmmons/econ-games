@@ -939,9 +939,7 @@ export class AssetBubbleEngine implements GameEngine {
       // Profit for this round: change in total wealth from initial endowment
       // For GameResultModel we store the incremental profit this round
       // We compute it as the change in wealth vs what it would have been if holding
-      const roundProfit = isFinalRound
-        ? portfolio.cash - startingCash // Total P&L over entire game
-        : 0; // Intermediate rounds: profit is deferred to final round
+      const roundProfit = portfolio.cash - startingCash; // Total P&L over entire game (cumulative)
 
       playerResults.push({
         playerId: player.id,

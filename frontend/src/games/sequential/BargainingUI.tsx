@@ -142,7 +142,7 @@ const BargainingUI: React.FC<GameUIProps> = ({
           </div>
           <div className="mt-3 text-xs text-gray-400 p-2 bg-gray-50 rounded text-center">
             <Scale className="w-4 h-4 inline mr-1" />
-            The pie shrinks by {discountFactor} each round
+            The pie is multiplied by {discountFactor} each round
           </div>
         </Card>
 
@@ -151,10 +151,16 @@ const BargainingUI: React.FC<GameUIProps> = ({
             isProposer ? (
               // Proposer UI
               submitted ? (
+                results ? (
+                  <div className="text-center py-4">
+                    <div className="text-green-600 font-medium">Results are in! See the panel on the right.</div>
+                  </div>
+                ) : (
                 <div className="text-center py-4">
                   <div className="text-green-600 font-medium mb-2">Proposal Sent!</div>
                   <p className="text-sm text-gray-500">Waiting for your partner to respond...</p>
                 </div>
+                )
               ) : (
                 <form onSubmit={handleProposerSubmit} className="space-y-3">
                   <Input
@@ -190,7 +196,9 @@ const BargainingUI: React.FC<GameUIProps> = ({
               // Responder UI
               submitted ? (
                 <div className="text-center py-4">
-                  <div className="text-green-600 font-medium">Response Submitted!</div>
+                  <div className="text-green-600 font-medium">
+                    {results ? 'Results are in! See the panel on the right.' : 'Response Submitted!'}
+                  </div>
                 </div>
               ) : partnerKeep !== null ? (
                 <div className="space-y-4">

@@ -330,6 +330,7 @@ export class SessionController {
       const id = req.params.id as string;
 
       await SessionModel.end(id);
+      BotService.getInstance().onSessionEnd(id);
 
       res.json({
         success: true,

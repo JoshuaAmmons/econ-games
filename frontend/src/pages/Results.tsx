@@ -47,6 +47,24 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   trust_game: 'Trust Game',
   bargaining: 'Bargaining Game',
   auction: 'Sealed-Bid Auction',
+  ellsberg: 'Ellsberg Paradox',
+  newsvendor: 'Newsvendor',
+  dutch_auction: 'Dutch Auction',
+  discriminative_auction: 'Discriminative Auction',
+  lindahl: 'Lindahl Pricing',
+  pg_auction: 'Public Goods Auction',
+  sealed_bid_offer: 'Sealed-Bid Offer',
+  sponsored_search: 'Sponsored Search',
+  offer_auction: 'Offer Auction',
+  bid_auction: 'Bid Auction',
+  electricity_market: 'Electricity Market',
+  posted_offer: 'Posted Offer',
+  three_village_trade: 'Three Village Trade',
+  contestable_market: 'Contestable Market',
+  double_dutch_auction: 'Double Dutch Auction',
+  wool_export_punishment: 'Wool Export Punishment',
+  english_auction: 'English Auction',
+  asset_bubble: 'Asset Bubble',
 };
 
 interface ResultsData {
@@ -160,7 +178,18 @@ const ResultsContent: React.FC = () => {
   }
 
   const isDA = DA_GAME_TYPES.includes(data.session.gameType);
-  const sortedPlayers = [...data.players].sort((a, b) => Number(b.totalProfit) - Number(a.totalProfit));
+  const sortedPlayers = [...data.players]
+    .sort((a, b) => Number(b.totalProfit) - Number(a.totalProfit))
+    .map((player, i, arr) => {
+      // Assign rank with ties: players with the same profit share the same rank
+      let rank = 1;
+      if (i > 0) {
+        const prevProfit = Number(arr[i - 1].totalProfit);
+        const currProfit = Number(player.totalProfit);
+        rank = currProfit === prevProfit ? (arr[i - 1] as any).rank : i + 1;
+      }
+      return { ...player, rank };
+    });
   const playerMap = new Map(data.players.map((p) => [p.id, p]));
 
   return (
@@ -299,24 +328,24 @@ const ResultsContent: React.FC = () => {
                     i === 2 ? 'bg-orange-400 text-white' :
                     'bg-gray-200 text-gray-600'
                   }`}>
-                    {i + 1}
+                    {player.rank}
                   </span>
                   <div>
                     <span className="font-medium">{player.name || 'Anonymous'}</span>
                     {player.isBot && <span className="ml-1 text-xs text-gray-400">(Bot)</span>}
                     <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
-                      {player.role}
+                      {player.role.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim()}
                     </span>
                     {player.valuation != null && (
-                      <span className="ml-1 text-xs text-gray-400">Val: ${player.valuation}</span>
+                      <span className="ml-1 text-xs text-gray-400">(Value: ${player.valuation})</span>
                     )}
                     {player.productionCost != null && (
-                      <span className="ml-1 text-xs text-gray-400">Cost: ${player.productionCost}</span>
+                      <span className="ml-1 text-xs text-gray-400">(Cost: ${player.productionCost})</span>
                     )}
                   </div>
                 </div>
                 <span className={`text-lg font-bold font-mono ${
-                  Number(player.totalProfit) >= 0 ? 'text-green-600' : 'text-red-600'
+                  Number(player.totalProfit) > 0 ? 'text-green-600' : Number(player.totalProfit) < 0 ? 'text-red-600' : 'text-gray-500'
                 }`}>
                   ${Number(player.totalProfit).toFixed(2)}
                 </span>

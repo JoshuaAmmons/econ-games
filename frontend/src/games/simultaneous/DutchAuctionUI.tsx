@@ -125,11 +125,17 @@ const DutchAuctionUI: React.FC<GameUIProps> = ({
         <Card title="Set Your Stop Price">
           {roundActive && roundId ? (
             submitted ? (
+              results ? (
+                <div className="text-center py-4">
+                  <div className="text-green-600 font-medium">Results are in! See the panel on the right.</div>
+                </div>
+              ) : (
               <WaitingIndicator
                 message="Stop Price Submitted!"
                 submitted={waitingCount.submitted}
                 total={waitingCount.total}
               />
+              )
             ) : (
               <form onSubmit={handleSubmit} className="space-y-3">
                 <Input

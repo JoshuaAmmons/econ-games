@@ -123,6 +123,18 @@ const CONFIG_LABELS: Record<string, string> = {
   auctionType: 'Auction Type',
   valueMin: 'Min Private Value',
   valueMax: 'Max Private Value',
+  // Contestable Market (snake_case from backend config)
+  fixed_cost: 'Fixed Cost',
+  variable_cost: 'Variable Cost',
+  demand_intercept: 'Demand Intercept',
+  demand_slope: 'Demand Slope',
+  entry_cost: 'Entry Cost',
+  // Electricity Market
+  baseDemand: 'Peak Demand (MW)',
+  pricingRule: 'Pricing Rule',
+  demandPattern: 'Demand Pattern',
+  showMarketPower: 'Market Power Treatment',
+  variableCost: 'Variable Cost',
 };
 
 const SessionMonitorContent: React.FC = () => {
@@ -216,6 +228,13 @@ const SessionMonitorContent: React.FC = () => {
 
     cleanups.push(onEvent('trade-executed', () => {
       // Refresh players to see updated profits — use ref to avoid stale closure
+      if (sessionRef.current) {
+        sessionsApi.getPlayers(sessionRef.current.id).then(setPlayers).catch(console.error);
+      }
+    }));
+
+    cleanups.push(onEvent('round-results', () => {
+      // Refresh players after simultaneous/sequential round results are computed
       if (sessionRef.current) {
         sessionsApi.getPlayers(sessionRef.current.id).then(setPlayers).catch(console.error);
       }
@@ -639,7 +658,7 @@ const SessionMonitorContent: React.FC = () => {
                 return (
                   <div key={key} className="text-center bg-gray-50 rounded p-3">
                     <p className="text-xs text-gray-500 mb-1">{label}</p>
-                    <p className="text-lg font-bold">{typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)}</p>
+                    <p className="text-lg font-bold">{value == null ? '—' : typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)}</p>
                   </div>
                 );
               })}

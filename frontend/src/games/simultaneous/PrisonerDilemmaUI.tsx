@@ -167,11 +167,17 @@ const PrisonerDilemmaUI: React.FC<GameUIProps> = ({
         <Card title="Make Your Choice">
           {roundActive && roundId ? (
             submitted ? (
+              results ? (
+                <div className="text-center py-4">
+                  <div className="text-green-600 font-medium">Results are in! See the panel on the right.</div>
+                </div>
+              ) : (
               <WaitingIndicator
                 message={myChoice === 'cooperate' ? 'Cooperate Chosen!' : 'Defect Chosen!'}
                 submitted={waitingCount.submitted}
                 total={waitingCount.total}
               />
+              )
             ) : (
               <div className="space-y-3">
                 <Button
@@ -238,7 +244,7 @@ const PrisonerDilemmaUI: React.FC<GameUIProps> = ({
                   <div>
                     <div className="text-sm text-gray-500">Avg. Payoff</div>
                     <div className="text-xl font-bold text-sky-700">
-                      ${myResult?.avgPayoff != null ? Number(myResult.avgPayoff).toFixed(2) : '0.00'}
+                      ${myResult?.averagePayoff != null ? Number(myResult.averagePayoff).toFixed(2) : (myResult?.avgPayoff != null ? Number(myResult.avgPayoff).toFixed(2) : '0.00')}
                     </div>
                   </div>
                 </div>

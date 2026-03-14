@@ -12,9 +12,9 @@ interface RoundResult {
   profit: number;
   choice: 'stag' | 'hare';
   allChoseStag: boolean;
-  numStag: number;
-  numHare: number;
-  totalPlayers: number;
+  stagCount: number;
+  hareCount: number;
+  groupSize: number;
   stagPayoff: number;
   harePayoff: number;
 }
@@ -142,11 +142,17 @@ const StagHuntUI: React.FC<GameUIProps> = ({
         <Card title="Make Your Choice">
           {roundActive && roundId ? (
             submitted ? (
+              results ? (
+                <div className="text-center py-4">
+                  <div className="text-green-600 font-medium">Results are in! See the panel on the right.</div>
+                </div>
+              ) : (
               <WaitingIndicator
                 message={choice === 'stag' ? 'Stag Chosen!' : 'Hare Chosen!'}
                 submitted={waitingCount.submitted}
                 total={waitingCount.total}
               />
+              )
             ) : (
               <div className="space-y-3">
                 <Button
@@ -203,19 +209,19 @@ const StagHuntUI: React.FC<GameUIProps> = ({
                   <div>
                     <div className="text-sm text-gray-500">Chose Stag</div>
                     <div className="text-xl font-bold text-green-700">
-                      {myResult?.numStag ?? 0}
+                      {myResult?.stagCount ?? 0}
                     </div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-500">Chose Hare</div>
                     <div className="text-xl font-bold text-amber-700">
-                      {myResult?.numHare ?? 0}
+                      {myResult?.hareCount ?? 0}
                     </div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-500">Total Players</div>
                     <div className="text-xl font-bold text-gray-700">
-                      {myResult?.totalPlayers ?? 0}
+                      {myResult?.groupSize ?? 0}
                     </div>
                   </div>
                 </div>
@@ -274,7 +280,7 @@ const StagHuntUI: React.FC<GameUIProps> = ({
                     {myResult.choice === 'stag'
                       ? myResult.allChoseStag
                         ? `Everyone cooperated! You earned $${Number(myResult.profit).toFixed(2)} from the stag hunt.`
-                        : `You chose Stag, but ${myResult.numHare} player(s) chose Hare. The hunt failed and you earned $0.00.`
+                        : `You chose Stag, but ${myResult.hareCount} player(s) chose Hare. The hunt failed and you earned $0.00.`
                       : `You safely hunted Hare and earned $${Number(myResult.profit).toFixed(2)}, regardless of others' choices.`}
                   </p>
                 </div>

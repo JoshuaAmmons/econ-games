@@ -124,11 +124,17 @@ const EllsbergUI: React.FC<GameUIProps> = ({
         <Card title="Make Your Choice">
           {roundActive && roundId ? (
             submitted ? (
+              results ? (
+                <div className="text-center py-4">
+                  <div className="text-green-600 font-medium">Results are in! See the panel on the right.</div>
+                </div>
+              ) : (
               <WaitingIndicator
                 message="Choice Submitted!"
                 submitted={waitingCount.submitted}
                 total={waitingCount.total}
               />
+              )
             ) : (
               <div className="space-y-4">
                 {/* Step 1: Choose Urn */}

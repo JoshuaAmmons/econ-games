@@ -138,7 +138,7 @@ const NegativeExternalityUI: React.FC<GameUIProps> = ({
             </div>
             {taxEnabled && (
               <div className="mt-2 p-2 bg-amber-50 rounded text-amber-700 text-xs">
-                <strong>Pigouvian Tax Active:</strong> ${taxRate}/unit
+                <strong>Pigouvian Tax Active:</strong> ${Number(taxRate).toFixed(2)}/unit
                 <br />Tax revenue is redistributed equally to all firms.
               </div>
             )}
@@ -149,11 +149,17 @@ const NegativeExternalityUI: React.FC<GameUIProps> = ({
         <Card title="Choose Production Level">
           {roundActive && roundId ? (
             submitted ? (
+              results ? (
+                <div className="text-center py-4">
+                  <div className="text-green-600 font-medium">Results are in! See the panel on the right.</div>
+                </div>
+              ) : (
               <WaitingIndicator
                 message="Production Submitted!"
                 submitted={waitingCount.submitted}
                 total={waitingCount.total}
               />
+              )
             ) : (
               <form onSubmit={handleSubmit} className="space-y-3">
                 <Input

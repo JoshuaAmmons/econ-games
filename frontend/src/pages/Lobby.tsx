@@ -40,211 +40,211 @@ const GAME_TYPE_LABELS: Record<string, string> = {
 const ROLE_INFO: Record<string, Record<string, string[]>> = {
   double_auction: {
     buyer: [
-      'You are a <strong>buyer</strong> with a private valuation',
+      'You are a buyer with a private valuation',
       'Submit bids (your maximum price to pay)',
       'Profit = Valuation - Trade Price',
     ],
     seller: [
-      'You are a <strong>seller</strong> with a private cost',
+      'You are a seller with a private cost',
       'Submit asks (your minimum price to accept)',
       'Profit = Trade Price - Cost',
     ],
   },
   double_auction_tax: {
     buyer: [
-      'You are a <strong>buyer</strong> with a private valuation',
+      'You are a buyer with a private valuation',
       'A per-unit tax or subsidy may apply to trades',
       'Profit = Valuation - Trade Price (adjusted for tax/subsidy)',
     ],
     seller: [
-      'You are a <strong>seller</strong> with a private cost',
+      'You are a seller with a private cost',
       'A per-unit tax or subsidy may apply to trades',
       'Profit = Trade Price - Cost (adjusted for tax/subsidy)',
     ],
   },
   double_auction_price_controls: {
     buyer: [
-      'You are a <strong>buyer</strong> with a private valuation',
+      'You are a buyer with a private valuation',
       'A price floor or ceiling may be active',
       'Profit = Valuation - Trade Price',
     ],
     seller: [
-      'You are a <strong>seller</strong> with a private cost',
+      'You are a seller with a private cost',
       'A price floor or ceiling may be active',
       'Profit = Trade Price - Cost',
     ],
   },
   bertrand: {
     firm: [
-      'You are a <strong>firm</strong> in a price competition',
+      'You are a firm in a price competition',
       'Set your price each round — lowest price wins the market',
       'Profit = (Price - Marginal Cost) x Demand',
     ],
   },
   cournot: {
     firm: [
-      'You are a <strong>firm</strong> in a quantity competition',
+      'You are a firm in a quantity competition',
       'Choose how much to produce each round',
       'Market price falls as total output increases',
     ],
   },
   public_goods: {
     player: [
-      'You have an <strong>endowment</strong> each round',
+      'You receive an endowment of tokens each round',
       'Choose how much to contribute to the public good',
       'The group pot is multiplied and shared equally',
     ],
   },
   negative_externality: {
     firm: [
-      'You are a <strong>firm</strong> that produces a good',
+      'You are a firm that produces a good',
       'Choose your production level each round',
       'Production creates environmental damage shared by all',
     ],
   },
   ultimatum: {
     proposer: [
-      'You are the <strong>proposer</strong>',
+      'You are the Proposer',
       'Propose how to split an endowment with your partner',
       'If rejected, both earn nothing',
     ],
     responder: [
-      'You are the <strong>responder</strong>',
+      'You are the Responder',
       'You will see an offer from the proposer',
       'Accept to split or reject (both earn zero)',
     ],
   },
   gift_exchange: {
     employer: [
-      'You are the <strong>employer</strong>',
+      'You are the Employer',
       'Offer a wage to your worker',
       'Your profit depends on the worker\'s effort',
     ],
     worker: [
-      'You are the <strong>worker</strong>',
+      'You are the Worker',
       'You will see the wage offered by your employer',
       'Choose your effort level — higher effort is costly',
     ],
   },
   principal_agent: {
     principal: [
-      'You are the <strong>principal</strong>',
+      'You are the Principal (employer)',
       'Design a contract: fixed wage + bonus for high output',
       'Your profit = Output - Wage - Bonus paid',
     ],
     agent: [
-      'You are the <strong>agent</strong>',
+      'You are the Agent (worker)',
       'You will see the contract offered',
       'Choose high or low effort (high effort is costly but raises output probability)',
     ],
   },
   comparative_advantage: {
     country: [
-      'You are a <strong>country</strong> with limited labor',
+      'You are a country with limited labor',
       'Allocate workers between two goods',
       'Your utility depends on how much of each good you produce',
     ],
   },
   monopoly: {
     monopolist: [
-      'You are a <strong>monopolist</strong> — the only seller',
+      'You are a monopolist — the only seller',
       'Set your price on a downward-sloping demand curve',
       'Find the price that maximizes your profit',
     ],
   },
   market_for_lemons: {
     seller: [
-      'You are a <strong>seller</strong> with a used car',
+      'You are a seller with a used car',
       'You know the quality — set your asking price',
       'If the buyer passes, you keep the car',
     ],
     buyer: [
-      'You are a <strong>buyer</strong> looking for a car',
-      'You see the price but <strong>not</strong> the quality',
+      'You are a buyer looking for a car',
+      'You see the price but NOT the quality',
       'Decide whether to buy or pass',
     ],
   },
   discovery_process: {
     producer: [
-      'You are a <strong>producer</strong> in a small economy',
+      'You are a producer in a small economy',
       'Each round: produce goods, then move them between houses',
       'Earnings depend on the combination of goods in your house',
     ],
   },
   prisoner_dilemma: {
     player: [
-      'You face a <strong>cooperation dilemma</strong>',
-      'Choose to <strong>Cooperate</strong> or <strong>Defect</strong> each round',
+      'You face a cooperation dilemma',
+      'Choose to Cooperate or Defect each round',
       'Mutual cooperation beats mutual defection, but defecting against a cooperator is tempting',
     ],
   },
   beauty_contest: {
     player: [
       'Pick a number between 0 and the max',
-      'The winner is closest to <strong>fraction &times; group average</strong>',
+      'The winner is closest to the target fraction of the group average',
       'Think about what others will guess — and what they think you will guess',
     ],
   },
   common_pool_resource: {
     player: [
-      'You share a <strong>common resource pool</strong> with others',
+      'You share a common resource pool with others',
       'Choose how much to extract each round',
       'Over-extraction depletes the pool — restraint earns a shared bonus',
     ],
   },
   stag_hunt: {
     player: [
-      'Choose to hunt <strong>Stag</strong> (risky, high reward) or <strong>Hare</strong> (safe, low reward)',
-      'Stag succeeds only if <strong>everyone</strong> hunts stag',
+      'Choose to hunt Stag (risky, high reward) or Hare (safe, low reward)',
+      'Stag succeeds only if everyone hunts stag',
       'If anyone hunts hare, stag hunters get nothing',
     ],
   },
   dictator: {
     player: [
-      'You receive an <strong>endowment</strong> each round',
-      'Choose how much to <strong>give</strong> to an anonymous recipient',
+      'You receive an endowment each round',
+      'Choose how much to give to an anonymous recipient',
       'You keep whatever you do not give away',
     ],
   },
   matching_pennies: {
     matcher: [
-      'You are the <strong>Matcher</strong>',
-      'Choose <strong>Heads</strong> or <strong>Tails</strong>',
-      'You win if your choice <strong>matches</strong> the Mismatcher',
+      'You are the Matcher',
+      'Choose Heads or Tails',
+      'You win if your choice matches the Mismatcher\'s choice',
     ],
     mismatcher: [
-      'You are the <strong>Mismatcher</strong>',
-      'Choose <strong>Heads</strong> or <strong>Tails</strong>',
-      'You win if your choice <strong>differs</strong> from the Matcher',
+      'You are the Mismatcher',
+      'Choose Heads or Tails',
+      'You win if your choice differs from the Matcher\'s choice',
     ],
   },
   trust_game: {
     sender: [
-      'You are the <strong>Sender</strong> with an endowment',
-      'Choose how much to send — the amount is <strong>multiplied</strong>',
+      'You are the Sender with an endowment',
+      'Choose how much to send — the amount is multiplied',
       'Your partner decides how much (if any) to return',
     ],
     receiver: [
-      'You are the <strong>Receiver</strong>',
+      'You are the Receiver',
       'You will receive a multiplied amount from the Sender',
       'Choose how much to return — you keep the rest',
     ],
   },
   bargaining: {
     proposer: [
-      'You are the <strong>Proposer</strong>',
+      'You are the Proposer',
       'Propose how to split a pie with your partner',
       'If rejected, both earn nothing — the pie shrinks over time',
     ],
     responder: [
-      'You are the <strong>Responder</strong>',
+      'You are the Responder',
       'You will see a proposed split from the Proposer',
       'Accept to split the pie or reject (both earn zero)',
     ],
   },
   auction: {
     bidder: [
-      'You are a <strong>Bidder</strong> with a private valuation',
+      'You are a Bidder with a private valuation',
       'Submit a sealed bid for the item',
       'Highest bidder wins — profit = valuation minus price paid',
     ],
@@ -308,7 +308,7 @@ export const Lobby: React.FC = () => {
   const isDA = DA_GAME_TYPES.includes(gameType);
   const role = player?.role || 'player';
   const gameInfo = ROLE_INFO[gameType]?.[role] || [
-    `You are a <strong>${role}</strong>`,
+    `You are a ${role}`,
     'Wait for the instructor to start the session',
   ];
 
@@ -339,7 +339,7 @@ export const Lobby: React.FC = () => {
               <h3 className="font-semibold mb-3">Game Information</h3>
               <div className="text-left space-y-2 text-sm">
                 {gameInfo.map((line, i) => (
-                  <p key={i} dangerouslySetInnerHTML={{ __html: line }} />
+                  <p key={i}>{line}</p>
                 ))}
 
                 {/* Show DA-specific values */}

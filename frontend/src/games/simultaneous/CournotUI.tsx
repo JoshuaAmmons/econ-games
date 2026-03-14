@@ -133,11 +133,17 @@ const CournotUI: React.FC<GameUIProps> = ({
         <Card title="Choose Your Quantity">
           {roundActive && roundId ? (
             submitted ? (
+              results ? (
+                <div className="text-center py-4">
+                  <div className="text-green-600 font-medium">Results are in! See the panel on the right.</div>
+                </div>
+              ) : (
               <WaitingIndicator
                 message="Quantity Submitted!"
                 submitted={waitingCount.submitted}
                 total={waitingCount.total}
               />
+              )
             ) : (
               <form onSubmit={handleSubmit} className="space-y-3">
                 <Input
@@ -195,7 +201,7 @@ const CournotUI: React.FC<GameUIProps> = ({
                   <div>
                     <div className="text-sm text-gray-500">Total Output</div>
                     <div className="text-2xl font-bold text-gray-700">
-                      {myResult?.totalQuantity || 0} units
+                      {myResult?.totalQuantity != null ? Number(myResult.totalQuantity).toFixed(2) : '0'} units
                     </div>
                   </div>
                 </div>
