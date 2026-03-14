@@ -197,7 +197,7 @@ const LindahlUI: React.FC<GameUIProps> = ({
               <DollarSign className="w-5 h-5 text-green-600" />
               <span className="font-medium">Total Profit</span>
             </div>
-            <span className={`text-2xl font-bold ${(Number(player?.total_profit) || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <span className={`text-2xl font-bold ${(Number(player?.total_profit) || 0) > 0 ? 'text-green-600' : (Number(player?.total_profit) || 0) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
               ${Number(player?.total_profit || 0).toFixed(2)}
             </span>
           </div>
@@ -246,7 +246,7 @@ const LindahlUI: React.FC<GameUIProps> = ({
                     <div>WTP reported: <span className="font-bold">${Number(myResult.willingnessToPay).toFixed(2)}/unit</span></div>
                     <div>True value: <span className="font-bold">${Number(myResult.valuation).toFixed(2)}/unit</span></div>
                     <div>Your payment: <span className="font-bold">${Number(myResult.payment).toFixed(2)}</span></div>
-                    <div>Your profit: <span className={`font-bold ${Number(myResult.profit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <div>Your profit: <span className={`font-bold ${Number(myResult.profit) > 0 ? 'text-green-600' : Number(myResult.profit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
                       ${Number(myResult.profit).toFixed(2)}
                     </span></div>
                   </div>
@@ -275,7 +275,7 @@ const LindahlUI: React.FC<GameUIProps> = ({
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className={`font-bold ${Number(r.profit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <div className={`font-bold ${Number(r.profit) > 0 ? 'text-green-600' : Number(r.profit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
                         ${Number(r.profit).toFixed(2)}
                       </div>
                       <div className="text-xs text-gray-400">profit</div>

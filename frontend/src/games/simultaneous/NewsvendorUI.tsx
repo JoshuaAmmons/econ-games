@@ -223,7 +223,7 @@ const NewsvendorUI: React.FC<GameUIProps> = ({
               <DollarSign className="w-5 h-5 text-green-600" />
               <span className="font-medium">Total Profit</span>
             </div>
-            <span className={`text-2xl font-bold ${(Number(player?.total_profit) || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <span className={`text-2xl font-bold ${(Number(player?.total_profit) || 0) > 0 ? 'text-green-600' : (Number(player?.total_profit) || 0) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
               ${Number(player?.total_profit || 0).toFixed(2)}
             </span>
           </div>
@@ -246,7 +246,7 @@ const NewsvendorUI: React.FC<GameUIProps> = ({
 
               {/* My breakdown */}
               {myResult && (
-                <div className={`p-4 rounded-lg border ${myResult.profit >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                <div className={`p-4 rounded-lg border ${myResult.profit > 0 ? 'bg-green-50 border-green-200' : myResult.profit < 0 ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
                   <div className="text-sm font-medium mb-2">Your P&L Breakdown</div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>Ordered: <strong>{myResult.orderQuantity}</strong></div>
@@ -254,7 +254,7 @@ const NewsvendorUI: React.FC<GameUIProps> = ({
                     <div>Units sold: <strong>{myResult.unitsSold}</strong> × ${sellingPrice} = ${myResult.revenue.toFixed(2)}</div>
                     <div>Leftover: <strong>{myResult.leftover}</strong> × ${salvageValue} = ${myResult.salvageRevenue.toFixed(2)}</div>
                     <div className="col-span-2 border-t pt-1 mt-1">
-                      Revenue: ${myResult.revenue.toFixed(2)} + Salvage: ${myResult.salvageRevenue.toFixed(2)} − Cost: ${myResult.cost.toFixed(2)} = <strong className={myResult.profit >= 0 ? 'text-green-700' : 'text-red-700'}>${myResult.profit.toFixed(2)}</strong>
+                      Revenue: ${myResult.revenue.toFixed(2)} + Salvage: ${myResult.salvageRevenue.toFixed(2)} − Cost: ${myResult.cost.toFixed(2)} = <strong className={myResult.profit > 0 ? 'text-green-700' : myResult.profit < 0 ? 'text-red-700' : 'text-gray-500'}>${myResult.profit.toFixed(2)}</strong>
                     </div>
                   </div>
                 </div>

@@ -186,7 +186,7 @@ const PGAuctionUI: React.FC<GameUIProps> = ({
                     </div>
                     <div className="flex justify-between">
                       <span>Profit if funded:</span>
-                      <span className={`font-medium ${privateValue - bidNum >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className={`font-medium ${privateValue - bidNum > 0 ? 'text-green-600' : privateValue - bidNum < 0 ? 'text-red-600' : 'text-gray-500'}`}>
                         ${(privateValue - bidNum).toFixed(2)}
                       </span>
                     </div>
@@ -214,7 +214,7 @@ const PGAuctionUI: React.FC<GameUIProps> = ({
               <DollarSign className="w-5 h-5 text-green-600" />
               <span className="font-medium">Total Profit</span>
             </div>
-            <span className={`text-2xl font-bold ${(Number(player?.total_profit) || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <span className={`text-2xl font-bold ${(Number(player?.total_profit) || 0) > 0 ? 'text-green-600' : (Number(player?.total_profit) || 0) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
               ${Number(player?.total_profit || 0).toFixed(2)}
             </span>
           </div>

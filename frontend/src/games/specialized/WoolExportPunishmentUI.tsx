@@ -346,16 +346,16 @@ const WoolExportPunishmentUI: React.FC<GameUIProps> = ({
                 {PAYOFF_MATRIX.map((row) => (
                   <tr key={row.scenario} className="border-b border-gray-700/30">
                     <td className="py-1.5 pr-2 text-gray-300 font-medium">{row.scenario}</td>
-                    <td className={`text-center py-1.5 px-1 font-mono ${row.smuggler >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    <td className={`text-center py-1.5 px-1 font-mono ${row.smuggler > 0 ? 'text-green-400' : row.smuggler < 0 ? 'text-red-400' : 'text-gray-400'}`}>
                       {row.smuggler}
                     </td>
-                    <td className={`text-center py-1.5 px-1 font-mono ${row.port_merchant >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    <td className={`text-center py-1.5 px-1 font-mono ${row.port_merchant > 0 ? 'text-green-400' : row.port_merchant < 0 ? 'text-red-400' : 'text-gray-400'}`}>
                       {row.port_merchant}
                     </td>
-                    <td className={`text-center py-1.5 px-1 font-mono ${row.foreign_contact >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    <td className={`text-center py-1.5 px-1 font-mono ${row.foreign_contact > 0 ? 'text-green-400' : row.foreign_contact < 0 ? 'text-red-400' : 'text-gray-400'}`}>
                       {row.foreign_contact}
                     </td>
-                    <td className={`text-center py-1.5 px-1 font-mono ${row.harbor_watch >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    <td className={`text-center py-1.5 px-1 font-mono ${row.harbor_watch > 0 ? 'text-green-400' : row.harbor_watch < 0 ? 'text-red-400' : 'text-gray-400'}`}>
                       {row.harbor_watch}
                     </td>
                   </tr>
@@ -377,7 +377,7 @@ const WoolExportPunishmentUI: React.FC<GameUIProps> = ({
             </div>
             <span
               className={`text-2xl font-bold ${
-                (Number(player?.total_profit) || 0) >= 0 ? 'text-green-400' : 'text-red-400'
+                (Number(player?.total_profit) || 0) > 0 ? 'text-green-400' : (Number(player?.total_profit) || 0) < 0 ? 'text-red-400' : 'text-gray-400'
               }`}
             >
               ${Number(player?.total_profit || 0).toFixed(2)}
@@ -647,15 +647,17 @@ const WoolExportPunishmentUI: React.FC<GameUIProps> = ({
                 {results.payoffs[role] !== undefined && (
                   <div
                     className={`rounded-lg p-4 text-center border ${
-                      Number(results.payoffs[role]) >= 0
+                      Number(results.payoffs[role]) > 0
                         ? 'bg-green-900/20 border-green-700/40'
-                        : 'bg-red-900/20 border-red-700/40'
+                        : Number(results.payoffs[role]) < 0
+                        ? 'bg-red-900/20 border-red-700/40'
+                        : 'bg-gray-900/20 border-gray-700/40'
                     }`}
                   >
                     <div className="text-sm text-gray-400 mb-1">Your Earnings This Round</div>
                     <div
                       className={`text-3xl font-bold font-mono ${
-                        Number(results.payoffs[role]) >= 0 ? 'text-green-400' : 'text-red-400'
+                        Number(results.payoffs[role]) > 0 ? 'text-green-400' : Number(results.payoffs[role]) < 0 ? 'text-red-400' : 'text-gray-400'
                       }`}
                     >
                       ${Number(results.payoffs[role]).toFixed(2)}

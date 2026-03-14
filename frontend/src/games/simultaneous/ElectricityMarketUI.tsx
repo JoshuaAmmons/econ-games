@@ -286,7 +286,7 @@ const ElectricityMarketUI: React.FC<GameUIProps> = ({
               <DollarSign className="w-5 h-5 text-green-600" />
               <span className="font-medium">Total Profit</span>
             </div>
-            <span className={`text-2xl font-bold ${(Number(player?.total_profit) || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <span className={`text-2xl font-bold ${(Number(player?.total_profit) || 0) > 0 ? 'text-green-600' : (Number(player?.total_profit) || 0) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
               ${Number(player?.total_profit || 0).toFixed(2)}
             </span>
           </div>
@@ -376,7 +376,7 @@ const ElectricityMarketUI: React.FC<GameUIProps> = ({
                       {block.dispatchedMW > 0 && (
                         <>
                           <span className="text-gray-400">|</span>
-                          <span className={block.blockProfit >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          <span className={block.blockProfit > 0 ? 'text-green-600' : block.blockProfit < 0 ? 'text-red-600' : 'text-gray-500'}>
                             ${block.blockProfit.toFixed(2)}
                           </span>
                         </>
