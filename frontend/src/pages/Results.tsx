@@ -286,21 +286,21 @@ const ResultsContent: React.FC = () => {
           <Card>
             <div className="text-center">
               <TrendingUp className="w-6 h-6 mx-auto text-green-600 mb-1" />
-              <div className="text-2xl font-bold text-green-600">${Number(data.stats.avgProfit).toFixed(2)}</div>
+              <div className={`text-2xl font-bold ${Number(data.stats.avgProfit) > 0 ? 'text-green-600' : Number(data.stats.avgProfit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>${Number(data.stats.avgProfit).toFixed(2)}</div>
               <div className="text-xs text-gray-500">Average Profit</div>
             </div>
           </Card>
           <Card>
             <div className="text-center">
               <Trophy className="w-6 h-6 mx-auto text-yellow-500 mb-1" />
-              <div className="text-2xl font-bold text-green-600">${Number(data.stats.maxProfit).toFixed(2)}</div>
+              <div className={`text-2xl font-bold ${Number(data.stats.maxProfit) > 0 ? 'text-green-600' : Number(data.stats.maxProfit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>${Number(data.stats.maxProfit).toFixed(2)}</div>
               <div className="text-xs text-gray-500">Highest Profit</div>
             </div>
           </Card>
           <Card>
             <div className="text-center">
               <TrendingDown className="w-6 h-6 mx-auto text-red-500 mb-1" />
-              <div className={`text-2xl font-bold ${Number(data.stats.minProfit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <div className={`text-2xl font-bold ${Number(data.stats.minProfit) > 0 ? 'text-green-600' : Number(data.stats.minProfit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
                 ${Number(data.stats.minProfit).toFixed(2)}
               </div>
               <div className="text-xs text-gray-500">Lowest Profit</div>
@@ -409,10 +409,10 @@ const ResultsContent: React.FC = () => {
                                       <td className="py-2 px-2">{buyer?.name || 'Unknown'}</td>
                                       <td className="py-2 px-2">{seller?.name || 'Unknown'}</td>
                                       <td className="py-2 px-2 text-right font-mono">${Number(trade.price).toFixed(2)}</td>
-                                      <td className={`py-2 px-2 text-right font-mono ${Number(trade.buyerProfit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      <td className={`py-2 px-2 text-right font-mono ${Number(trade.buyerProfit) > 0 ? 'text-green-600' : Number(trade.buyerProfit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
                                         ${Number(trade.buyerProfit).toFixed(2)}
                                       </td>
-                                      <td className={`py-2 px-2 text-right font-mono ${Number(trade.sellerProfit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      <td className={`py-2 px-2 text-right font-mono ${Number(trade.sellerProfit) > 0 ? 'text-green-600' : Number(trade.sellerProfit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
                                         ${Number(trade.sellerProfit).toFixed(2)}
                                       </td>
                                     </tr>
@@ -453,7 +453,7 @@ const ResultsContent: React.FC = () => {
                                           .map(([k, v]) => `${k}: ${typeof v === 'number' ? (v as number).toFixed(2) : v}`)
                                           .join(' | ')}
                                       </div>
-                                      <span className={`font-mono font-bold ${Number(result.profit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                      <span className={`font-mono font-bold ${Number(result.profit) > 0 ? 'text-green-600' : Number(result.profit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
                                         ${Number(result.profit).toFixed(2)}
                                       </span>
                                     </div>

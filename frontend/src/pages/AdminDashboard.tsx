@@ -5,7 +5,7 @@ import { Card } from '../components/shared/Card';
 import { Spinner } from '../components/shared/Spinner';
 import { sessionsApi } from '../api/sessions';
 import type { Session } from '../types';
-import { Plus, Users, Clock, ArrowLeft, Trash2 } from 'lucide-react';
+import { Plus, Users, Clock, ArrowLeft, Trash2, Gamepad2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const AdminDashboard: React.FC = () => {
@@ -52,6 +52,9 @@ export const AdminDashboard: React.FC = () => {
       toast.error('Failed to delete session');
     }
   };
+
+  const formatGameType = (gt: string) =>
+    gt.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -108,7 +111,11 @@ export const AdminDashboard: React.FC = () => {
                         {session.status}
                       </span>
                     </div>
-                    <div className="flex gap-4 text-sm text-gray-600">
+                    <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                      <span className="flex items-center gap-1">
+                        <Gamepad2 className="w-4 h-4" />
+                        {formatGameType(session.game_type)}
+                      </span>
                       <span className="flex items-center gap-1">
                         <Users className="w-4 h-4" />
                         {session.market_size} players

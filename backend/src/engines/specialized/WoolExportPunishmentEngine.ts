@@ -278,33 +278,48 @@ export class WoolExportPunishmentEngine implements GameEngine {
     const shuffled = [...players].sort(() => Math.random() - 0.5);
 
     const groupSize = 4;
-    const numGroups = Math.floor(shuffled.length / groupSize);
+    const numCompleteGroups = Math.floor(shuffled.length / groupSize);
+    const overflow = shuffled.length % groupSize;
 
-    if (numGroups === 0) {
+    if (numCompleteGroups === 0) {
       console.warn(`[WoolExportPunishment] Not enough players for a group of 4. Have ${shuffled.length} players.`);
     }
 
-    for (let i = 0; i < shuffled.length; i++) {
+    // Assign players in complete groups of 4
+    for (let i = 0; i < numCompleteGroups * groupSize; i++) {
       const groupIndex = Math.floor(i / groupSize);
       const roleIndex = i % groupSize;
-
-      // Players beyond the last complete group go into the last group as observers
-      // but ideally market_size should be a multiple of 4
-      const assignedGroup = groupIndex < numGroups ? groupIndex : numGroups - 1;
-      const role: Role = roleIndex < ROLES.length ? ROLES[roleIndex] : 'port_merchant';
+      const role: Role = ROLES[roleIndex];
 
       await pool.query(
         `UPDATE players SET role = $1, game_data = $2 WHERE id = $3`,
         [
           role,
-          JSON.stringify({ groupId: assignedGroup, role }),
+          JSON.stringify({ groupId: groupIndex, role }),
           shuffled[i].id,
         ]
       );
     }
 
+    // Overflow players (beyond last complete group of 4) become observers
+    // They are not assigned to any game group and will not participate in decisions
+    for (let i = numCompleteGroups * groupSize; i < shuffled.length; i++) {
+      await pool.query(
+        `UPDATE players SET role = $1, game_data = $2 WHERE id = $3`,
+        [
+          'port_merchant',
+          JSON.stringify({ groupId: -1, role: 'observer', isObserver: true }),
+          shuffled[i].id,
+        ]
+      );
+
+      console.warn(
+        `[WoolExportPunishment] Player ${shuffled[i].id} is an overflow observer (${overflow} extra players beyond groups of 4)`
+      );
+    }
+
     console.log(
-      `[WoolExportPunishment] setupPlayers: ${shuffled.length} players -> ${numGroups} group(s) of 4`
+      `[WoolExportPunishment] setupPlayers: ${shuffled.length} players -> ${numCompleteGroups} group(s) of 4, ${overflow} observer(s)`
     );
   }
 

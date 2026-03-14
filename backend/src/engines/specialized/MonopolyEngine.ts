@@ -125,10 +125,12 @@ export class MonopolyEngine extends SimultaneousBaseEngine {
   ): string | null {
     const { price } = action;
     const demandIntercept = config.demandIntercept ?? 100;
+    const marginalCost = config.marginalCost ?? 20;
 
     if (price === undefined || price === null) return 'Price is required';
     if (typeof price !== 'number' || isNaN(price)) return 'Price must be a valid number';
     if (price < 0) return 'Price cannot be negative';
+    if (price < marginalCost) return `Price ($${price}) cannot be below marginal cost ($${marginalCost})`;
     if (price > demandIntercept) return `Price cannot exceed $${demandIntercept}`;
     return null;
   }
