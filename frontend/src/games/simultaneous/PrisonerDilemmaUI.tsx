@@ -11,7 +11,7 @@ interface RoundResult {
   playerName: string;
   profit: number;
   choice: 'cooperate' | 'defect';
-  avgPayoff: number;
+  averagePayoff: number;
   numCooperators: number;
   numDefectors: number;
   totalPlayers: number;
@@ -244,7 +244,7 @@ const PrisonerDilemmaUI: React.FC<GameUIProps> = ({
                   <div>
                     <div className="text-sm text-gray-500">Avg. Payoff</div>
                     <div className="text-xl font-bold text-sky-700">
-                      ${myResult?.averagePayoff != null ? Number(myResult.averagePayoff).toFixed(2) : (myResult?.avgPayoff != null ? Number(myResult.avgPayoff).toFixed(2) : '0.00')}
+                      ${myResult?.averagePayoff != null ? Number(myResult.averagePayoff).toFixed(2) : '0.00'}
                     </div>
                   </div>
                 </div>
