@@ -43,13 +43,21 @@ const EllsbergUI: React.FC<GameUIProps> = ({
   const [submitted, setSubmitted] = useState(false);
   const [waitingCount, setWaitingCount] = useState({ submitted: 0, total: 0 });
   const [results, setResults] = useState<RoundResult[] | null>(null);
+  const [previousResults, setPreviousResults] = useState<RoundResult[] | null>(null);
+  const [previousRoundNumber, setPreviousRoundNumber] = useState<number | null>(null);
 
   const gameConfig = session?.game_config || {};
   const prize = gameConfig.prize ?? 10;
+  const currentRoundNumber = session?.current_round ?? null;
 
-  // Reset state on new round
+  // Reset state on new round, preserving previous results
   useEffect(() => {
     if (roundActive && roundId) {
+      // Save current results as previous before clearing
+      if (results) {
+        setPreviousResults(results);
+        setPreviousRoundNumber(currentRoundNumber ? currentRoundNumber - 1 : null);
+      }
       setSubmitted(false);
       setSelectedUrn(null);
       setSelectedColor(null);
@@ -312,12 +320,46 @@ const EllsbergUI: React.FC<GameUIProps> = ({
               </div>
             </div>
           ) : (
-            <div className="text-center text-gray-400 py-8">
-              <HelpCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>Results will appear after all choices are submitted</p>
-              {waitingCount.total > 0 && (
-                <p className="text-sm mt-2">{waitingCount.submitted}/{waitingCount.total} submitted</p>
-              )}
+            <div className="space-y-4">
+              {/* Previous round results summary */}
+              {previousResults && (() => {
+                const prevMy = previousResults.find(r => r.playerId === playerId);
+                return (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <div className="text-sm font-medium text-amber-800 mb-2">
+                      Previous Round{previousRoundNumber ? ` (Round ${previousRoundNumber})` : ''} Results
+                    </div>
+                    {prevMy && (
+                      <div className="text-sm text-amber-700 space-y-1 mb-3">
+                        <p>
+                          You chose <strong>{prevMy.urn === 'known' ? 'Known Urn' : 'Ambiguous Urn'}</strong>, bet on <strong>{prevMy.color}</strong>.
+                          {' '}Ball drawn: <strong>{prevMy.draw}</strong>.
+                          {' '}{prevMy.correct ? `You won $${prevMy.prize}!` : 'You won $0.'}
+                        </p>
+                        <p className="text-xs text-amber-600">
+                          Group: {prevMy.knownCount} chose Known ({Math.round(prevMy.knownCount / prevMy.totalPlayers * 100)}%), {prevMy.ambiguousCount} chose Ambiguous ({Math.round(prevMy.ambiguousCount / prevMy.totalPlayers * 100)}%)
+                        </p>
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      {previousResults.map((r) => (
+                        <div key={r.playerId} className="flex items-center justify-between text-xs px-2 py-1 rounded bg-amber-100/50">
+                          <span>{r.playerId === playerId ? 'You' : r.playerName}: {r.urn === 'known' ? 'Known' : 'Ambiguous'} / {r.color} {r.correct ? '✓' : '✗'}</span>
+                          <span className={r.profit > 0 ? 'text-green-700 font-bold' : 'text-gray-500'}>${r.profit.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="text-center text-gray-400 py-8">
+                <HelpCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>Results will appear after all choices are submitted</p>
+                {waitingCount.total > 0 && (
+                  <p className="text-sm mt-2">{waitingCount.submitted}/{waitingCount.total} submitted</p>
+                )}
+              </div>
             </div>
           )}
         </Card>

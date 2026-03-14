@@ -13,19 +13,68 @@ export class SessionController {
     try {
       const sessionData: CreateSessionRequest = req.body;
 
+      // Normalize common game_type aliases
+      const GAME_TYPE_ALIASES: Record<string, string> = {
+        'da_price_controls': 'double_auction_price_controls',
+        'da_tax': 'double_auction_tax',
+        'da': 'double_auction',
+      };
+      if (sessionData.game_type && GAME_TYPE_ALIASES[sessionData.game_type]) {
+        sessionData.game_type = GAME_TYPE_ALIASES[sessionData.game_type] as any;
+      }
+
       // Sync top-level fields from game_config if the engine defines them there
       const gc = sessionData.game_config || {};
       if (gc.market_size) sessionData.market_size = Number(gc.market_size);
       if (gc.num_rounds) sessionData.num_rounds = Number(gc.num_rounds);
       if (gc.time_per_round) sessionData.time_per_round = Number(gc.time_per_round);
 
-      // Validate input
+      // Validate required fields
+      const errors: string[] = [];
+
+      if (!sessionData.game_type) {
+        errors.push('game_type is required');
+      } else if (!GameRegistry.has(sessionData.game_type)) {
+        const available = GameRegistry.list().join(', ');
+        errors.push(`Invalid game_type "${sessionData.game_type}". Available types: ${available}`);
+      }
+
       if (!sessionData.market_size || sessionData.market_size < 2) {
+        errors.push('market_size must be at least 2');
+      }
+
+      if (!sessionData.num_rounds || sessionData.num_rounds < 1) {
+        errors.push('num_rounds must be at least 1');
+      }
+
+      if (!sessionData.time_per_round || sessionData.time_per_round < 10) {
+        errors.push('time_per_round must be at least 10 seconds');
+      }
+
+      if (errors.length > 0) {
         res.status(400).json({
           success: false,
-          error: 'Market size must be at least 2'
+          error: errors.length === 1 ? errors[0] : 'Validation failed',
+          errors,
         } as ApiResponse);
         return;
+      }
+
+      // Run engine-specific config validation
+      if (sessionData.game_type) {
+        try {
+          const engine = GameRegistry.get(sessionData.game_type);
+          const validation = engine.validateConfig(sessionData.game_config || {});
+          if (!validation.valid) {
+            res.status(400).json({
+              success: false,
+              error: validation.error || 'Invalid game configuration',
+            } as ApiResponse);
+            return;
+          }
+        } catch (_) {
+          // Engine not found already handled above
+        }
       }
 
       // Create session
@@ -48,8 +97,30 @@ export class SessionController {
         message: 'Session created successfully'
       } as ApiResponse);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating session:', error);
+
+      // Surface DB constraint violations as 400 instead of 500
+      const msg = error?.message || '';
+      if (msg.includes('game_type_check') || msg.includes('violates check constraint')) {
+        const available = GameRegistry.list().join(', ');
+        res.status(400).json({
+          success: false,
+          error: `Invalid game_type. Available types: ${available}`,
+        } as ApiResponse);
+        return;
+      }
+      if (msg.includes('not-null') || msg.includes('null value in column')) {
+        // Extract column name from pg error if possible
+        const colMatch = msg.match(/column "(\w+)"/);
+        const col = colMatch ? colMatch[1] : 'unknown';
+        res.status(400).json({
+          success: false,
+          error: `Missing required field: ${col}`,
+        } as ApiResponse);
+        return;
+      }
+
       res.status(500).json({
         success: false,
         error: 'Failed to create session'

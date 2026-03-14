@@ -293,6 +293,12 @@ export class PostedOfferEngine implements GameEngine {
     if (typeof price !== 'number' || isNaN(price)) return { success: false, error: 'Price must be a number' };
     if (price < 0) return { success: false, error: 'Price cannot be negative' };
 
+    // Sellers cannot post below their production cost
+    const cost = player.production_cost != null ? Number(player.production_cost) : 0;
+    if (price < cost) {
+      return { success: false, error: `Price ($${price.toFixed(2)}) cannot be below your production cost ($${cost.toFixed(2)})` };
+    }
+
     if (state.postedPrices.has(playerId)) {
       return { success: false, error: 'You have already posted a price' };
     }
