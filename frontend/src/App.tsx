@@ -9,6 +9,8 @@ import { Market } from './pages/Market';
 import { SessionMonitor } from './pages/SessionMonitor';
 import { Results } from './pages/Results';
 import { Analytics } from './pages/Analytics';
+import { Practice } from './pages/Practice';
+import { PracticeStart } from './pages/PracticeStart';
 
 const router = createBrowserRouter([
   {
@@ -26,6 +28,14 @@ const router = createBrowserRouter([
   {
     path: '/join',
     element: <JoinSession />,
+  },
+  {
+    path: '/practice',
+    element: <Practice />,
+  },
+  {
+    path: '/practice/:gameType',
+    element: <PracticeStart />,
   },
   {
     path: '/session/:code/lobby',

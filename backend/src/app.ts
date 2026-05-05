@@ -5,6 +5,7 @@ import sessionRoutes from './routes/sessions';
 import playerRoutes from './routes/players';
 import gameRoutes from './routes/game';
 import exportRoutes from './routes/export';
+import practiceRoutes from './routes/practice';
 
 // Initialize all game engines (must be imported before routes/sockets)
 import './engines';
@@ -81,6 +82,7 @@ app.use('/api/sessions', sessionRoutes);
 app.use('/api/players', playerRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/sessions', exportRoutes);
+app.use('/api/practice', practiceRoutes);
 
 // 404 handler
 app.use((_req, res) => {
