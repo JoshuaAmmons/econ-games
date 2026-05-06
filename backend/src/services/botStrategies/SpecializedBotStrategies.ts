@@ -201,10 +201,19 @@ export const discoveryProcessStrategy: BotStrategy = {
       delayMs: 500 + Math.random() * 1000,
     });
 
+    // Read prey counts from config. The engine assigns sequential IDs:
+    //   prey_1 .. prey_largePreyCount                       → large prey (left zone)
+    //   prey_(largePreyCount+1) .. prey_(largePreyCount+smallPreyCount) → small prey (right zone)
+    const largePreyCount = config.largePrey ?? 20;
+    const smallPreyCount = config.smallPrey ?? 40;
+    const preyIdMin = goLeft ? 1 : largePreyCount + 1;
+    const preyIdRange = goLeft ? largePreyCount : smallPreyCount;
+
     // Attempt captures periodically during hunting (server validates proximity)
     for (let i = 0; i < 8; i++) {
+      const preyIdNum = preyIdMin + Math.floor(Math.random() * preyIdRange);
       actions.push({
-        action: { type: 'capture_prey', preyId: `prey_${1 + Math.floor(Math.random() * (goLeft ? 20 : 40))}` },
+        action: { type: 'capture_prey', preyId: `prey_${preyIdNum}` },
         delayMs: 3000 + i * 3000 + Math.random() * 2000,
       });
       // Also wander a bit
