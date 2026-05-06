@@ -39,6 +39,9 @@ function defaultActionFor(gameType, hint) {
   if (gameType === 'bertrand') return { price: 12 };
   if (gameType === 'public_goods') return { contribution: 10 };
   if (gameType === 'dictator') return { give: 4 };
+  if (gameType === 'newsvendor') return { orderQuantity: 50 };
+  if (gameType === 'trust_game') return { amountSent: 5 };
+  if (gameType === 'comparative_advantage') return { laborGood1: 60 };
   return { choice: hint };
 }
 

@@ -46,6 +46,7 @@ const NON_DA_DEFAULTS = {
  * Only games listed here are eligible for practice mode.
  */
 export const PRACTICE_CONFIGS: Partial<Record<GameType, PracticeConfig>> = {
+  // ─── Chapter 4 — game theory and bargaining ─────────────────────────────
   prisoner_dilemma: {
     market_size: 4, // 1 human + 3 bots
     num_rounds: 10, // enough for tit-for-tat to teach the lesson
@@ -64,6 +65,84 @@ export const PRACTICE_CONFIGS: Partial<Record<GameType, PracticeConfig>> = {
     num_rounds: 5,
     time_per_round: 45,
     game_config: {},
+    ...NON_DA_DEFAULTS,
+  },
+
+  // ─── Chapter 1 — decision making (level-k reasoning) ────────────────────
+  beauty_contest: {
+    market_size: 6, // 1 human + 5 bots — needs a few players for the average to be meaningful
+    num_rounds: 5,
+    time_per_round: 45,
+    game_config: {
+      maxNumber: 100,
+      fraction: 0.667, // pick 2/3 of the average
+    },
+    ...NON_DA_DEFAULTS,
+  },
+
+  // ─── Chapter 2 — pricing, costs, profits (oligopoly equilibrium) ────────
+  cournot: {
+    market_size: 3, // 1 human + 2 bot firms — clean triopoly
+    num_rounds: 5,
+    time_per_round: 60,
+    game_config: {
+      demandIntercept: 100,
+      demandSlope: 1,
+      marginalCost: 10,
+      maxQuantity: 100,
+    },
+    ...NON_DA_DEFAULTS,
+  },
+
+  // ─── Chapter 3 — advanced pricing (decisions under demand uncertainty) ──
+  newsvendor: {
+    market_size: 2, // schema requires >= 2; this is effectively solo (each player decides independently)
+    num_rounds: 5,
+    time_per_round: 45,
+    game_config: {
+      unitCost: 5,
+      sellingPrice: 10,
+      salvageValue: 1,
+      demandMin: 0,
+      demandMax: 100,
+    },
+    ...NON_DA_DEFAULTS,
+  },
+
+  // ─── Chapter 5 — adverse selection / moral hazard (paired-role) ─────────
+  trust_game: {
+    market_size: 2, // sender (human) + receiver (bot)
+    num_rounds: 3, // a few rounds let students see whether reciprocity emerges
+    time_per_round: 120, // sequential games need more time (two moves per round)
+    game_config: {
+      endowment: 10,
+      multiplier: 3,
+    },
+    ...NON_DA_DEFAULTS,
+  },
+
+  // ─── Chapter 6 — organizational design (collective action / free riding) ─
+  public_goods: {
+    market_size: 4, // 1 human + 3 bots
+    num_rounds: 5,
+    time_per_round: 45,
+    game_config: {
+      endowment: 20,
+      mpcr: 0.4, // marginal per-capita return
+    },
+    ...NON_DA_DEFAULTS,
+  },
+
+  // ─── Chapter 7 — macroeconomics (open-economy / comparative advantage) ──
+  comparative_advantage: {
+    market_size: 2, // 1 human country + 1 bot country
+    num_rounds: 3,
+    time_per_round: 60,
+    game_config: {
+      laborUnits: 100,
+      good1Name: 'Food',
+      good2Name: 'Clothing',
+    },
     ...NON_DA_DEFAULTS,
   },
 };
