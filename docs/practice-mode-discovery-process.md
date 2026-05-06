@@ -1,7 +1,18 @@
 # Practice mode for Discovery Process — follow-up spec
 
-**Status:** deferred. Practice mode currently ships eight games (one per chapter
-except Chapter 6); this spec is the explicit follow-up to fill that gap.
+**Status update (2026-05-06):** the minimum-viable build has shipped. Solo +
+bots Discovery Process is live in production at
+`/api/practice/discovery_process/start` (4 seats × 3 rounds × 120 s, compact
+4200 × 700 arena, 8 large + 16 small prey). End-to-end integration tests pass
+5/5 — sessions create cleanly, the round-ended event fires with all four
+players reported, and the human is included in results. What's still
+deferred to a future sprint: **upgrading the bot strategy from random
+walk + random capture attempts to position-aware archetypes** (loner /
+coordinator / mixed). With the current bots, all four players consistently
+finish a round at the health-only floor (≈ 0.77 profit) because the bots
+rarely land within the 100 px capture radius of any prey by luck alone. A
+student playing in the UI captures their own prey and earns a real profit;
+the bots are just passive companions in this v1.
 
 ## Why Discovery Process belongs in Chapter 6
 
@@ -51,88 +62,87 @@ The engine is implemented end-to-end:
 
 So the critical infrastructure is there; this spec is the last mile.
 
-## What's missing
+## What's already done (v1, 2026-05-06)
 
-1. **Practice config.** No entry in `backend/src/services/practiceConfigs.ts`.
-2. **Human role.** The engine uses role `'gatherer'`; the
-   `PRACTICE_HUMAN_ROLES` map currently has `discovery_process: 'producer'`
-   inherited from an older config — needs to be changed to `'gatherer'` to
-   match the engine's UI config.
-3. **Frontend solo-mode path.** Currently a student lands on `/practice` and
-   clicks a game card → `POST /api/practice/<gameType>/start` → frontend
-   navigates to `/session/:code/market`. Verify Market.tsx renders
-   DiscoveryProcessUI cleanly with the human as the only seat-1 gatherer
-   and bots filling the rest.
-4. **Bot strategy quality.** The current bot logic is a random walk:
-   50/50 left vs right, random capture attempts. For pedagogy we want at
-   least three behavioral archetypes:
-   - *Loner*: always small-prey side, never trades (free-riding baseline).
-   - *Coordinator*: large-prey side, deposits into shared pots, picks up
-     others' deposits in the trade phase.
+1. **Practice config** — entry added in `backend/src/services/practiceConfigs.ts`
+   with `market_size: 4`, `num_rounds: 3`, `time_per_round: 120`, and a
+   compact 4200 × 700 arena (8 large + 16 small prey).
+2. **Human role** — `PRACTICE_HUMAN_ROLES.discovery_process = 'producer'`.
+   (The engine's UI config labels the role `'gatherer'`, but the database
+   `role_check` constraint enforces `'producer'`; aligning with the
+   constraint avoids a schema migration.)
+3. **Bot strategy bug fix** — the existing `getSpecializedActions` was
+   hardcoding `prey_1..prey_20`/`prey_40`, but the engine assigns
+   sequential IDs across both prey types: large at `prey_1..prey_largePrey`
+   and small at `prey_(largePrey+1)..prey_(largePrey+smallPrey)`. The bot
+   now reads the counts from `config` and uses the correct ID range.
+4. **End-to-end test** — `node test-practice.js discovery_process 5`
+   passes 5/5; all four players reported in `round-ended`. The test
+   harness was extended to handle DP's alternative `round-ended` payload
+   shape (`results: [...]`) which differs from the canonical
+   `results: { playerResults }`.
+
+## What's still missing (v2, future sprint)
+
+1. **Position-aware bots.** v1 bots do random walks and fire captures at
+   random prey IDs. They rarely land within the 100 px capture radius by
+   luck, so all four players (1 human + 3 bots) tend to finish at the
+   health-only floor unless the human plays actively in the UI. v2
+   should split into three archetypes that *track prey state* (the
+   `getSpecializedActions` interface would need to be enriched with a
+   live game-state callback, or replaced with a tick-driven hook):
+   - *Loner*: always small-prey side, walks toward nearest small prey,
+     never trades (free-riding baseline).
+   - *Coordinator*: large-prey side, walks toward nearest large prey,
+     deposits into shared pots, picks up others' deposits during the
+     trade phase.
    - *Mixed*: hunts large prey when health is high, falls back to small
      prey when health is low (rational risk-averse).
-   Mixing one of each in a 4-player session would let the student see all
-   three patterns in a single run.
-5. **Practice-tuned config.** The defaults are calibrated for a full
-   classroom session (30 s hunting + 60 s trading × multiple rounds).
-   For solo + bots we want shorter rounds and a smaller world so the
-   student doesn't spend 90 s walking. Suggested practice defaults:
-   - `market_size: 4` (1 human + 3 bots, one per archetype)
-   - `num_rounds: 3` (enough for health-decay dynamics to matter)
-   - `time_per_round: 120` (covers 30 s hunting + 60 s trading + 5 s
-     interim plus headroom)
-   - `worldWidth: 4200`, `worldHeight: 700` (≈ 40 % of default — keeps
-     visual density up with fewer agents)
-   - `largePrey: 8`, `smallPrey: 16` (scaled to map and player count)
+   Mixing one of each in a 4-player session would let the student see
+   all three patterns in a single run.
+2. **Frontend solo-mode polish.** The `/session/:code/market` route
+   already renders `DiscoveryProcessUI` for both admin-led and practice
+   sessions, but the practice-mode entry has not been verified
+   end-to-end through the UI. Likely just works, but worth a manual
+   pass on a smartphone and a laptop before linking it from the textbook.
+3. **Frontend round-ended shape.** The DP engine emits
+   `round-ended` with `{ results: [...] }` (a flat array), while every
+   other engine emits `{ results: { playerResults, summary } }`.
+   Standardising this would let the practice-test harness drop the
+   shape-detection branch and would make analytics code simpler.
+4. **Larger arena option.** v1 ships a single compact arena. A bigger
+   arena (closer to the classroom default) plus more bots would let
+   advanced students explore more of the Hayekian spatial-discovery
+   dynamic. Could be exposed as a "difficulty" toggle on the practice
+   landing card.
 
-## Build checklist
+## v2 build checklist
 
-When the time comes, the implementation order is:
+The hardest part — wiring the existing engine, bot strategy, and frontend
+into the practice flow — is done. v2 is the bot-quality upgrade:
 
-1. **Add the practice config** — `practiceConfigs.ts`:
-   ```ts
-   discovery_process: {
-     market_size: 4,
-     num_rounds: 3,
-     time_per_round: 120,
-     game_config: {
-       worldWidth: 4200,
-       worldHeight: 700,
-       leftZoneEnd: 1400,
-       middleZoneEnd: 2800,
-       largePrey: 8,
-       smallPrey: 16,
-       huntingDuration: 30,
-       tradingDuration: 60,
-       interimDuration: 5,
-       enableHit: false,
-       enableTugOfWar: true,
-     },
-     ...NON_DA_DEFAULTS,
-   },
-   ```
-2. **Fix the human role** — change `discovery_process: 'producer'` to
-   `discovery_process: 'gatherer'` in `PRACTICE_HUMAN_ROLES`.
-3. **Add three archetype bot strategies** — split
-   `discoveryProcessStrategy.getSpecializedActions` into `loner`,
-   `coordinator`, `mixed` variants and have BotService dispatch round-robin
-   on bot index, so a 3-bot session contains one of each.
-4. **Tune bot timing.** Cap action sequences to fit within the
-   `time_per_round` budget, and ensure bots don't all click the same
-   prey ID (the existing code uses random `prey_${1 + Math.floor(...)}`
-   which can collide).
-5. **End-to-end test.** Add an entry to `test-practice.js`:
-   ```js
-   if (gameType === 'discovery_process') return { type: 'set_target', x: 2100, y: 350 };
-   ```
-   then run `node test-practice.js discovery_process 5` and verify all
-   five rounds complete with `round-ended` payloads that include the
-   human player.
-6. **Companion-lab pointer in Chapter 6.** Once tests pass, add a
-   `\section*{Companion lab}` block at the end of `Chapter6_Organizational_Design.tex`
-   (and mirror to the Overleaf project) framed around free-riding and
-   discovery — Ostrom's *Governing the Commons* is the natural citation
-   alongside Hayek's *Use of Knowledge in Society*.
+1. **Decide on the live-state interface.** The current
+   `BotStrategy.getSpecializedActions(player, config)` signature returns
+   pre-computed actions with delays, with no access to the live arena.
+   Either (a) extend it to accept a `getRoundState()` callback, or (b)
+   add a parallel `BotStrategy.tick(player, state)` method that
+   `BotService` calls every N ticks. (b) is cleaner; (a) is less
+   disruptive to the other strategies that already use the interface.
+2. **Implement the three archetypes** in
+   `botStrategies/SpecializedBotStrategies.ts`. Each one walks toward
+   the nearest target of its preferred prey type, then fires
+   `capture_prey` when within `captureRadius`. The trade-phase logic
+   is archetype-specific (loner skips, coordinator deposits, mixed
+   chooses by health).
+3. **Round-robin assignment.** In `BotService.createBotsForSession`,
+   when `gameType === 'discovery_process'`, assign archetypes by
+   bot index `(0 → loner, 1 → coordinator, 2 → mixed)`. Persist the
+   archetype on the bot record (or on a per-session bot-config map).
+4. **Re-run the integration test.** Same command, expect non-floor
+   profits on at least one bot per session.
+5. **Companion-lab paragraph.** Already added in v1 with a
+   provisional framing; revisit when v2 ships to lean harder on the
+   three-archetype-pedagogy angle.
 
 ## Risk register
 
