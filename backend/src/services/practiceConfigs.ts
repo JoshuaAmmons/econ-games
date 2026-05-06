@@ -80,18 +80,18 @@ export const PRACTICE_CONFIGS: Partial<Record<GameType, PracticeConfig>> = {
     ...NON_DA_DEFAULTS,
   },
 
-  // ─── Chapter 2 — pricing, costs, profits (oligopoly equilibrium) ────────
-  cournot: {
-    market_size: 3, // 1 human + 2 bot firms — clean triopoly
-    num_rounds: 5,
-    time_per_round: 60,
-    game_config: {
-      demandIntercept: 100,
-      demandSlope: 1,
-      marginalCost: 10,
-      maxQuantity: 100,
-    },
-    ...NON_DA_DEFAULTS,
+  // ─── Chapter 2 — pricing, costs, profits (Smith 1962 convergence to CE) ──
+  double_auction: {
+    market_size: 6, // 1 human + 5 bots = 3 buyers + 3 sellers after BotService balancing
+    num_rounds: 2, // two rounds is enough to see convergence and demonstrates the across-period replication effect
+    time_per_round: 90, // continuous trading needs more time than discrete-action games
+    game_config: {},
+    valuation_min: 5,
+    valuation_max: 95,
+    valuation_increments: 5,
+    cost_min: 5,
+    cost_max: 95,
+    cost_increments: 5,
   },
 
   // ─── Chapter 3 — advanced pricing (decisions under demand uncertainty) ──
@@ -133,15 +133,14 @@ export const PRACTICE_CONFIGS: Partial<Record<GameType, PracticeConfig>> = {
     ...NON_DA_DEFAULTS,
   },
 
-  // ─── Chapter 7 — macroeconomics (open-economy / comparative advantage) ──
-  comparative_advantage: {
-    market_size: 2, // 1 human country + 1 bot country
-    num_rounds: 3,
+  // ─── Chapter 7 — macroeconomics (Smith-Suchanek-Williams 1988 bubbles) ──
+  asset_bubble: {
+    market_size: 6, // 1 human + 5 bot traders
+    num_rounds: 8, // shorter than the canonical SSW 15-period horizon, but enough for bubble dynamics
     time_per_round: 60,
     game_config: {
-      laborUnits: 100,
-      good1Name: 'Food',
-      good2Name: 'Clothing',
+      // Engine defaults: 3 shares per player, 385¢ starting cash, dividends ∈ {0, 8, 28, 60}
+      // E[dividend] = 24¢, so FV at round 1 = 24 × 8 = 192¢; declines linearly each period.
     },
     ...NON_DA_DEFAULTS,
   },
@@ -165,6 +164,12 @@ export const PRACTICE_HUMAN_ROLES: Partial<Record<GameType, string>> = {
   bertrand: 'firm',
   cournot: 'firm',
   negative_externality: 'firm',
+  asset_bubble: 'trader',
+
+  // DA games — human always gets 'buyer' in practice; bots balance into sellers
+  double_auction: 'buyer',
+  double_auction_tax: 'buyer',
+  double_auction_price_controls: 'buyer',
 
   // Paired-role games — human is always first-mover
   ultimatum: 'proposer',

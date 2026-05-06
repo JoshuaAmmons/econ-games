@@ -4,12 +4,20 @@ import { PlayerModel } from '../models/Player';
 import { RoundModel } from '../models/Round';
 import { GameRegistry } from '../engines';
 import { BotService } from '../services/BotService';
+import { generateValuations, generateProductionCosts } from '../services/gameLogic';
 import {
   getPracticeConfig,
   getPracticeHumanRole,
   listPracticeGameTypes,
 } from '../services/practiceConfigs';
 import { ApiResponse } from '../types';
+
+// DA games — these require role + valuation/cost atomically (mirror playerController)
+const DA_GAME_TYPES = new Set([
+  'double_auction',
+  'double_auction_tax',
+  'double_auction_price_controls',
+]);
 
 // Sanitize player name (mirrors playerController logic)
 function sanitizeName(raw: string | undefined): string {
@@ -136,17 +144,41 @@ export class PracticeController {
       return;
     }
 
-    // 6. Create the human player (always first-mover for paired-role games)
+    // 6. Create the human player. Different game families need different setup:
+    //    - DA games:    role 'buyer' + a private valuation drawn from session range
+    //                   (sellers come from bot creation; this mirrors PlayerController.joinSession)
+    //    - Other games: role from PRACTICE_HUMAN_ROLES; engine.setupPlayers handles any
+    //                   game-specific initialization (e.g. AssetBubble assigns endowments)
     let humanPlayer;
     try {
       const humanRole = getPracticeHumanRole(gameType);
-      humanPlayer = await PlayerModel.createWithCapacityCheck(
-        session.id,
-        session.market_size,
-        humanRole,
-        playerName,
-        false /* isBot */,
-      );
+
+      if (DA_GAME_TYPES.has(gameType)) {
+        // DA: atomic role + valuation. Always seat the human as a buyer in practice.
+        const vals = generateValuations(
+          session.valuation_min,
+          session.valuation_max,
+          session.valuation_increments,
+          1,
+        );
+        humanPlayer = await PlayerModel.createWithRoleAssignment(
+          session.id,
+          session.market_size,
+          playerName,
+          false /* isBot */,
+          () => ({ role: 'buyer', valueColumn: 'valuation' as const, value: vals[0] }),
+        );
+      } else {
+        // Non-DA: simple role assignment. engine.setupPlayers fills the rest.
+        humanPlayer = await PlayerModel.createWithCapacityCheck(
+          session.id,
+          session.market_size,
+          humanRole,
+          playerName,
+          false /* isBot */,
+        );
+      }
+
       if (!humanPlayer) {
         throw new Error('Could not create human player (capacity check failed)');
       }

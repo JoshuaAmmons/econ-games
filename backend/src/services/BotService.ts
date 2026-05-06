@@ -55,6 +55,7 @@ const GAME_ROLES: Record<string, string> = {
   pg_auction: 'voter',
   sealed_bid_offer: 'buyer',
   sponsored_search: 'advertiser',
+  asset_bubble: 'trader',
 };
 
 // Sequential game types (need first-mover / second-mover handling)
@@ -62,6 +63,12 @@ const SEQUENTIAL_TYPES = new Set(Object.keys(PAIRED_ROLES));
 
 // DA game types (need interval-based bidding)
 const DA_TYPES = new Set(DA_GAME_TYPES);
+
+// Continuous-trading game types: DA variants + asset_bubble.
+// These all use periodic bid/ask submissions (strategy.getDAAction) but only
+// the DA variants use buyer/seller role balancing. asset_bubble has a single
+// 'trader' role for everyone.
+const CONTINUOUS_TRADING_TYPES = new Set<string>([...DA_GAME_TYPES, 'asset_bubble']);
 
 // DA bot interval range in milliseconds
 const DA_MIN_INTERVAL_MS = 3000;
@@ -219,8 +226,8 @@ export class BotService {
     const timers: NodeJS.Timeout[] = [];
     this.roundStartTimes.set(roundId, Date.now());
 
-    if (DA_TYPES.has(gameType)) {
-      // DA games: schedule periodic bid/ask submissions
+    if (CONTINUOUS_TRADING_TYPES.has(gameType)) {
+      // DA variants and asset_bubble: schedule periodic bid/ask submissions
       for (const bot of bots) {
         this.scheduleDABotActions(bot, roundId, sessionCode, gameType, config, io, timers);
       }

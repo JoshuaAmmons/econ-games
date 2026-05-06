@@ -42,6 +42,16 @@ function defaultActionFor(gameType, hint) {
   if (gameType === 'newsvendor') return { orderQuantity: 50 };
   if (gameType === 'trust_game') return { amountSent: 5 };
   if (gameType === 'comparative_advantage') return { laborGood1: 60 };
+  // DA-family games (continuous trading): submit one bid; round ends on timer expiry
+  if (gameType === 'double_auction' ||
+      gameType === 'double_auction_tax' ||
+      gameType === 'double_auction_price_controls') {
+    return { type: 'bid', price: 50 };
+  }
+  if (gameType === 'asset_bubble') {
+    // FV at round 1 ≈ 192¢ (E[div]=24 × 8 periods); bid below to be safe
+    return { type: 'bid', price: 100 };
+  }
   return { choice: hint };
 }
 
