@@ -37,7 +37,7 @@ const GAME_ROLES: Record<string, string> = {
   negative_externality: 'firm',
   comparative_advantage: 'country',
   monopoly: 'monopolist',
-  discovery_process: 'producer',
+  discovery_process: 'gatherer',
   prisoner_dilemma: 'player',
   beauty_contest: 'player',
   common_pool_resource: 'player',

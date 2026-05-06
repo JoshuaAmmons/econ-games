@@ -133,6 +133,28 @@ export const PRACTICE_CONFIGS: Partial<Record<GameType, PracticeConfig>> = {
     ...NON_DA_DEFAULTS,
   },
 
+  // ─── Chapter 6 — organizational design (Hayekian discovery, free-riding) ─
+  discovery_process: {
+    market_size: 4, // 1 human + 3 bots — one of each archetype
+    num_rounds: 3, // enough for health-decay dynamics to bite
+    time_per_round: 120, // 30s hunt + 60s trade + 5s interim + buffer
+    game_config: {
+      // Compact arena: ~40% of full classroom defaults so solo+bots feels dense
+      worldWidth: 4200,
+      worldHeight: 700,
+      leftZoneEnd: 1400,
+      middleZoneEnd: 2800,
+      largePrey: 8,
+      smallPrey: 16,
+      huntingDuration: 30,
+      tradingDuration: 60,
+      interimDuration: 5,
+      enableHit: false,    // disable PvP attacks; tug-of-war stays
+      enableTugOfWar: true,
+    },
+    ...NON_DA_DEFAULTS,
+  },
+
   // ─── Chapter 7 — macroeconomics (Smith-Suchanek-Williams 1988 bubbles) ──
   asset_bubble: {
     market_size: 6, // 1 human + 5 bot traders
@@ -165,6 +187,7 @@ export const PRACTICE_HUMAN_ROLES: Partial<Record<GameType, string>> = {
   cournot: 'firm',
   negative_externality: 'firm',
   asset_bubble: 'trader',
+  discovery_process: 'gatherer',
 
   // DA games — human always gets 'buyer' in practice; bots balance into sellers
   double_auction: 'buyer',
