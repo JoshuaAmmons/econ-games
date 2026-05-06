@@ -187,7 +187,7 @@ export const PRACTICE_HUMAN_ROLES: Partial<Record<GameType, string>> = {
   cournot: 'firm',
   negative_externality: 'firm',
   asset_bubble: 'trader',
-  discovery_process: 'gatherer',
+  discovery_process: 'producer',
 
   // DA games — human always gets 'buyer' in practice; bots balance into sellers
   double_auction: 'buyer',
