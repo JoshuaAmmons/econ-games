@@ -178,6 +178,8 @@ const ResultsContent: React.FC = () => {
   }
 
   const isDA = DA_GAME_TYPES.includes(data.session.gameType);
+  // Discovery Process stores 'producer' only to satisfy the DB role constraint; players are gatherers
+  const displayRole = (role: string) => (data.session.gameType === 'discovery_process' ? 'gatherer' : role);
   const sortedPlayers = [...data.players]
     .sort((a, b) => Number(b.totalProfit) - Number(a.totalProfit))
     .map((player, i, arr) => {
@@ -334,7 +336,7 @@ const ResultsContent: React.FC = () => {
                     <span className="font-medium">{player.name || 'Anonymous'}</span>
                     {player.isBot && <span className="ml-1 text-xs text-gray-400">(Bot)</span>}
                     <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
-                      {player.role.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim()}
+                      {displayRole(player.role).replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim()}
                     </span>
                     {player.valuation != null && (
                       <span className="ml-1 text-xs text-gray-400">(Value: ${player.valuation})</span>
@@ -443,7 +445,7 @@ const ResultsContent: React.FC = () => {
                                   >
                                     <div>
                                       <span className="font-medium">{player?.name || 'Unknown'}</span>
-                                      <span className="ml-2 text-xs text-gray-400">{player?.role}</span>
+                                      <span className="ml-2 text-xs text-gray-400">{player?.role && displayRole(player.role)}</span>
                                     </div>
                                     <div className="flex items-center gap-4">
                                       <div className="text-xs text-gray-400">
