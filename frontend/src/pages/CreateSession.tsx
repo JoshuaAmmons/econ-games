@@ -113,7 +113,7 @@ const FALLBACK_GAME_TYPES: Array<{
   // Specialized games
   { value: 'comparative_advantage', label: 'Comparative Advantage', description: 'Trade between countries with different productivities', weekNumber: 9, category: 'Specialized', usesValuationCost: false, configFields: [] },
   { value: 'monopoly', label: 'Monopoly', description: 'Single seller sets price on demand curve', weekNumber: 16, category: 'Specialized', usesValuationCost: false, configFields: [] },
-  { value: 'discovery_process', label: 'Exchange & Specialization', description: 'Produce goods, trade, and discover benefits of specialization', weekNumber: 3, category: 'Specialized', usesValuationCost: false, configFields: [] },
+  { value: 'discovery_process', label: 'Exchange & Specialization', description: 'Real-time hunter-gatherer game: hunt risky big game or safe small game, then discover the gains from sharing and exchange', weekNumber: 3, category: 'Specialized', usesValuationCost: false, configFields: [] },
 ];
 
 export const CreateSession: React.FC = () => {

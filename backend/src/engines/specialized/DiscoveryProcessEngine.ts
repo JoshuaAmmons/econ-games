@@ -48,9 +48,9 @@ interface HunterGathererConfig {
   earningsMultiplier: number; // earnings = round(health * this), default 0.01
 
   // Social
-  stunRadius: number;         // px, default 300
-  stunDuration: number;       // ticks, default 7
-  stunCooldown: number;       // ticks, default 4
+  stunRadius: number;         // px, default 300 (also the reach for give/take/pots)
+  stunDuration: number;       // ticks, default 30 (3 s — long enough for a human to act on it)
+  stunCooldown: number;       // ticks, default 60 (> stunDuration so a target can't be chain-stunned)
   enableHit: boolean;         // default false
   hitCost: number;            // health cost to attacker, default 3
   hitDamage: number;          // health damage to target, default 10
@@ -82,6 +82,7 @@ interface PlayerState {
   tugTarget: string | null;      // other player id
   tugInitiator: boolean;         // did this player start the tug?
   tugTickCount: number;          // how many ticks in tug
+  tugAmount: number;             // food at stake in the current tug
   // Per-round earnings
   roundEarnings: number;
 }
@@ -129,6 +130,10 @@ interface RoundState {
 
 const TICK_INTERVAL_MS = 100; // 10 ticks/sec
 const TICKS_PER_SECOND = 10;
+// Bots can't react to a tug-of-war through their scripted actions, so the engine
+// makes them yield after 1–3 s; otherwise a human tugging a bot drains to 0 health.
+const BOT_TUG_YIELD_MIN_TICKS = 10;
+const BOT_TUG_YIELD_MAX_TICKS = 30;
 
 const DEFAULT_CONFIG: HunterGathererConfig = {
   worldWidth: 10080,
@@ -152,8 +157,8 @@ const DEFAULT_CONFIG: HunterGathererConfig = {
   hearthCapacity: 100,
   earningsMultiplier: 0.01,
   stunRadius: 300,
-  stunDuration: 7,
-  stunCooldown: 4,
+  stunDuration: 30,
+  stunCooldown: 60,
   enableHit: false,
   hitCost: 3,
   hitDamage: 10,
@@ -338,6 +343,7 @@ export class DiscoveryProcessEngine implements GameEngine {
         tugTarget: null,
         tugInitiator: false,
         tugTickCount: 0,
+        tugAmount: 0,
         roundEarnings: 0,
       });
     }
@@ -436,15 +442,15 @@ export class DiscoveryProcessEngine implements GameEngine {
 
     // --- Movement ---
     for (const ps of state.players.values()) {
+      // Stun cooldown runs down regardless of what the player is doing
+      if (ps.stunCooldown > 0) ps.stunCooldown--;
+
       // Skip movement if stunned or in tug
       if (ps.stunTimer > 0) {
         ps.stunTimer--;
         continue;
       }
       if (ps.tugTarget) continue;
-
-      // Decrement stun cooldown
-      if (ps.stunCooldown > 0) ps.stunCooldown--;
 
       // Move toward target
       if (ps.target) {
@@ -500,9 +506,66 @@ export class DiscoveryProcessEngine implements GameEngine {
         ps.health = Math.max(0, ps.health - cfg.tugOfWarCost);
       }
     }
+    for (const ps of state.players.values()) {
+      if (ps.isBot && ps.tugTarget && ps.tugTickCount >= this.botYieldTicks(ps.id, state.tick - ps.tugTickCount)) {
+        const ended = this.resolveTug(state, ps);
+        if (ended) {
+          io.to(`market-${sessionCode}`).emit('tug-end', ended);
+          GameActionModel.create(roundId, ps.id, 'yield_tug', {
+            yieldedBy: ps.id, otherPlayer: ended.otherId, initiatorYielded: ended.initiatorYielded, amount: ended.amount,
+          }).catch(e => console.error('[DiscoveryProcess] Error logging bot yield:', e));
+        }
+      }
+    }
 
     // --- Broadcast filtered state to each player ---
     this.broadcastTick(state, io, sessionCode);
+  }
+
+  // ------------------------------------------------------------------
+  // Tug-of-war helpers
+  // ------------------------------------------------------------------
+
+  /** Stable per-tug pseudo-random patience (in ticks) for a bot. */
+  private botYieldTicks(botId: string, tugStartTick: number): number {
+    let h = tugStartTick;
+    for (let i = 0; i < botId.length; i++) h = (h * 31 + botId.charCodeAt(i)) | 0;
+    const span = BOT_TUG_YIELD_MAX_TICKS - BOT_TUG_YIELD_MIN_TICKS;
+    return BOT_TUG_YIELD_MIN_TICKS + (Math.abs(h) % (span + 1));
+  }
+
+  /**
+   * End the yielder's tug-of-war. If the initiator yields, the defender keeps
+   * the food; if the defender yields, the initiator takes the amount at stake.
+   * Returns the tug-end event payload, or null if the yielder wasn't in a tug.
+   */
+  private resolveTug(state: RoundState, yielder: PlayerState) {
+    const other = yielder.tugTarget ? state.players.get(yielder.tugTarget) : undefined;
+    if (!other) return null;
+
+    const initiatorYielded = yielder.tugInitiator;
+    const initiator = initiatorYielded ? yielder : other;
+    const defender = initiatorYielded ? other : yielder;
+
+    let amount = 0;
+    if (!initiatorYielded) {
+      amount = Math.min(initiator.tugAmount, defender.food);
+      defender.food -= amount;
+      initiator.food += amount;
+    }
+
+    for (const p of [yielder, other]) {
+      p.tugTarget = null;
+      p.tugInitiator = false;
+      p.tugTickCount = 0;
+      p.tugAmount = 0;
+    }
+
+    return {
+      yielderId: yielder.id, otherId: other.id,
+      yielderName: yielder.name, otherName: other.name,
+      initiatorYielded, amount,
+    };
   }
 
   // ------------------------------------------------------------------
@@ -539,6 +602,7 @@ export class DiscoveryProcessEngine implements GameEngine {
       ps.tugTarget = null;
       ps.tugInitiator = false;
       ps.tugTickCount = 0;
+      ps.tugAmount = 0;
       ps.stunTimer = 0;
     }
 
@@ -712,10 +776,31 @@ export class DiscoveryProcessEngine implements GameEngine {
           leftZoneEnd: cfg.leftZoneEnd,
           middleZoneEnd: cfg.middleZoneEnd,
         },
+        rules: this.publicRules(cfg),
       };
 
       io.to(`player-${ps.id}`).emit('game-tick', tickData);
     }
+  }
+
+  /** Rule parameters the client needs to draw ranges, label zones, and hide disabled actions. */
+  private publicRules(cfg: HunterGathererConfig) {
+    return {
+      captureRadius: cfg.captureRadius,
+      interactRadius: cfg.stunRadius,
+      chatRadius: cfg.chatRadius,
+      stunSeconds: cfg.stunDuration / TICKS_PER_SECOND,
+      largePreyValue: cfg.largePreyValue,
+      smallPreyValue: cfg.smallPreyValue,
+      largePreyCaptureProb: cfg.largePreyCaptureProb,
+      healthDecay: cfg.healthDecay,
+      hearthCapacity: cfg.hearthCapacity,
+      maxHealth: cfg.maxHealth,
+      earningsMultiplier: cfg.earningsMultiplier,
+      enableHit: cfg.enableHit,
+      enableTugOfWar: cfg.enableTugOfWar,
+      tugOfWarCostPerSec: cfg.tugOfWarCost * TICKS_PER_SECOND,
+    };
   }
 
   // ------------------------------------------------------------------
@@ -800,7 +885,9 @@ export class DiscoveryProcessEngine implements GameEngine {
       case 'stun': {
         if (state.phase !== 'trading') return { success: false, error: 'Can only stun during trading' };
         if (player.stunTimer > 0) return { success: false, error: 'You are stunned' };
-        if (player.stunCooldown > 0) return { success: false, error: 'Stun on cooldown' };
+        if (player.stunCooldown > 0) {
+          return { success: false, error: `Stun recharging — ready in ${Math.ceil(player.stunCooldown / TICKS_PER_SECOND)}s` };
+        }
         if (player.tugTarget) return { success: false, error: 'In tug of war' };
 
         const targetId = action.targetId as string;
@@ -840,11 +927,10 @@ export class DiscoveryProcessEngine implements GameEngine {
         if (!target) return { success: false, error: 'Target not found' };
 
         const d = dist(player.pos, target.pos);
-        if (d > cfg.stunRadius) return { success: false, error: 'Too far' };
+        if (d > cfg.stunRadius) return { success: false, error: 'Too far — move closer to give food' };
 
-        // Target must be stunned to receive
-        if (target.stunTimer <= 0) return { success: false, error: 'Target must be stunned' };
-
+        // Giving is voluntary, so the recipient does NOT need to be stunned
+        // (only taking requires a stun).
         player.food -= amount;
         target.food += amount;
 
@@ -881,9 +967,11 @@ export class DiscoveryProcessEngine implements GameEngine {
           player.tugTarget = targetId;
           player.tugInitiator = true;
           player.tugTickCount = 0;
+          player.tugAmount = amount;
           target.tugTarget = playerId;
           target.tugInitiator = false;
           target.tugTickCount = 0;
+          target.tugAmount = amount;
           target.stunTimer = 0; // Unstun them for the tug
 
           await GameActionModel.create(roundId, playerId, 'take', { targetId, amount, tugStarted: true });
@@ -919,57 +1007,19 @@ export class DiscoveryProcessEngine implements GameEngine {
       case 'yield_tug': {
         if (!player.tugTarget) return { success: false, error: 'Not in tug of war' };
 
-        const other = state.players.get(player.tugTarget);
-        if (!other) return { success: false, error: 'Tug partner not found' };
-
-        // The yielder gives up. If the initiator yields, target keeps food.
-        // If the target yields, initiator takes the food.
-        const initiator = player.tugInitiator ? player : other;
-        const defender = player.tugInitiator ? other : player;
-
-        // Find the original take amount from the action log (default to 1)
-        let takeAmount = 1;
-        try {
-          const actions = await GameActionModel.findByRoundAndType(roundId, 'take');
-          const takeAction = actions.find((a: any) =>
-            a.player_id === initiator.id && a.action_data?.targetId === defender.id && a.action_data?.tugStarted
-          );
-          if (takeAction) takeAmount = (takeAction as any).action_data.amount || 1;
-        } catch (e) { /* use default */ }
-
-        if (player.tugInitiator) {
-          // Initiator yields → nothing happens, food stays with defender
-        } else {
-          // Defender yields → initiator takes food
-          const actual = Math.min(takeAmount, defender.food);
-          defender.food -= actual;
-          initiator.food += actual;
-        }
-
-        // Clear tug state for both
-        player.tugTarget = null;
-        player.tugInitiator = false;
-        player.tugTickCount = 0;
-        other.tugTarget = null;
-        other.tugInitiator = false;
-        other.tugTickCount = 0;
+        const ended = this.resolveTug(state, player);
+        if (!ended) return { success: false, error: 'Tug partner not found' };
 
         await GameActionModel.create(roundId, playerId, 'yield_tug', {
           yieldedBy: playerId,
-          otherPlayer: other.id,
-          initiatorYielded: player.tugInitiator,
+          otherPlayer: ended.otherId,
+          initiatorYielded: ended.initiatorYielded,
+          amount: ended.amount,
         });
 
         return {
           success: true,
-          broadcast: {
-            event: 'tug-end',
-            data: {
-              yielderId: playerId, otherId: other.id,
-              yielderName: player.name, otherName: other.name,
-              initiatorYielded: player.tugInitiator,
-            },
-          },
+          broadcast: { event: 'tug-end', data: ended },
         };
       }
 
@@ -1246,6 +1296,7 @@ export class DiscoveryProcessEngine implements GameEngine {
           width: cfg.worldWidth, height: cfg.worldHeight,
           leftZoneEnd: cfg.leftZoneEnd, middleZoneEnd: cfg.middleZoneEnd,
         },
+        rules: this.publicRules(cfg),
       };
     }
 

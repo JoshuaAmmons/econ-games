@@ -1,4 +1,6 @@
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
+import { DEFAULT_RULES } from './discoveryProcessRules';
+import type { GameRules } from './discoveryProcessRules';
 
 // ============================================================================
 // Types
@@ -37,6 +39,8 @@ export interface WorldInfo {
   middleZoneEnd: number;
 }
 
+export type { GameRules };
+
 export interface YouInfo {
   id: string;
   x: number;
@@ -59,20 +63,22 @@ export interface GameTick {
   prey: TickPrey[];
   pots: TickPot[];
   world: WorldInfo;
+  rules?: GameRules;
 }
 
-export interface ContextMenuAction {
-  type: 'capture_prey' | 'stun' | 'transfer' | 'take' | 'hit' | 'place_pot' | 'deposit_pot' | 'withdraw_pot';
-  targetId?: string;
-  preyId?: string;
-  potId?: string;
-  label: string;
-}
+/** What the player tapped on. */
+export type CanvasTarget =
+  | { kind: 'prey'; id: string }
+  | { kind: 'player'; id: string }
+  | { kind: 'pot'; id: string }
+  | { kind: 'ground'; x: number; y: number };
 
 interface GameCanvasProps {
   tick: GameTick | null;
-  onMoveTo: (x: number, y: number) => void;
-  onContextAction: (actions: ContextMenuAction[], worldX: number, worldY: number) => void;
+  /** Prey currently being chased (drawn with a target marker). */
+  chasePreyId: string | null;
+  /** Called on tap/click (and right-click) with the thing under the pointer and its screen position in the canvas. */
+  onSelect: (target: CanvasTarget, screenX: number, screenY: number) => void;
 }
 
 // ============================================================================
@@ -84,13 +90,15 @@ const PREY_LARGE_RADIUS = 14;
 const PREY_SMALL_RADIUS = 8;
 const POT_RADIUS = 20;
 const MINIMAP_W = 180;
-const MINIMAP_H = 20;
+const MINIMAP_H = 24;
+// Generous tap tolerance so small prey are hittable on a phone
+const PICK_SLOP = 28;
 
 // Colors
 const ZONE_COLORS = {
-  left: 'rgba(220, 60, 60, 0.08)',   // red tint – large prey
-  middle: 'rgba(60, 180, 60, 0.08)', // green tint – trading
-  right: 'rgba(60, 100, 220, 0.08)', // blue tint – small prey
+  left: 'rgba(220, 60, 60, 0.10)',   // red tint – large prey
+  middle: 'rgba(60, 180, 60, 0.10)', // green tint – camp / trading
+  right: 'rgba(60, 100, 220, 0.10)', // blue tint – small prey
 };
 
 const PLAYER_COLOR = '#2563eb';      // blue-600
@@ -100,12 +108,13 @@ const PLAYER_TUG_COLOR = '#dc2626';  // red-600
 const PREY_LARGE_COLOR = '#b45309';  // amber-700
 const PREY_SMALL_COLOR = '#65a30d';  // lime-600
 const POT_COLOR = '#92400e';         // amber-800
+const IN_RANGE_COLOR = '#facc15';    // yellow-400
 
 // ============================================================================
 // Component
 // ============================================================================
 
-export default function GameCanvas({ tick, onMoveTo, onContextAction }: GameCanvasProps) {
+export default function GameCanvas({ tick, chasePreyId, onSelect }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasSize, setCanvasSize] = useState({ w: 800, h: 500 });
@@ -116,6 +125,8 @@ export default function GameCanvas({ tick, onMoveTo, onContextAction }: GameCanv
   const lastTickNum = useRef<number>(-1);
   const snapTime = useRef<number>(0);
   const rafRef = useRef<number>(0);
+  const chaseRef = useRef<string | null>(chasePreyId);
+  useEffect(() => { chaseRef.current = chasePreyId; }, [chasePreyId]);
 
   // Track camera offset
   const cameraRef = useRef({ x: 0, y: 0 });
@@ -145,97 +156,61 @@ export default function GameCanvas({ tick, onMoveTo, onContextAction }: GameCanv
     return () => observer.disconnect();
   }, []);
 
-  // Click handlers
-  const worldFromScreen = useCallback((screenX: number, screenY: number) => {
+  // ---- Hit testing ----
+  const screenPoint = useCallback((clientX: number, clientY: number) => {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    return { sx: clientX - rect.left, sy: clientY - rect.top };
+  }, []);
+
+  const pick = useCallback((sx: number, sy: number): CanvasTarget | null => {
+    const snap = currSnap.current;
+    if (!snap) return null;
     const cam = cameraRef.current;
-    return { x: screenX + cam.x, y: screenY + cam.y };
+    const wx = sx + cam.x;
+    const wy = sy + cam.y;
+    const near = (x: number, y: number, r: number) => Math.hypot(x - wx, y - wy) <= r + PICK_SLOP;
+
+    if (snap.phase === 'hunting') {
+      let best: TickPrey | null = null;
+      let bestD = Infinity;
+      for (const p of snap.prey) {
+        const r = p.type === 'large' ? PREY_LARGE_RADIUS : PREY_SMALL_RADIUS;
+        const d = Math.hypot(p.x - wx, p.y - wy);
+        if (near(p.x, p.y, r) && d < bestD) { best = p; bestD = d; }
+      }
+      if (best) return { kind: 'prey', id: best.id };
+    }
+
+    if (snap.phase === 'trading') {
+      // Closest player or pot under the pointer (a player can be standing on a pot)
+      let best: CanvasTarget | null = null;
+      let bestD = Infinity;
+      for (const p of snap.players) {
+        const d = Math.hypot(p.x - wx, p.y - wy);
+        if (p.id !== snap.you.id && near(p.x, p.y, PLAYER_RADIUS) && d < bestD) { best = { kind: 'player', id: p.id }; bestD = d; }
+      }
+      for (const pot of snap.pots) {
+        const d = Math.hypot(pot.x - wx, pot.y - wy);
+        if (near(pot.x, pot.y, POT_RADIUS) && d < bestD) { best = { kind: 'pot', id: pot.id }; bestD = d; }
+      }
+      if (best) return best;
+    }
+
+    return { kind: 'ground', x: wx, y: wy };
   }, []);
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const sx = e.clientX - rect.left;
-    const sy = e.clientY - rect.top;
-    const world = worldFromScreen(sx, sy);
-    onMoveTo(world.x, world.y);
-  }, [onMoveTo, worldFromScreen]);
-
-  const handleContextMenu = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault();
-    if (!tick) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const sx = e.clientX - rect.left;
-    const sy = e.clientY - rect.top;
-    const world = worldFromScreen(sx, sy);
+    const { sx, sy } = screenPoint(e.clientX, e.clientY);
+    const target = pick(sx, sy);
+    if (target) onSelect(target, sx, sy);
+  }, [onSelect, pick, screenPoint]);
 
-    const actions: ContextMenuAction[] = [];
-
-    // Check if clicking near a prey
-    if (tick.phase === 'hunting') {
-      for (const p of tick.prey) {
-        const dx = p.x - world.x;
-        const dy = p.y - world.y;
-        if (Math.sqrt(dx * dx + dy * dy) < 50) {
-          actions.push({ type: 'capture_prey', preyId: p.id, label: `Capture ${p.type} prey` });
-        }
-      }
-    }
-
-    // Check if clicking near another player
-    if (tick.phase === 'trading') {
-      for (const p of tick.players) {
-        if (p.id === tick.you.id) continue;
-        const dx = p.x - world.x;
-        const dy = p.y - world.y;
-        if (Math.sqrt(dx * dx + dy * dy) < 50) {
-          if (!p.stunned && !p.inTug) {
-            actions.push({ type: 'stun', targetId: p.id, label: `Stun ${p.name}` });
-          }
-          if (p.stunned) {
-            actions.push({ type: 'transfer', targetId: p.id, label: `Give food to ${p.name}` });
-            actions.push({ type: 'take', targetId: p.id, label: `Take food from ${p.name}` });
-          }
-          actions.push({ type: 'hit', targetId: p.id, label: `Hit ${p.name}` });
-        }
-      }
-
-      // Check if clicking near a pot
-      for (const pot of tick.pots) {
-        const dx = pot.x - world.x;
-        const dy = pot.y - world.y;
-        if (Math.sqrt(dx * dx + dy * dy) < 50) {
-          actions.push({ type: 'deposit_pot', potId: pot.id, label: `Deposit into pot (${pot.food} food)` });
-          actions.push({ type: 'withdraw_pot', potId: pot.id, label: `Withdraw from pot (${pot.food} food)` });
-        }
-      }
-
-      // Always offer "place pot" during trading
-      if (actions.length === 0) {
-        actions.push({ type: 'place_pot', label: 'Place a communal pot here' });
-      }
-    }
-
-    if (actions.length > 0) {
-      onContextAction(actions, world.x, world.y);
-    }
-  }, [tick, onContextAction, worldFromScreen]);
-
-  // Touch support
-  const handleTouchStart = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (e.touches.length === 1) {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const touch = e.touches[0];
-      const sx = touch.clientX - rect.left;
-      const sy = touch.clientY - rect.top;
-      const world = worldFromScreen(sx, sy);
-      onMoveTo(world.x, world.y);
-    }
-  }, [onMoveTo, worldFromScreen]);
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const { sx, sy } = screenPoint(e.clientX, e.clientY);
+    const target = pick(sx, sy);
+    e.currentTarget.style.cursor = target && target.kind !== 'ground' ? 'pointer' : 'crosshair';
+  }, [pick, screenPoint]);
 
   // ---- Render loop ----
   useEffect(() => {
@@ -255,8 +230,10 @@ export default function GameCanvas({ tick, onMoveTo, onContextAction }: GameCanv
       }
 
       const { w, h } = canvasSize;
-      canvas.width = w;
-      canvas.height = h;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       // Interpolation factor (0..1 between prev and curr snapshots)
       const elapsed = performance.now() - snapTime.current;
@@ -265,51 +242,99 @@ export default function GameCanvas({ tick, onMoveTo, onContextAction }: GameCanv
       const prev = prevSnap.current;
       const you = snap.you;
       const world = snap.world;
+      const rules = snap.rules ?? DEFAULT_RULES;
+
+      // Interpolated own position (camera follows it)
+      let youX = you.x;
+      let youY = you.y;
+      if (prev?.you) {
+        youX = prev.you.x + (you.x - prev.you.x) * alpha;
+        youY = prev.you.y + (you.y - prev.you.y) * alpha;
+      }
 
       // Camera: center on player
-      const camX = you.x - w / 2;
-      const camY = you.y - h / 2;
+      const camX = youX - w / 2;
+      const camY = youY - h / 2;
       cameraRef.current = { x: camX, y: camY };
 
       ctx.clearRect(0, 0, w, h);
 
-      // ---- Draw zone backgrounds ----
       const toScreen = (wx: number, wy: number) => ({
         x: wx - camX,
         y: wy - camY,
       });
 
-      // Left zone
+      // ---- Draw zone backgrounds ----
       const lx = toScreen(0, 0);
-      const lw = world.leftZoneEnd;
       ctx.fillStyle = ZONE_COLORS.left;
-      ctx.fillRect(lx.x, lx.y, lw, world.height);
+      ctx.fillRect(lx.x, lx.y, world.leftZoneEnd, world.height);
 
-      // Middle zone
       const mx = toScreen(world.leftZoneEnd, 0);
       ctx.fillStyle = ZONE_COLORS.middle;
       ctx.fillRect(mx.x, mx.y, world.middleZoneEnd - world.leftZoneEnd, world.height);
 
-      // Right zone
       const rx = toScreen(world.middleZoneEnd, 0);
       ctx.fillStyle = ZONE_COLORS.right;
       ctx.fillRect(rx.x, rx.y, world.width - world.middleZoneEnd, world.height);
 
+      // World edge
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(lx.x, lx.y, world.width, world.height);
+
       // Zone boundary lines
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
       ctx.lineWidth = 2;
       ctx.setLineDash([8, 4]);
-      const b1 = toScreen(world.leftZoneEnd, 0);
-      ctx.beginPath();
-      ctx.moveTo(b1.x, b1.y);
-      ctx.lineTo(b1.x, b1.y + world.height);
-      ctx.stroke();
-      const b2 = toScreen(world.middleZoneEnd, 0);
-      ctx.beginPath();
-      ctx.moveTo(b2.x, b2.y);
-      ctx.lineTo(b2.x, b2.y + world.height);
-      ctx.stroke();
+      for (const bx of [world.leftZoneEnd, world.middleZoneEnd]) {
+        const b = toScreen(bx, 0);
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y);
+        ctx.lineTo(b.x, b.y + world.height);
+        ctx.stroke();
+      }
       ctx.setLineDash([]);
+
+      // ---- Zone labels (pinned near the bottom of the view so they clear the minimap,
+      //      centered in the visible part of each zone) ----
+      const pct = Math.round(rules.largePreyCaptureProb * 100);
+      const zones = [
+        { from: 0, to: world.leftZoneEnd, color: '#991b1b', title: 'BIG GAME', sub: `${rules.largePreyValue} food each · ${pct}% catch chance` },
+        { from: world.leftZoneEnd, to: world.middleZoneEnd, color: '#166534', title: 'CAMP', sub: snap.phase === 'trading' ? 'Give, share, or take food here' : 'Trading happens here after the hunt' },
+        { from: world.middleZoneEnd, to: world.width, color: '#1e40af', title: 'SMALL GAME', sub: `${rules.smallPreyValue} food each · always caught` },
+      ];
+      ctx.textAlign = 'center';
+      for (const z of zones) {
+        const a = Math.max(toScreen(z.from, 0).x, 0);
+        const b = Math.min(toScreen(z.to, 0).x, w);
+        if (b - a < 120) continue;
+        ctx.font = '11px sans-serif';
+        const half = ctx.measureText(z.sub).width / 2 + 6;
+        const cx = Math.min(Math.max((a + b) / 2, half), w - half);
+        const ty = Math.min(toScreen(0, world.height).y, h) - 30;
+        ctx.fillStyle = z.color;
+        ctx.globalAlpha = 0.75;
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(z.title, cx, ty);
+        ctx.font = '11px sans-serif';
+        ctx.fillText(z.sub, cx, ty + 15);
+        ctx.globalAlpha = 1;
+      }
+
+      // ---- Your reach ring (capture range while hunting, interaction range while trading) ----
+      const selfScreen = toScreen(youX, youY);
+      const reach = snap.phase === 'hunting' ? rules.captureRadius : snap.phase === 'trading' ? rules.interactRadius : 0;
+      if (reach > 0) {
+        ctx.beginPath();
+        ctx.arc(selfScreen.x, selfScreen.y, reach, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.07)';
+        ctx.fill();
+        ctx.setLineDash([6, 6]);
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
 
       // ---- Draw pots ----
       for (const pot of snap.pots) {
@@ -317,24 +342,25 @@ export default function GameCanvas({ tick, onMoveTo, onContextAction }: GameCanv
         ctx.beginPath();
         ctx.arc(sp.x, sp.y, POT_RADIUS, 0, Math.PI * 2);
         ctx.fillStyle = POT_COLOR;
-        ctx.globalAlpha = 0.7;
+        ctx.globalAlpha = 0.85;
         ctx.fill();
         ctx.globalAlpha = 1;
         ctx.strokeStyle = '#451a03';
         ctx.lineWidth = 2;
         ctx.stroke();
-        // Food count
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 11px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(String(pot.food), sp.x, sp.y + 4);
+        ctx.fillStyle = '#451a03';
+        ctx.font = '10px sans-serif';
+        ctx.fillText('food pot', sp.x, sp.y + POT_RADIUS + 12);
       }
 
       // ---- Draw prey ----
       for (const prey of snap.prey) {
         let px = prey.x;
         let py = prey.y;
-        // Interpolate if prev has same prey
         if (prev) {
           const pp = prev.prey.find(p => p.id === prey.id);
           if (pp) {
@@ -345,6 +371,15 @@ export default function GameCanvas({ tick, onMoveTo, onContextAction }: GameCanv
         const sp = toScreen(px, py);
         const r = prey.type === 'large' ? PREY_LARGE_RADIUS : PREY_SMALL_RADIUS;
         const color = prey.type === 'large' ? PREY_LARGE_COLOR : PREY_SMALL_COLOR;
+        const inRange = snap.phase === 'hunting' && Math.hypot(prey.x - you.x, prey.y - you.y) <= rules.captureRadius;
+
+        if (inRange) {
+          ctx.beginPath();
+          ctx.arc(sp.x, sp.y, r + 5, 0, Math.PI * 2);
+          ctx.strokeStyle = IN_RANGE_COLOR;
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        }
 
         ctx.beginPath();
         ctx.arc(sp.x, sp.y, r, 0, Math.PI * 2);
@@ -354,11 +389,25 @@ export default function GameCanvas({ tick, onMoveTo, onContextAction }: GameCanv
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Label
         ctx.fillStyle = '#fff';
         ctx.font = `bold ${prey.type === 'large' ? 10 : 8}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.fillText(prey.type === 'large' ? 'L' : 's', sp.x, sp.y + 3);
+
+        // Chase marker
+        if (prey.id === chaseRef.current) {
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(sp.x, sp.y, r + 10, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(selfScreen.x, selfScreen.y);
+          ctx.lineTo(sp.x, sp.y);
+          ctx.setLineDash([4, 6]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
       }
 
       // ---- Draw other players ----
@@ -391,10 +440,15 @@ export default function GameCanvas({ tick, onMoveTo, onContextAction }: GameCanv
         ctx.fillStyle = '#1f2937';
         ctx.font = 'bold 11px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(p.name, sp.x, sp.y - PLAYER_RADIUS - 6);
+        ctx.fillText(p.name, sp.x, sp.y - PLAYER_RADIUS - 16);
         ctx.font = '10px sans-serif';
-        ctx.fillStyle = '#6b7280';
-        ctx.fillText(`${p.food} food`, sp.x, sp.y - PLAYER_RADIUS + 4);
+        ctx.fillStyle = '#374151';
+        ctx.fillText(`${p.food} food`, sp.x, sp.y - PLAYER_RADIUS - 5);
+        if (p.stunned || p.inTug) {
+          ctx.fillStyle = p.inTug ? PLAYER_TUG_COLOR : '#4b5563';
+          ctx.font = 'bold 10px sans-serif';
+          ctx.fillText(p.inTug ? 'TUG-OF-WAR' : 'STUNNED', sp.x, sp.y + PLAYER_RADIUS + 20);
+        }
 
         // Health bar
         const barW = 30;
@@ -403,24 +457,14 @@ export default function GameCanvas({ tick, onMoveTo, onContextAction }: GameCanv
         const barY = sp.y + PLAYER_RADIUS + 4;
         ctx.fillStyle = '#e5e7eb';
         ctx.fillRect(barX, barY, barW, barH);
-        const healthPct = Math.max(0, Math.min(1, p.health / 100));
+        const healthPct = Math.max(0, Math.min(1, p.health / rules.maxHealth));
         ctx.fillStyle = healthPct > 0.5 ? '#22c55e' : healthPct > 0.25 ? '#eab308' : '#ef4444';
         ctx.fillRect(barX, barY, barW * healthPct, barH);
       }
 
       // ---- Draw current player ----
       {
-        let px = you.x;
-        let py = you.y;
-        if (prev) {
-          const pp = prev.you;
-          if (pp) {
-            px = pp.x + (you.x - pp.x) * alpha;
-            py = pp.y + (you.y - pp.y) * alpha;
-          }
-        }
-        const sp = toScreen(px, py);
-
+        const sp = selfScreen;
         let color = PLAYER_SELF_COLOR;
         if (you.stunned) color = PLAYER_STUNNED_COLOR;
         if (you.inTug) color = PLAYER_TUG_COLOR;
@@ -428,7 +472,7 @@ export default function GameCanvas({ tick, onMoveTo, onContextAction }: GameCanv
         // Glow ring
         ctx.beginPath();
         ctx.arc(sp.x, sp.y, PLAYER_RADIUS + 4, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
         ctx.lineWidth = 3;
         ctx.stroke();
 
@@ -440,20 +484,18 @@ export default function GameCanvas({ tick, onMoveTo, onContextAction }: GameCanv
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Name
         ctx.fillStyle = '#92400e';
         ctx.font = 'bold 12px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('You', sp.x, sp.y - PLAYER_RADIUS - 6);
 
-        // Health bar
         const barW = 30;
         const barH = 4;
         const barX = sp.x - barW / 2;
         const barY = sp.y + PLAYER_RADIUS + 4;
         ctx.fillStyle = '#e5e7eb';
         ctx.fillRect(barX, barY, barW, barH);
-        const healthPct = Math.max(0, Math.min(1, you.health / 100));
+        const healthPct = Math.max(0, Math.min(1, you.health / rules.maxHealth));
         ctx.fillStyle = healthPct > 0.5 ? '#22c55e' : healthPct > 0.25 ? '#eab308' : '#ef4444';
         ctx.fillRect(barX, barY, barW * healthPct, barH);
       }
@@ -461,50 +503,49 @@ export default function GameCanvas({ tick, onMoveTo, onContextAction }: GameCanv
       // ---- Fog of war (darken edges beyond visibility) ----
       const gradient = ctx.createRadialGradient(w / 2, h / 2, w * 0.3, w / 2, h / 2, w * 0.6);
       gradient.addColorStop(0, 'rgba(0,0,0,0)');
-      gradient.addColorStop(1, 'rgba(0,0,0,0.5)');
+      gradient.addColorStop(1, 'rgba(0,0,0,0.45)');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, w, h);
 
       // ---- Minimap ----
-      const mmX = w - MINIMAP_W - 10;
+      const mmW = Math.min(MINIMAP_W, w - 20);
+      const mmX = w - mmW - 10;
       const mmY = 10;
-      const mmScaleX = MINIMAP_W / world.width;
+      const mmScaleX = mmW / world.width;
       const mmScaleY = MINIMAP_H / world.height;
 
-      // Background
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(mmX, mmY, MINIMAP_W, MINIMAP_H);
+      ctx.fillRect(mmX, mmY, mmW, MINIMAP_H);
 
-      // Zone colors on minimap
-      ctx.fillStyle = 'rgba(220,60,60,0.3)';
+      ctx.fillStyle = 'rgba(220,60,60,0.45)';
       ctx.fillRect(mmX, mmY, world.leftZoneEnd * mmScaleX, MINIMAP_H);
-      ctx.fillStyle = 'rgba(60,180,60,0.3)';
+      ctx.fillStyle = 'rgba(60,180,60,0.45)';
       ctx.fillRect(mmX + world.leftZoneEnd * mmScaleX, mmY, (world.middleZoneEnd - world.leftZoneEnd) * mmScaleX, MINIMAP_H);
-      ctx.fillStyle = 'rgba(60,100,220,0.3)';
+      ctx.fillStyle = 'rgba(60,100,220,0.45)';
       ctx.fillRect(mmX + world.middleZoneEnd * mmScaleX, mmY, (world.width - world.middleZoneEnd) * mmScaleX, MINIMAP_H);
 
-      // Players on minimap
       for (const p of snap.players) {
-        const mx = mmX + p.x * mmScaleX;
-        const my = mmY + p.y * mmScaleY;
+        const px = mmX + p.x * mmScaleX;
+        const py = mmY + p.y * mmScaleY;
         ctx.fillStyle = p.id === you.id ? PLAYER_SELF_COLOR : PLAYER_COLOR;
-        ctx.fillRect(mx - 1, my - 1, 3, 3);
+        ctx.fillRect(px - 2, py - 2, p.id === you.id ? 5 : 3, p.id === you.id ? 5 : 3);
       }
 
-      // Viewport box
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 1;
-      ctx.strokeRect(
-        mmX + camX * mmScaleX,
-        mmY + camY * mmScaleY,
-        w * mmScaleX,
-        h * mmScaleY
-      );
+      ctx.strokeRect(mmX + camX * mmScaleX, mmY + camY * mmScaleY, w * mmScaleX, h * mmScaleY);
 
-      // Border
       ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(mmX, mmY, MINIMAP_W, MINIMAP_H);
+      ctx.strokeRect(mmX, mmY, mmW, MINIMAP_H);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.font = '9px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('Big game', mmX + 2, mmY + MINIMAP_H + 10);
+      ctx.textAlign = 'center';
+      ctx.fillText('Camp', mmX + ((world.leftZoneEnd + world.middleZoneEnd) / 2) * mmScaleX, mmY + MINIMAP_H + 10);
+      ctx.textAlign = 'right';
+      ctx.fillText('Small game', mmX + mmW - 2, mmY + MINIMAP_H + 10);
 
       rafRef.current = requestAnimationFrame(render);
     };
@@ -517,13 +558,13 @@ export default function GameCanvas({ tick, onMoveTo, onContextAction }: GameCanv
   }, [canvasSize]);
 
   return (
-    <div ref={containerRef} className="w-full h-full relative" style={{ minHeight: 400 }}>
+    <div ref={containerRef} className="w-full h-full relative" style={{ minHeight: 320 }}>
       <canvas
         ref={canvasRef}
         className="w-full h-full block cursor-crosshair"
         onClick={handleClick}
-        onContextMenu={handleContextMenu}
-        onTouchStart={handleTouchStart}
+        onContextMenu={handleClick}
+        onMouseMove={handleMouseMove}
         style={{ touchAction: 'none' }}
       />
     </div>

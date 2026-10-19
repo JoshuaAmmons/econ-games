@@ -356,7 +356,9 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
         if (result.reply) {
           socket.emit(result.reply.event, result.reply.data);
         }
-        // Broadcasts are handled inside the engine via io parameter
+        if (result.broadcast) {
+          io.to(`market-${sessionCode}`).emit(result.broadcast.event, result.broadcast.data);
+        }
 
       } catch (error) {
         console.error('Error handling action:', error);

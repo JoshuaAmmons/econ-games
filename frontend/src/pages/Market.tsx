@@ -347,6 +347,12 @@ export const Market: React.FC = () => {
 
   const GameUIComponent = getGameUI(gameType);
 
+  // Discovery Process runs its own hunt/camp phase clock inside the game HUD,
+  // and its DB role ('producer') is just a constraint workaround — show 'gatherer'.
+  const isDiscovery = gameType === 'discovery_process';
+  const showHeaderTimer = timeRemaining > 0 && !isDiscovery;
+  const roleLabel = isDiscovery ? 'gatherer' : player?.role;
+
   // Human-readable game names
   const gameNames: Record<string, string> = {
     double_auction: 'Double Auction',
@@ -395,7 +401,7 @@ export const Market: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Floating mobile timer — visible when scrolled */}
-      {timeRemaining > 0 && <Timer seconds={timeRemaining} floating />}
+      {showHeaderTimer && <Timer seconds={timeRemaining} floating />}
 
       {/* Header — responsive two-row layout on mobile */}
       <div className="bg-white shadow-sm border-b safe-top">
@@ -420,10 +426,10 @@ export const Market: React.FC = () => {
             </div>
             <div className="flex items-center gap-2 md:gap-4">
               {/* Timer (visible in header on all sizes; also has floating duplicate for mobile scroll) */}
-              {timeRemaining > 0 && <Timer seconds={timeRemaining} />}
+              {showHeaderTimer && <Timer seconds={timeRemaining} />}
               <div className="text-sm text-gray-600 hidden md:block">
                 <span className="font-medium capitalize px-2 py-0.5 rounded bg-sky-100 text-sky-700">
-                  {player?.role}
+                  {roleLabel}
                 </span>
                 {player?.name && <span className="ml-2">({player.name})</span>}
               </div>
@@ -437,7 +443,7 @@ export const Market: React.FC = () => {
               </span>
             )}
             <span className="font-medium capitalize px-2 py-0.5 rounded bg-sky-100 text-sky-700 text-xs">
-              {player?.role}
+              {roleLabel}
             </span>
             {player?.name && <span className="text-xs text-gray-500">{player.name}</span>}
             <span
