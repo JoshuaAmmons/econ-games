@@ -92,6 +92,9 @@ export class BotService {
   /** Active bot timers per round (for cleanup) */
   private roundTimers = new Map<string, NodeJS.Timeout[]>();
 
+  /** Session that owns each round's timers, so ending one session leaves other sessions' bots running */
+  private roundSessions = new Map<string, string>();
+
   /** Track round start times for DA elapsed-time calculation */
   private roundStartTimes = new Map<string, number>();
 
@@ -226,6 +229,7 @@ export class BotService {
     };
     const timers: NodeJS.Timeout[] = [];
     this.roundStartTimes.set(roundId, Date.now());
+    this.roundSessions.set(roundId, session.id);
 
     if (CONTINUOUS_TRADING_TYPES.has(gameType)) {
       // DA variants and asset_bubble: schedule periodic bid/ask submissions
@@ -333,6 +337,7 @@ export class BotService {
     const existing = this.roundTimers.get(roundId) || [];
     existing.push(timer);
     this.roundTimers.set(roundId, existing);
+    this.roundSessions.set(roundId, session.id);
   }
 
   /**
@@ -345,18 +350,17 @@ export class BotService {
       this.roundTimers.delete(roundId);
     }
     this.roundStartTimes.delete(roundId);
+    this.roundSessions.delete(roundId);
   }
 
   /**
-   * Clean up all state for a session.
+   * Clean up all state for a session. Only this session's rounds: other
+   * sessions (e.g. other students' practice games) keep their bots running.
    */
   onSessionEnd(sessionId: string): void {
-    // Clean up any remaining round timers (iterate all)
-    for (const [roundId, timers] of this.roundTimers) {
-      for (const t of timers) clearTimeout(t);
+    for (const [roundId, owner] of this.roundSessions) {
+      if (owner === sessionId) this.onRoundEnd(roundId);
     }
-    this.roundTimers.clear();
-    this.roundStartTimes.clear();
   }
 
   // ─── Private Helpers ───────────────────────────────────────────────────
