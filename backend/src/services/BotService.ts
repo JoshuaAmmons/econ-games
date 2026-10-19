@@ -5,6 +5,7 @@ import { SessionModel } from '../models/Session';
 import { GameRegistry } from '../engines/GameRegistry';
 import { generateValuations, generateProductionCosts } from './gameLogic';
 import { BotStrategyRegistry } from './botStrategies';
+import { isLiveBotStrategy, type LiveBotStrategy } from './botStrategies/SpecializedBotStrategies';
 
 // Import to ensure all strategies are registered
 import './botStrategies/index';
@@ -251,6 +252,9 @@ export class BotService {
         }, delay);
         timers.push(timer);
       }
+    } else if (isLiveBotStrategy(strategy)) {
+      // Real-time games: bots poll their live view of the round and react to it
+      this.runLiveBots(strategy, bots, roundId, sessionCode, gameType, io, timers);
     } else if (strategy.getSpecializedActions) {
       // Specialized games with custom action sequences
       for (const bot of bots) {
@@ -356,6 +360,84 @@ export class BotService {
   }
 
   // ─── Private Helpers ───────────────────────────────────────────────────
+
+  /**
+   * Drive bots for a real-time game. Every `liveTickMs` each bot reads the
+   * engine's per-player view (getGameState — the same visibility-filtered
+   * snapshot a human gets) and its strategy returns actions to run now.
+   * Archetype-style strategies key off `botIndex`, the bot's position in
+   * creation order, which is stable across rounds of a session.
+   * The loop stops itself once the engine drops the round's state.
+   */
+  private runLiveBots(
+    strategy: LiveBotStrategy,
+    bots: Player[],
+    roundId: string,
+    sessionCode: string,
+    gameType: string,
+    io: Server,
+    timers: NodeJS.Timeout[]
+  ): void {
+    const engine = GameRegistry.get(gameType);
+    const botIds = new Set(bots.map(b => b.id));
+    const memories = new Map<string, Record<string, any>>(bots.map(b => [b.id, {}]));
+    const startedAt = Date.now();
+    let sawRound = false;
+    let stopped = false;
+    let deciding = false;
+
+    const stop = () => {
+      if (stopped) return;
+      stopped = true;
+      clearInterval(interval);
+      this.onRoundEnd(roundId);
+    };
+
+    const decide = async (bot: Player, botIndex: number) => {
+      const view = await engine.getGameState(roundId, bot.id);
+      if (!view?.you) {
+        // Give onRoundStart a moment to build state; after that, no state means the round is over.
+        if (sawRound || Date.now() - startedAt > 10000) stop();
+        return;
+      }
+      sawRound = true;
+
+      const actions = strategy.getLiveActions(bot, view, {
+        botIndex, botIds, memory: memories.get(bot.id)!, now: Date.now(),
+      });
+      for (const action of actions) {
+        if (stopped) return;
+        const result = await engine.handleAction(roundId, bot.id, action, sessionCode, io);
+        // Bots have no socket: relay broadcasts the way socketHandler does for humans.
+        if (result?.broadcast) {
+          io.to(`market-${sessionCode}`).emit(result.broadcast.event, result.broadcast.data);
+        }
+        if (action.type !== 'set_target') {
+          botLog(`[BotService] ${bot.name} ${action.type}: ${result?.success ? 'OK' : result?.error || 'fail'}`);
+        }
+        if (!result?.success) break;
+      }
+    };
+
+    // Bots decide one at a time so each sees what the previous one just did
+    // (two bots reading the same view would both fill the same player's need).
+    const interval = setInterval(async () => {
+      if (stopped || deciding) return; // previous pass still awaiting the DB
+      deciding = true;
+      try {
+        for (const [botIndex, bot] of bots.entries()) {
+          if (stopped) break;
+          await decide(bot, botIndex)
+            .catch(err => console.error(`BotService: live bot error for ${bot.name}:`, err));
+        }
+      } finally {
+        deciding = false;
+      }
+    }, strategy.liveTickMs);
+    timers.push(interval);
+
+    botLog(`[BotService] ${bots.length} live bots running for ${gameType} round ${roundId}`);
+  }
 
   /**
    * Schedule periodic DA bot actions (bid/ask) for a single bot.

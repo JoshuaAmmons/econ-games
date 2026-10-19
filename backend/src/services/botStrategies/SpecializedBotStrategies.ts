@@ -178,76 +178,317 @@ export const sponsoredSearchStrategy: BotStrategy = {
 };
 
 // ─── Discovery Process (Hunter-Gatherer) ──────────────────────────────────
-export const discoveryProcessStrategy: BotStrategy = {
-  getSpecializedActions(player, config) {
-    const actions: Array<{ action: Record<string, any>; delayMs: number }> = [];
-    const huntingDuration = (config.huntingDuration ?? 30) * 1000; // ms
-    const tradingDuration = (config.tradingDuration ?? 60) * 1000;
-    const worldWidth = config.worldWidth ?? 10080;
-    const worldHeight = config.worldHeight ?? 1050;
-    const leftZoneEnd = config.leftZoneEnd ?? 3360;
-    const middleZoneEnd = config.middleZoneEnd ?? 6720;
+//
+// A real-time arena can't be played from a script scheduled at round start:
+// prey move, and what a bot should do in camp depends on what everyone caught.
+// So this strategy uses a live hook instead of getSpecializedActions —
+// BotService polls the engine's per-player view (the same visibility-filtered
+// snapshot a human receives) every `liveTickMs` and runs the returned actions.
 
-    // Hunting phase: pick a side (50/50 large vs small prey) and move toward prey
-    const goLeft = Math.random() < 0.5;
-    const huntX = goLeft
-      ? 100 + Math.random() * (leftZoneEnd - 200)
-      : middleZoneEnd + 100 + Math.random() * (worldWidth - middleZoneEnd - 200);
-    const huntY = 100 + Math.random() * (worldHeight - 200);
+/** What BotService hands a live strategy on every decision. */
+export interface LiveBotContext {
+  /** This bot's position among the session's bots, in creation order (stable across rounds). */
+  botIndex: number;
+  /** Ids of every bot in the session, so a bot can tell humans from bots. */
+  botIds: ReadonlySet<string>;
+  /** Scratch space that persists for this bot until the round ends. */
+  memory: Record<string, any>;
+  /** Current time in ms. */
+  now: number;
+}
 
-    // Move to hunting zone
-    actions.push({
-      action: { type: 'set_target', x: huntX, y: huntY },
-      delayMs: 500 + Math.random() * 1000,
+/** A strategy that reacts to live game state instead of scheduling actions up front. */
+export interface LiveBotStrategy {
+  /** How often BotService asks the bot for a decision, in ms. */
+  liveTickMs: number;
+  getLiveActions(
+    player: Player,
+    view: Record<string, any>,
+    ctx: LiveBotContext
+  ): Array<Record<string, any>>;
+}
+
+export function isLiveBotStrategy(s: BotStrategy | undefined): s is BotStrategy & LiveBotStrategy {
+  return typeof (s as Partial<LiveBotStrategy> | undefined)?.getLiveActions === 'function';
+}
+
+interface DPPoint { x: number; y: number }
+interface DPPlayerView extends DPPoint { id: string; name: string; food: number; health: number; stunned: boolean; inTug: boolean }
+interface DPPreyView extends DPPoint { id: string; type: 'large' | 'small' }
+interface DPPotView extends DPPoint { id: string; ownerId: string; food: number }
+interface DPRules { captureRadius: number; interactRadius: number; healthDecay: number; hearthCapacity: number; maxHealth: number }
+interface DPView {
+  phase: 'hunting' | 'trading' | 'interim';
+  you: DPPoint & { id: string; food: number; health: number; stunned: boolean; inTug: boolean; lockedZone: 'left' | 'right' | null };
+  players: DPPlayerView[];
+  prey: DPPreyView[];
+  pots: DPPotView[];
+  world: { width: number; height: number; leftZoneEnd: number; middleZoneEnd: number };
+  rules: DPRules;
+}
+type DPAction = Record<string, any>;
+
+/**
+ * Round-robin by bot index, so a 4-seat practice session shows one of each:
+ *  - loner: small game only, never gives, deposits, or withdraws (the go-it-alone baseline)
+ *  - coordinator: always hunts large game, sets up a pot at camp, gives its surplus away
+ *  - mixed: gambles on large game only while healthy, otherwise plays safe on small game;
+ *    shares a surplus, draws on pots when short
+ */
+type DPArchetype = 'loner' | 'coordinator' | 'mixed';
+const DP_ARCHETYPES: DPArchetype[] = ['loner', 'coordinator', 'mixed'];
+/** Mixed bots hunt large game only while they can absorb a failed hunt. */
+const DP_MIXED_LARGE_GAME_HEALTH = 80;
+/** Seconds a bot keeps chasing one camp partner before trying someone else. */
+const DP_CHASE_GIVE_UP_MS = 12000;
+const DP_MIN_CHAT_GAP_MS = 1500;
+/** A short bot waits this long in camp for others to fill a pot before asking for food. */
+const DP_ASK_DELAY_MS = 4000;
+
+const dpDist = (a: DPPoint, b: DPPoint) => Math.hypot(a.x - b.x, a.y - b.y);
+
+function dpMinBy<T>(items: T[], score: (t: T) => number): T | undefined {
+  let best: T | undefined;
+  let bestScore = Infinity;
+  for (const item of items) {
+    const s = score(item);
+    if (s < bestScore) { best = item; bestScore = s; }
+  }
+  return best;
+}
+
+/** Food that still raises end-of-round health: the engine applies decay, then caps at maxHealth and hearthCapacity. */
+function dpFoodWanted(health: number, rules: DPRules): number {
+  return Math.max(0, Math.min(rules.maxHealth - (health - rules.healthDecay), rules.hearthCapacity));
+}
+const dpNeed = (p: { food: number; health: number }, rules: DPRules) =>
+  Math.max(0, Math.floor(dpFoodWanted(p.health, rules) - p.food));
+const dpSurplus = (p: { food: number; health: number }, rules: DPRules) =>
+  Math.max(0, Math.floor(p.food - dpFoodWanted(p.health, rules)));
+
+const dpMove = (pt: DPPoint): DPAction => ({ type: 'set_target', x: Math.round(pt.x), y: Math.round(pt.y) });
+
+/** Queue a chat line; dpFlushChat sends them one at a time so bots don't flood camp chat. */
+function dpSay(p: Record<string, any>, message: string): void {
+  (p.chatQueue ??= [] as string[]).push(message);
+}
+
+function dpFlushChat(p: Record<string, any>, now: number): DPAction[] {
+  if (!p.chatQueue?.length || now - (p.lastChatAt ?? -Infinity) < DP_MIN_CHAT_GAP_MS) return [];
+  p.lastChatAt = now;
+  return [{ type: 'chat', message: p.chatQueue.shift() }];
+}
+
+function dpRandomPointIn(side: 'left' | 'middle' | 'right', world: DPView['world']): DPPoint {
+  const [x1, x2] = side === 'left' ? [0, world.leftZoneEnd]
+    : side === 'right' ? [world.middleZoneEnd, world.width]
+    : [world.leftZoneEnd, world.middleZoneEnd];
+  return { x: rand(x1 + 100, x2 - 100), y: rand(100, world.height - 100) };
+}
+
+/** Aim where the prey will be, using its velocity since the last look. */
+function dpLead(p: Record<string, any>, prey: DPPreyView, now: number, world: DPView['world']): DPPoint {
+  const seen = p.lastSeenPrey;
+  p.lastSeenPrey = { id: prey.id, x: prey.x, y: prey.y, t: now };
+  if (!seen || seen.id !== prey.id || now <= seen.t) return prey;
+  const leadMs = 300;
+  const k = leadMs / (now - seen.t);
+  return {
+    x: clamp(prey.x + (prey.x - seen.x) * k, 0, world.width),
+    y: clamp(prey.y + (prey.y - seen.y) * k, 0, world.height),
+  };
+}
+
+function dpHunt(v: DPView, archetype: DPArchetype, mem: Record<string, any>, now: number): DPAction[] {
+  const { you, world, rules } = v;
+  const p = mem.phaseMem;
+
+  // The side is chosen once per round; the engine's zone lock makes it binding anyway.
+  if (!mem.side) {
+    mem.side = archetype === 'loner' ? 'right'
+      : archetype === 'coordinator' ? 'left'
+      : you.health >= DP_MIXED_LARGE_GAME_HEALTH ? 'left' : 'right';
+  }
+  const side: 'left' | 'right' = you.lockedZone ?? mem.side;
+
+  // Short pauses (getting bearings, after each throw) keep bots beatable by a human.
+  p.waitUntil ??= now + rand(500, 1500);
+  if (now < p.waitUntil) return [];
+
+  const wanted = side === 'left' ? 'large' : 'small';
+  const prey = v.prey.filter(q => q.type === wanted);
+  const rivals = v.players.filter(q => q.id !== you.id);
+
+  let target = prey.find(q => q.id === p.preyId);
+  if (!target) {
+    // Nearest prey, but leave one alone if someone else is clearly closer to it.
+    target = dpMinBy(prey, q => {
+      const d = dpDist(you, q);
+      return d + (rivals.some(r => dpDist(r, q) < d * 0.7) ? 600 : 0);
     });
+    p.preyId = target?.id;
+  }
 
-    // Read prey counts from config. The engine assigns sequential IDs:
-    //   prey_1 .. prey_largePreyCount                       → large prey (left zone)
-    //   prey_(largePreyCount+1) .. prey_(largePreyCount+smallPreyCount) → small prey (right zone)
-    const largePreyCount = config.largePrey ?? 20;
-    const smallPreyCount = config.smallPrey ?? 40;
-    const preyIdMin = goLeft ? 1 : largePreyCount + 1;
-    const preyIdRange = goLeft ? largePreyCount : smallPreyCount;
+  if (target) {
+    if (dpDist(you, target) <= rules.captureRadius * 0.9) {
+      p.preyId = undefined;
+      p.waitUntil = now + rand(400, 1200);
+      return [{ type: 'capture_prey', preyId: target.id }];
+    }
+    return [dpMove(dpLead(p, target, now, world))];
+  }
 
-    // Attempt captures periodically during hunting (server validates proximity)
-    for (let i = 0; i < 8; i++) {
-      const preyIdNum = preyIdMin + Math.floor(Math.random() * preyIdRange);
-      actions.push({
-        action: { type: 'capture_prey', preyId: `prey_${preyIdNum}` },
-        delayMs: 3000 + i * 3000 + Math.random() * 2000,
-      });
-      // Also wander a bit
-      const wanderX = goLeft
-        ? 100 + Math.random() * (leftZoneEnd - 200)
-        : middleZoneEnd + 100 + Math.random() * (worldWidth - middleZoneEnd - 200);
-      const wanderY = 100 + Math.random() * (worldHeight - 200);
-      actions.push({
-        action: { type: 'set_target', x: wanderX, y: wanderY },
-        delayMs: 2500 + i * 3000 + Math.random() * 1000,
-      });
+  // Nothing in sight: sweep the hunting ground.
+  if (!p.explore || dpDist(you, p.explore) < 60) p.explore = dpRandomPointIn(side, world);
+  return [dpMove(p.explore)];
+}
+
+function dpCamp(
+  v: DPView,
+  archetype: DPArchetype,
+  mem: Record<string, any>,
+  ctx: LiveBotContext
+): DPAction[] {
+  const { you, world, rules } = v;
+  const { now, botIds } = ctx;
+  const p = mem.phaseMem;
+  const camp = { x: (world.leftZoneEnd + world.middleZoneEnd) / 2, y: world.height / 2 };
+  const reach = rules.interactRadius * 0.8;
+  const others = v.players.filter(q => q.id !== you.id);
+  p.deposited ??= {} as Record<string, number>;
+
+  // Thank whoever topped us up (any rise in food we didn't withdraw ourselves).
+  if (p.lastFood !== undefined && you.food > p.lastFood && archetype !== 'loner') dpSay(p, 'Thanks for the food!');
+  p.lastFood = you.food;
+
+  p.waitUntil ??= now + rand(1000, 2500);
+  if (now < p.waitUntil) return [];
+
+  if (archetype === 'loner') {
+    // Never trades. Says so once, then keeps to the edge of camp nearest its hunting ground.
+    const spot = (p.spot ??= { x: world.middleZoneEnd - 120, y: rand(100, world.height - 100) });
+    if (!p.saidHello) { p.saidHello = true; dpSay(p, 'I hunt alone. Keeping what I caught.'); }
+    return [dpMove(spot)];
+  }
+
+  // The coordinator's first job in camp: set up a shared pot in the middle.
+  const myPot = v.pots.find(q => q.ownerId === you.id);
+  if (archetype === 'coordinator' && !myPot) {
+    if (dpDist(you, camp) > 60) return [dpMove(camp)];
+    if (now - (p.potTriedAt ?? -Infinity) < 3000) return [];
+    if (p.potTriedAt === undefined) dpSay(p, 'Pot is in the middle of camp — leave spare food, take what you need.');
+    p.potTriedAt = now;
+    return [{ type: 'place_pot' }];
+  }
+
+  const surplus = dpSurplus(you, rules);
+  const need = dpNeed(you, rules);
+
+  if (surplus > 0) {
+    // Gift needy humans directly, so a student sees exchange happen to them.
+    const needyHumans = others
+      .filter(q => !botIds.has(q.id) && !q.inTug && dpNeed(q, rules) > 0 && !(p.gaveUpOn?.[q.id]))
+      .sort((a, b) => dpNeed(b, rules) - dpNeed(a, rules));
+    const pot = myPot ?? dpMinBy(v.pots, q => dpDist(you, q));
+    const needyBots = pot ? [] : others
+      .filter(q => botIds.has(q.id) && !q.inTug && dpNeed(q, rules) > 0 && !(p.gaveUpOn?.[q.id]))
+      .sort((a, b) => dpNeed(b, rules) - dpNeed(a, rules));
+    // Only settle for a bot or the pot from the middle of camp, where every human is in view.
+    if (!needyHumans.length && dpDist(you, camp) > rules.interactRadius) return [dpMove(camp)];
+    const recipient = needyHumans[0] ?? needyBots[0];
+
+    if (recipient) {
+      if (p.chasing !== recipient.id) { p.chasing = recipient.id; p.chaseSince = now; }
+      if (now - p.chaseSince > DP_CHASE_GIVE_UP_MS) {
+        (p.gaveUpOn ??= {})[recipient.id] = true;
+        return [];
+      }
+      if (dpDist(you, recipient) > reach) return [dpMove(recipient)];
+      const amount = Math.min(surplus, dpNeed(recipient, rules));
+      // Practice mode names the human "You", so only bots are addressed by name.
+      const offer = archetype === 'coordinator'
+        ? `take ${amount} food — I caught more than I can eat.`
+        : `here's ${amount} spare food for you.`;
+      dpSay(p, botIds.has(recipient.id)
+        ? `${recipient.name}, ${offer}`
+        : offer.charAt(0).toUpperCase() + offer.slice(1));
+      return [{ type: 'transfer', targetId: recipient.id, amount }];
     }
 
-    // Trading phase: move to center
-    const tradeStartMs = huntingDuration + 1000;
-    const centerX = (leftZoneEnd + middleZoneEnd) / 2 + (Math.random() - 0.5) * 400;
-    const centerY = worldHeight / 2 + (Math.random() - 0.5) * 300;
-
-    actions.push({
-      action: { type: 'set_target', x: centerX, y: centerY },
-      delayMs: tradeStartMs,
-    });
-
-    // Wander in middle zone during trading
-    for (let i = 0; i < 5; i++) {
-      const wx = leftZoneEnd + 100 + Math.random() * (middleZoneEnd - leftZoneEnd - 200);
-      const wy = 100 + Math.random() * (worldHeight - 200);
-      actions.push({
-        action: { type: 'set_target', x: wx, y: wy },
-        delayMs: tradeStartMs + 5000 + i * 10000 + Math.random() * 5000,
-      });
+    // Nobody visibly short: leave the rest in a pot for whoever needs it later.
+    if (pot) {
+      if (dpDist(you, pot) > reach) return [dpMove(pot)];
+      p.deposited[pot.id] = (p.deposited[pot.id] ?? 0) + surplus;
+      dpSay(p, `Left ${surplus} spare food in the pot — take what you need.`);
+      return [{ type: 'deposit_pot', potId: pot.id, amount: surplus }];
     }
+  } else if (need > 0) {
+    // Short: draw on food other people left in a pot.
+    const pot = dpMinBy(
+      v.pots.filter(q => q.food - (p.deposited[q.id] ?? 0) > 0),
+      q => dpDist(you, q)
+    );
+    if (pot) {
+      if (dpDist(you, pot) > reach) return [dpMove(pot)];
+      const amount = Math.min(need, pot.food - (p.deposited[pot.id] ?? 0));
+      p.lastFood = you.food + amount;
+      p.chatQueue = (p.chatQueue ?? []).filter((m: string) => m !== p.askLine); // no longer true
+      dpSay(p, `Took ${amount} food from the pot. Thank you, whoever filled it.`);
+      return [{ type: 'withdraw_pot', potId: pot.id, amount }];
+    }
+    if (!p.askedForHelp && others.length > 0 && now > p.waitUntil + DP_ASK_DELAY_MS) {
+      // Ask within earshot (and giving range) of a human, then stay close by.
+      const human = dpMinBy(others.filter(q => !botIds.has(q.id)), q => dpDist(you, q));
+      p.approachSince ??= now;
+      if (human && dpDist(you, human) > reach && now - p.approachSince < DP_CHASE_GIVE_UP_MS) {
+        return [dpMove(human)];
+      }
+      p.askedNear = human?.id;
+      p.askedAt = now;
+      p.askedForHelp = true;
+      p.idle = undefined; // hang around the person we asked, not the old spot
+      p.askLine = archetype === 'coordinator'
+        ? `Came back empty-handed — I could use ${need} food if anyone has extra.`
+        : `Rough hunt. Short ${need} food — anyone have spare?`;
+      dpSay(p, p.askLine);
+    }
+  }
 
-    return actions;
+  // Nothing to do: mill about the middle of camp (or, while still short, near whoever we asked).
+  const askedHuman = need > 0 && now - p.askedAt < DP_CHASE_GIVE_UP_MS
+    ? others.find(q => q.id === p.askedNear)
+    : undefined;
+  if (askedHuman && dpDist(you, askedHuman) > reach) return [dpMove(askedHuman)];
+  if (!p.idle || now > p.idleUntil) {
+    const base = askedHuman ?? myPot ?? camp;
+    p.idle = { x: base.x + rand(-150, 150), y: clamp(base.y + rand(-120, 120), 50, world.height - 50) };
+    p.idleUntil = now + rand(3000, 6000);
+  }
+  return [dpMove(p.idle)];
+}
+
+export const discoveryProcessStrategy: BotStrategy & LiveBotStrategy = {
+  liveTickMs: 250,
+
+  getLiveActions(_player, view, ctx) {
+    const v = view as DPView;
+    if (!v.you || !v.rules || !v.world) return [];
+    const mem = ctx.memory;
+    if (mem.phase !== v.phase) {
+      mem.phase = v.phase;
+      mem.phaseMem = {};
+    }
+    // Stuns wear off on their own; the engine makes bots yield a tug-of-war.
+    if (v.you.stunned || v.you.inTug) return [];
+
+    const archetype = DP_ARCHETYPES[ctx.botIndex % DP_ARCHETYPES.length];
+    if (v.phase === 'hunting') return dpHunt(v, archetype, mem, ctx.now);
+    if (v.phase === 'trading') {
+      const actions = dpCamp(v, archetype, mem, ctx);
+      // Chat goes first: it can't fail in camp, so a failed move/gift never swallows a queued line.
+      return [...dpFlushChat(mem.phaseMem, ctx.now), ...actions];
+    }
+    return [];
   },
 };
 
