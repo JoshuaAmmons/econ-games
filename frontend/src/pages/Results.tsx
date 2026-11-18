@@ -20,6 +20,7 @@ import {
 import { gameInstructions } from '../games/gameInstructions';
 import toast from 'react-hot-toast';
 import { AdminPasswordGate } from '../components/shared/AdminPasswordGate';
+import { moneyFormatter } from '../components/charts/chartUtils';
 
 const DA_GAME_TYPES = ['double_auction', 'double_auction_tax', 'double_auction_price_controls'];
 
@@ -178,6 +179,7 @@ const ResultsContent: React.FC = () => {
   }
 
   const isDA = DA_GAME_TYPES.includes(data.session.gameType);
+  const money = moneyFormatter(data.session.gameType);   // cents for Asset Bubble, dollars elsewhere
   // Discovery Process stores 'producer' only to satisfy the DB role constraint; players are gatherers
   const displayRole = (role: string) => (data.session.gameType === 'discovery_process' ? 'gatherer' : role);
   const sortedPlayers = [...data.players]
@@ -288,14 +290,14 @@ const ResultsContent: React.FC = () => {
           <Card>
             <div className="text-center">
               <TrendingUp className="w-6 h-6 mx-auto text-green-600 mb-1" />
-              <div className={`text-2xl font-bold ${Number(data.stats.avgProfit) > 0 ? 'text-green-600' : Number(data.stats.avgProfit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>${Number(data.stats.avgProfit).toFixed(2)}</div>
+              <div className={`text-2xl font-bold ${Number(data.stats.avgProfit) > 0 ? 'text-green-600' : Number(data.stats.avgProfit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>{money(data.stats.avgProfit)}</div>
               <div className="text-xs text-gray-500">Average Profit</div>
             </div>
           </Card>
           <Card>
             <div className="text-center">
               <Trophy className="w-6 h-6 mx-auto text-yellow-500 mb-1" />
-              <div className={`text-2xl font-bold ${Number(data.stats.maxProfit) > 0 ? 'text-green-600' : Number(data.stats.maxProfit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>${Number(data.stats.maxProfit).toFixed(2)}</div>
+              <div className={`text-2xl font-bold ${Number(data.stats.maxProfit) > 0 ? 'text-green-600' : Number(data.stats.maxProfit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>{money(data.stats.maxProfit)}</div>
               <div className="text-xs text-gray-500">Highest Profit</div>
             </div>
           </Card>
@@ -303,7 +305,7 @@ const ResultsContent: React.FC = () => {
             <div className="text-center">
               <TrendingDown className="w-6 h-6 mx-auto text-red-500 mb-1" />
               <div className={`text-2xl font-bold ${Number(data.stats.minProfit) > 0 ? 'text-green-600' : Number(data.stats.minProfit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
-                ${Number(data.stats.minProfit).toFixed(2)}
+                {money(data.stats.minProfit)}
               </div>
               <div className="text-xs text-gray-500">Lowest Profit</div>
             </div>
@@ -349,7 +351,7 @@ const ResultsContent: React.FC = () => {
                 <span className={`text-lg font-bold font-mono ${
                   Number(player.totalProfit) > 0 ? 'text-green-600' : Number(player.totalProfit) < 0 ? 'text-red-600' : 'text-gray-500'
                 }`}>
-                  ${Number(player.totalProfit).toFixed(2)}
+                  {money(player.totalProfit)}
                 </span>
               </div>
             ))}
@@ -456,7 +458,7 @@ const ResultsContent: React.FC = () => {
                                           .join(' | ')}
                                       </div>
                                       <span className={`font-mono font-bold ${Number(result.profit) > 0 ? 'text-green-600' : Number(result.profit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
-                                        ${Number(result.profit).toFixed(2)}
+                                        {money(result.profit)}
                                       </span>
                                     </div>
                                   </div>

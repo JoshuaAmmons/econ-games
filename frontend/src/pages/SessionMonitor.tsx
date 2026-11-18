@@ -9,6 +9,7 @@ import { useSocket } from '../hooks/useSocket';
 import type { Session, Player, Round } from '../types';
 import { ArrowLeft, Play, Square, Users, Copy, Check, SkipForward, Clock, BarChart3, Download } from 'lucide-react';
 import { GameInstructions } from '../components/shared/GameInstructions';
+import { moneyFormatter } from '../components/charts/chartUtils';
 import { AdminPasswordGate } from '../components/shared/AdminPasswordGate';
 import { QRCodeSVG } from 'qrcode.react';
 import { toPng } from 'html-to-image';
@@ -459,6 +460,7 @@ const SessionMonitorContent: React.FC = () => {
   };
 
   const isDA = DA_GAME_TYPES.includes(session.game_type);
+  const money = moneyFormatter(session.game_type);   // cents for Asset Bubble, dollars elsewhere
   const completedRounds = rounds.filter(r => r.status === 'completed').length;
 
   // Group players by role (generic for all game types)
@@ -696,6 +698,13 @@ const SessionMonitorContent: React.FC = () => {
           </Card>
         )}
 
+        {session.game_type === 'asset_bubble' && (
+          <p className="text-sm text-gray-500 mb-2">
+            Players are ranked by profit so far, counting each share still held at its fundamental value (the dividends
+            still expected). It updates at the end of each period; after the last period it is the final profit.
+          </p>
+        )}
+
         {/* Players - grouped by role */}
         <div className={`grid grid-cols-1 ${roleGroups.size > 1 ? 'md:grid-cols-2' : ''} gap-6`}>
           {Array.from(roleGroups.entries()).map(([role, rolePlayers]) => (
@@ -727,7 +736,7 @@ const SessionMonitorContent: React.FC = () => {
                       <span className={`font-mono font-medium ${
                         profit >= 0 ? 'text-green-700' : 'text-red-700'
                       }`}>
-                        ${profit.toFixed(2)}
+                        {money(profit)}
                       </span>
                     </div>
                       );

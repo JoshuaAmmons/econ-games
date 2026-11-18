@@ -988,13 +988,15 @@ export class AssetBubbleEngine implements GameEngine {
         [JSON.stringify({ cash: portfolio.cash, shares: portfolio.shares }), player.id]
       );
 
-      // On final round: update total_profit to reflect total wealth change
-      if (isFinalRound) {
-        await pool.query(
-          'UPDATE players SET total_profit = $1 WHERE id = $2',
-          [Math.round(roundProfit * 100) / 100, player.id]
-        );
-      }
+      // Every period: total_profit is the profit so far with the shares still held valued at the fundamental
+      // value (the dividends still expected), so the instructor's monitor ranks players during the game rather than
+      // showing zero until the end. After the last period the value is 0, so it ends equal to final cash minus
+      // starting cash, as before.
+      const markedProfit = portfolio.cash - startingCash + portfolio.shares * fundamentalValueAfter;
+      await pool.query(
+        'UPDATE players SET total_profit = $1 WHERE id = $2',
+        [Math.round(markedProfit * 100) / 100, player.id]
+      );
     }
 
     // 6. Broadcast round-end summary with dividend info
