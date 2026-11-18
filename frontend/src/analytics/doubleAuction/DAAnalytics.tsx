@@ -8,31 +8,34 @@ import { ChartCard } from '../../components/charts/ChartCard';
 import { CHART_COLORS, CHART_HEIGHT, CHART_MARGINS, formatDollar } from '../../components/charts/chartUtils';
 import type { AnalyticsProps } from '../AnalyticsRegistry';
 
+/** Competitive equilibrium (price, quantity, maximum surplus) from the players' valuations and costs */
+function computeEquilibrium(players: AnalyticsProps['data']['players']) {
+  const buyers = players.filter(p => p.role === 'buyer' && p.valuation != null).map(p => p.valuation!);
+  const sellers = players.filter(p => p.role === 'seller' && p.productionCost != null).map(p => p.productionCost!);
+  if (buyers.length === 0 || sellers.length === 0) return null;
+
+  const demand = [...buyers].sort((a, b) => b - a);
+  const supply = [...sellers].sort((a, b) => a - b);
+
+  let eqPrice = 0;
+  let eqQty = 0;
+  for (let i = 0; i < Math.min(demand.length, supply.length); i++) {
+    if (demand[i] >= supply[i]) {
+      eqQty = i + 1;
+      eqPrice = (demand[i] + supply[i]) / 2;
+    } else break;
+  }
+
+  const maxSurplus = demand.slice(0, eqQty).reduce((s, v, i) => s + (v - supply[i]), 0);
+  return { price: eqPrice, quantity: eqQty, maxSurplus, demand, supply };
+}
+
 const DAAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) => {
   const gameConfig = data.session.gameConfig || {};
   const gameType = data.session.gameType;
 
   // Compute equilibrium from player valuations/costs
-  const equilibrium = useMemo(() => {
-    const buyers = data.players.filter(p => p.role === 'buyer' && p.valuation != null).map(p => p.valuation!);
-    const sellers = data.players.filter(p => p.role === 'seller' && p.productionCost != null).map(p => p.productionCost!);
-    if (buyers.length === 0 || sellers.length === 0) return null;
-
-    const demand = [...buyers].sort((a, b) => b - a);
-    const supply = [...sellers].sort((a, b) => a - b);
-
-    let eqPrice = 0;
-    let eqQty = 0;
-    for (let i = 0; i < Math.min(demand.length, supply.length); i++) {
-      if (demand[i] >= supply[i]) {
-        eqQty = i + 1;
-        eqPrice = (demand[i] + supply[i]) / 2;
-      } else break;
-    }
-
-    const maxSurplus = demand.slice(0, eqQty).reduce((s, v, i) => s + (v - supply[i]), 0);
-    return { price: eqPrice, quantity: eqQty, maxSurplus, demand, supply };
-  }, [data.players]);
+  const equilibrium = useMemo(() => computeEquilibrium(data.players), [data.players]);
 
   // Trade price time series data
   const tradeTimeSeries = useMemo(() => {
@@ -65,22 +68,27 @@ const DAAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) => {
     return points;
   }, [equilibrium]);
 
-  // Per-round efficiency
+  // Per-round efficiency. A round's maximum surplus counts only the players in the market by the
+  // end of that round, so a student who joined late does not change the earlier rounds.
   const efficiencyData = useMemo(() => {
     if (!equilibrium) return [];
     return completedRounds.map(round => {
+      const present = data.players.filter(p => !p.lateJoinedAt || !round.endedAt
+        || new Date(p.lateJoinedAt).getTime() <= new Date(round.endedAt).getTime());
+      const eq = present.length === data.players.length ? equilibrium : computeEquilibrium(present);
+      const maxSurplus = eq ? eq.maxSurplus : 0;
       const realized = round.trades
         ? round.trades.reduce((s, t) => s + Number(t.buyerProfit) + Number(t.sellerProfit), 0)
         : 0;
-      const efficiency = equilibrium.maxSurplus > 0 ? (realized / equilibrium.maxSurplus) * 100 : 0;
+      const efficiency = maxSurplus > 0 ? (realized / maxSurplus) * 100 : 0;
       return {
         round: `R${round.roundNumber}`,
         realized: parseFloat(realized.toFixed(2)),
-        maximum: parseFloat(equilibrium.maxSurplus.toFixed(2)),
+        maximum: parseFloat(maxSurplus.toFixed(2)),
         efficiency: parseFloat(efficiency.toFixed(1)),
       };
     });
-  }, [completedRounds, equilibrium]);
+  }, [completedRounds, equilibrium, data.players]);
 
   // Price convergence
   const convergenceData = useMemo(() => {

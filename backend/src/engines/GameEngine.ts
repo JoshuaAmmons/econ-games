@@ -188,4 +188,14 @@ export interface GameEngine {
     sessionCode: string,
     io: Server
   ): Promise<void>;
+
+  /**
+   * Called after a student joins a session that has already started (a late joiner).
+   * Engines that keep per-player state for the running round add the player here.
+   */
+  onLateJoin?(
+    session: import('../types').Session,
+    player: import('../types').Player,
+    io: Server
+  ): Promise<void>;
 }

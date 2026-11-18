@@ -114,7 +114,15 @@ export class PlayerModel {
       role: string;
       valueColumn?: 'valuation' | 'production_cost';
       value?: number;
-    }
+      gameData?: Record<string, any>;
+    },
+    /**
+     * late: the session has started (sets late_joined_at, in lock order).
+     * capacity: 'all' counts every player against market_size (the default); 'humans' counts
+     * students only (a running session with bots, which fill every seat at Start); 'none' skips
+     * the check (a bot created as a late joiner's partner).
+     */
+    opts: { late?: boolean; capacity?: 'all' | 'humans' | 'none' } = {}
   ): Promise<Player | null> {
     const client = await pool.connect();
     try {
@@ -129,30 +137,40 @@ export class PlayerModel {
       );
       const existingPlayers = existingResult.rows;
 
-      if (existingPlayers.length >= marketSize) {
+      const capacity = opts.capacity ?? 'all';
+      const counted = capacity === 'humans'
+        ? existingPlayers.filter((p) => !p.is_bot).length
+        : existingPlayers.length;
+      if (capacity !== 'none' && counted >= marketSize) {
         await client.query('ROLLBACK');
         return null; // Session is full
       }
 
       // Let the caller decide the role based on the locked player list
-      const { role, valueColumn, value } = roleAssigner(existingPlayers);
+      const { role, valueColumn, value, gameData } = roleAssigner(existingPlayers);
 
-      let result;
+      const columns = ['session_id', 'name', 'role', 'is_bot'];
+      const params: any[] = [sessionId, name, role, isBot];
       if (valueColumn && value !== undefined) {
-        result = await client.query<Player>(
-          `INSERT INTO players (session_id, name, role, ${valueColumn}, is_bot)
-           VALUES ($1, $2, $3, $4, $5)
-           RETURNING *`,
-          [sessionId, name, role, value, isBot]
-        );
-      } else {
-        result = await client.query<Player>(
-          `INSERT INTO players (session_id, name, role, is_bot)
-           VALUES ($1, $2, $3, $4)
-           RETURNING *`,
-          [sessionId, name, role, isBot]
-        );
+        columns.push(valueColumn);
+        params.push(value);
       }
+      if (gameData) {
+        columns.push('game_data');
+        params.push(JSON.stringify(gameData));
+      }
+      const placeholders = params.map((_, i) => `$${i + 1}`);
+      if (opts.late) {
+        // clock_timestamp(), not NOW(): taken under the session lock, so it orders late joiners by arrival
+        columns.push('late_joined_at');
+        placeholders.push('clock_timestamp()');
+      }
+      const result = await client.query<Player>(
+        `INSERT INTO players (${columns.join(', ')})
+         VALUES (${placeholders.join(', ')})
+         RETURNING *`,
+        params
+      );
 
       await client.query('COMMIT');
       return result.rows[0];

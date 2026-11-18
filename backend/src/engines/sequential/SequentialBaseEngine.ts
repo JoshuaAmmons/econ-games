@@ -12,6 +12,7 @@ import { GameResultModel } from '../../models/GameResult';
 import { PlayerModel } from '../../models/Player';
 import { RoundModel } from '../../models/Round';
 import { SessionModel } from '../../models/Session';
+import type { Player, Session } from '../../types';
 
 /**
  * Base engine for two-stage sequential games.
@@ -108,8 +109,13 @@ export abstract class SequentialBaseEngine implements GameEngine {
 
   /**
    * Build (or retrieve cached) stable pairings for a session.
-   * Uses ALL players (including inactive) sorted by ID within each role group
-   * so that pairings never shift when a player disconnects.
+   * Uses ALL players (including inactive) so that pairings never shift when a player disconnects.
+   *
+   * Players present at Start are paired by ID within each role group, as always. Late joiners
+   * (late_joined_at set) are then matched in arrival order: each takes the longest-waiting
+   * unmatched player of the other role (the odd player out at Start first), or waits for the
+   * next late joiner. Adding a late joiner therefore never changes a pair already formed, and
+   * the same database state always rebuilds the same pairs (the cache is cleared every round).
    */
   private async getOrBuildPairings(sessionId: string): Promise<Map<string, string>> {
     const existing = this.sessionPairings.get(sessionId);
@@ -119,10 +125,11 @@ export abstract class SequentialBaseEngine implements GameEngine {
 
     // Use findBySession (ALL players, not just active) for stability
     const allPlayers = await PlayerModel.findBySession(sessionId);
-    const firstMovers = allPlayers
+    const atStart = allPlayers.filter(p => !p.late_joined_at);
+    const firstMovers = atStart
       .filter(p => p.role === firstMoverRole)
       .sort((a, b) => a.id.localeCompare(b.id));
-    const secondMovers = allPlayers
+    const secondMovers = atStart
       .filter(p => p.role === secondMoverRole)
       .sort((a, b) => a.id.localeCompare(b.id));
 
@@ -133,8 +140,62 @@ export abstract class SequentialBaseEngine implements GameEngine {
       pairMap.set(secondMovers[i].id, firstMovers[i].id);
     }
 
+    // Late joiners, in arrival order, matched with whoever has waited longest
+    const waitingFirst = firstMovers.slice(numPairs).map(p => p.id);
+    const waitingSecond = secondMovers.slice(numPairs).map(p => p.id);
+    const lateJoiners = allPlayers
+      .filter(p => p.late_joined_at)
+      .sort((a, b) =>
+        new Date(a.late_joined_at as any).getTime() - new Date(b.late_joined_at as any).getTime()
+        || a.id.localeCompare(b.id));
+    for (const p of lateJoiners) {
+      if (p.role !== firstMoverRole && p.role !== secondMoverRole) continue;
+      const isFirst = p.role === firstMoverRole;
+      const other = isFirst ? waitingSecond : waitingFirst;
+      const partner = other.shift();
+      if (partner) {
+        pairMap.set(p.id, partner);
+        pairMap.set(partner, p.id);
+      } else {
+        (isFirst ? waitingFirst : waitingSecond).push(p.id);
+      }
+    }
+
     this.sessionPairings.set(sessionId, pairMap);
     return pairMap;
+  }
+
+  /**
+   * A student joined after Start. Pair them with whoever is waiting for a partner; if no one is
+   * waiting and the session has bots, give them a bot of the other role. Tell both partners.
+   */
+  async onLateJoin(session: Session, player: Player, io: Server): Promise<void> {
+    this.sessionPairings.delete(session.id);
+    let partnerId = await this.findPartner(session.id, player.id);
+
+    if (!partnerId && session.bot_enabled) {
+      const [firstMoverRole, secondMoverRole] = this.roles();
+      const botCount = (await PlayerModel.findBySession(session.id)).filter(p => p.is_bot).length;
+      const bot = await PlayerModel.createWithRoleAssignment(
+        session.id,
+        session.market_size,
+        `Bot ${botCount + 1}`,
+        true,
+        () => ({ role: player.role === firstMoverRole ? secondMoverRole : firstMoverRole }),
+        { late: true, capacity: 'none' }
+      );
+      this.sessionPairings.delete(session.id);
+      partnerId = await this.findPartner(session.id, player.id);
+      if (bot) {
+        const { BotService } = await import('../../services/BotService');
+        await BotService.getInstance().onLateBotJoined(bot, session, io);
+      }
+    }
+
+    if (partnerId) {
+      io.to(`player-${partnerId}`).emit('pairing-update', { paired: true });
+      io.to(`player-${player.id}`).emit('pairing-update', { paired: true });
+    }
   }
 
   /**
@@ -307,9 +368,11 @@ export abstract class SequentialBaseEngine implements GameEngine {
     this.resolvingRounds.add(roundId);
 
     try {
-      // Double-check: if results already exist, skip
+      // Pairs already resolved this round keep their results. A pair formed by late joiners can
+      // finish after the rest of the room has been resolved; it is then resolved on its own.
       const existingResults = await GameResultModel.findByRound(roundId);
-      if (existingResults.length > 0) return;
+      const resolvedIds = new Set(existingResults.map(r => r.player_id));
+      const incremental = existingResults.length > 0;
 
       const config = session.game_config || {};
       const [firstMoverRole, secondMoverRole] = this.roles();
@@ -340,6 +403,7 @@ export abstract class SequentialBaseEngine implements GameEngine {
 
         const sm = allPlayersEver.find(p => p.id === partnerId);
         if (!sm) continue;
+        if (resolvedIds.has(fm.id) || resolvedIds.has(sm.id)) continue; // resolved earlier this round
 
         const fmAction = firstMoveActions.find(a => a.player_id === fm.id);
         const smAction = secondMoveActions.find(a => a.player_id === sm.id);
@@ -405,6 +469,20 @@ export abstract class SequentialBaseEngine implements GameEngine {
         // If both are active but one hasn't submitted yet, skip (timer will eventually resolve)
       }
 
+      if (incremental) {
+        // Late pairs resolved after the room: tell only their players, with every pair of the
+        // round so their results table is complete (the room keeps the table it already has)
+        if (pairResults.length > 0) {
+          const allPairs = (await this.getGameState(roundId)).pairs || [];
+          for (const pr of pairResults) {
+            for (const id of [pr.firstMover.id, pr.secondMover.id]) {
+              io.to(`player-${id}`).emit('round-results', { roundId, pairs: allPairs });
+            }
+          }
+        }
+        return;
+      }
+
       // Broadcast all results — sanitize to avoid leaking hidden info
       io.to(`market-${sessionCode}`).emit('round-results', {
         roundId,
@@ -445,11 +523,9 @@ export abstract class SequentialBaseEngine implements GameEngine {
     const allPlayers = await PlayerModel.findBySession(session.id);
     const activePlayers = await PlayerModel.findActiveBySession(session.id);
 
-    // Check if results already exist (from auto-resolve when all pairs completed)
-    const existingResults = await GameResultModel.findByRound(roundId);
-    if (existingResults.length === 0) {
-      await this.resolveRound(roundId, sessionCode, io, session);
-    }
+    // Resolve every pair that has finished and has no result yet (all of them, if the room did not
+    // finish before the timer; otherwise only late pairs that finished after the room)
+    await this.resolveRound(roundId, sessionCode, io, session);
 
     // --- Handle unpaired / incomplete players at round end ---
     // After resolveRound, some active players may still have no result:
@@ -576,6 +652,7 @@ export abstract class SequentialBaseEngine implements GameEngine {
     let partnerAction = null;
     let myRole = null;
     let partnerDisconnected = false;
+    let paired: boolean | undefined;
 
     if (playerId) {
       const player = allPlayers.find(p => p.id === playerId);
@@ -586,6 +663,7 @@ export abstract class SequentialBaseEngine implements GameEngine {
 
       // Find partner via stable pairing map
       const partnerId = await this.findPartner(session.id, playerId);
+      paired = !!partnerId;
       if (partnerId) {
         const partnerIsActive = allPlayers.some(p => p.id === partnerId);
         partnerDisconnected = !partnerIsActive;
@@ -649,6 +727,7 @@ export abstract class SequentialBaseEngine implements GameEngine {
       myAction,
       partnerAction,
       partnerDisconnected,
+      paired,
       firstMovesSubmitted: firstMoveActions.length,
       totalFirstMovers: firstMovers.length,
       secondMovesSubmitted: secondMoveActions.length,

@@ -56,10 +56,14 @@ export const JoinSession: React.FC = () => {
       localStorage.setItem('playerId', player.id);
       localStorage.setItem('sessionCode', session.code);
 
-      toast.success('Joined session successfully!');
-
-      // Navigate to lobby
-      navigate(`/session/${session.code}/lobby`);
+      // A game that is already running: go straight to it
+      if (session.status === 'active') {
+        toast.success('Joined. The game is already running.');
+        navigate(`/session/${session.code}/market`);
+      } else {
+        toast.success('Joined session successfully!');
+        navigate(`/session/${session.code}/lobby`);
+      }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to join session');
     } finally {

@@ -11,6 +11,9 @@ import type { Player, Session, Bid, Ask, Trade } from '../types';
 import { GameInstructions } from '../components/shared/GameInstructions';
 import toast from 'react-hot-toast';
 
+// Paired games in which a student without a partner is matched with the next student who joins
+const LATE_PAIRING_GAMES = new Set(['ultimatum', 'market_for_lemons', 'principal_agent', 'gift_exchange', 'trust_game']);
+
 /**
  * Market page — game router.
  * Looks up the session's game_type and renders the appropriate game UI.
@@ -28,6 +31,8 @@ export const Market: React.FC = () => {
   const [numRounds, setNumRounds] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [roundActive, setRoundActive] = useState(false);
+  // Paired games: true while this player has no partner (odd player out, or a late joiner waiting)
+  const [unpaired, setUnpaired] = useState(false);
 
   // DA-specific state (passed to DA game UIs)
   const [bids, setBids] = useState<Bid[]>([]);
@@ -154,6 +159,8 @@ export const Market: React.FC = () => {
   // without requiring re-registration of event listeners.
   const sessionRef = useRef(session);
   sessionRef.current = session;
+  const roundIdRef = useRef(roundId);
+  roundIdRef.current = roundId;
 
   // On (re)connect, recover the active round and request full game state.
   // This handles both initial page load recovery and mid-round socket reconnects.
@@ -271,6 +278,15 @@ export const Market: React.FC = () => {
       if (state.bids) setBids(state.bids);
       if (state.asks) setAsks(state.asks);
       if (state.trades) setTrades(state.trades);
+      // Paired games report whether this player has a partner
+      if (typeof state.paired === 'boolean') setUnpaired(!state.paired);
+    }));
+
+    // Paired games: a partner was found (a late joiner arrived). Reload the round's state,
+    // which carries the partner's first move if they have already made it.
+    cleanups.push(onEvent('pairing-update', (data: { paired: boolean }) => {
+      setUnpaired(!data.paired);
+      if (roundIdRef.current) requestGameState(roundIdRef.current);
     }));
 
     // Universal round events
@@ -458,6 +474,13 @@ export const Market: React.FC = () => {
       {/* Game UI */}
       <div className="max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-6 safe-bottom touch-game">
         <GameInstructions gameType={gameType} variant="student" />
+        {unpaired && (
+          <div className="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            {LATE_PAIRING_GAMES.has(gameType)
+              ? "You don't have a partner yet. You will be paired with the next student who joins."
+              : "You don't have a partner in this game: the number of players is odd."}
+          </div>
+        )}
         <Suspense fallback={
           <div className="flex items-center justify-center py-20">
             <Spinner />

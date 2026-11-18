@@ -37,6 +37,8 @@ export interface Player {
   is_bot: boolean;
   is_active: boolean;
   game_data?: Record<string, any>;
+  /** Set when the player joined after the session started (a late joiner) */
+  late_joined_at?: Date | null;
   created_at: Date;
   last_active_at: Date;
 }

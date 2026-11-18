@@ -71,6 +71,9 @@ CREATE TABLE players (
     is_bot BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
 
+    -- Set when the player joined after the session started (a late joiner)
+    late_joined_at TIMESTAMP DEFAULT NULL,
+
     -- Timestamps
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_active_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -26,6 +26,15 @@ import { SessionModel } from '../../models/Session';
  * - validateAction() — check if an individual action is valid
  * - calculateResults() — compute payoffs given all actions for the round
  */
+/**
+ * A player who joined after this round started (a late joiner). The round does not wait for
+ * them, and they count in this round's group only if they act before it resolves.
+ */
+function joinedDuringRound(player: any, round: any): boolean {
+  return !!player?.late_joined_at && !!round?.started_at
+    && new Date(player.late_joined_at).getTime() > new Date(round.started_at).getTime();
+}
+
 export abstract class SimultaneousBaseEngine implements GameEngine {
   abstract readonly gameType: GameType;
 
@@ -89,6 +98,12 @@ export abstract class SimultaneousBaseEngine implements GameEngine {
     if (!session) return { success: false, error: 'Session not found' };
     const config = session.game_config || {};
 
+    // A round whose results are in takes no more decisions (a late joiner plays from the next round)
+    const resolved = await GameResultModel.findByRound(roundId);
+    if (resolved.length > 0) {
+      return { success: false, error: "This round's results are already in. You will play from the next round." };
+    }
+
     // Validate the action
     const error = this.validateAction(action, player, config);
     if (error) {
@@ -98,10 +113,17 @@ export abstract class SimultaneousBaseEngine implements GameEngine {
     // Store the action
     await GameActionModel.create(roundId, playerId, 'decision', action);
 
-    // Broadcast submission count
+    // Broadcast submission count. Players who joined during this round are not waited for;
+    // they count once they have acted.
     const totalSubmitted = await GameActionModel.countByRound(roundId, 'decision');
     const activePlayers = await PlayerModel.findActiveBySession(session.id);
-    const totalPlayers = activePlayers.length;
+    const submittedIds = new Set(
+      (await GameActionModel.findByRoundAndType(roundId, 'decision')).map((a) => a.player_id)
+    );
+    const expectedPlayers = activePlayers.filter(
+      (p) => !joinedDuringRound(p, round) || submittedIds.has(p.id)
+    );
+    const totalPlayers = expectedPlayers.length;
 
     io.to(`market-${sessionCode}`).emit('action-submitted', {
       playerId,
@@ -111,7 +133,7 @@ export abstract class SimultaneousBaseEngine implements GameEngine {
     });
 
     // Check if all players have submitted
-    if (totalSubmitted >= totalPlayers) {
+    if (expectedPlayers.every((p) => submittedIds.has(p.id))) {
       await this.resolveRound(roundId, sessionCode, io, session, activePlayers);
     }
 
@@ -148,8 +170,14 @@ export abstract class SimultaneousBaseEngine implements GameEngine {
       action: a.action_data,
     }));
 
+    // This round's group: a player who joined during the round and has not acted is left out
+    // (so, e.g., Stag Hunt's "everyone chose stag" is not broken by someone who just arrived)
+    const round = await RoundModel.findById(roundId);
+    const actedIds = new Set(actions.map((a) => a.player_id));
+    const roundPlayers = activePlayers.filter((p) => !joinedDuringRound(p, round) || actedIds.has(p.id));
+
     // Calculate results
-    const results = this.calculateResults(actionData, config, activePlayers);
+    const results = this.calculateResults(actionData, config, roundPlayers);
 
     // Create result rows for non-submitting players (0 profit, no submission)
     const submittedPlayerIds = new Set(results.map(r => r.playerId));
@@ -158,7 +186,9 @@ export abstract class SimultaneousBaseEngine implements GameEngine {
         results.push({
           playerId: player.id,
           profit: 0,
-          resultData: { submitted: false, reason: 'No submission received' },
+          resultData: joinedDuringRound(player, round)
+            ? { submitted: false, reason: 'Joined during this round' }
+            : { submitted: false, reason: 'No submission received' },
         });
       }
     }

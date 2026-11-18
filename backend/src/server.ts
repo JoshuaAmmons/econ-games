@@ -58,6 +58,13 @@ async function applyConstraintUpdates() {
   } catch (err) {
     console.error('Error updating database constraints:', err);
   }
+
+  // Late joiners (students who join after Start): own try, so it runs even if an update above fails
+  try {
+    await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS late_joined_at TIMESTAMP DEFAULT NULL`);
+  } catch (err) {
+    console.error('Error adding players.late_joined_at:', err);
+  }
 }
 
 // Create HTTP server

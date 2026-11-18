@@ -300,6 +300,41 @@ export class BotService {
   }
 
   /**
+   * A bot created during a running session as a late joiner's partner. A first-mover bot makes
+   * its move in the current round (second-mover bots answer when their partner moves); from the
+   * next round it acts like any other bot.
+   */
+  async onLateBotJoined(bot: Player, session: Session, io: Server): Promise<void> {
+    const gameType = session.game_type || 'double_auction';
+    const strategy = BotStrategyRegistry.get(gameType);
+    const [firstMoverRole] = PAIRED_ROLES[gameType] || [];
+    if (!strategy?.getFirstMoveAction || !SEQUENTIAL_TYPES.has(gameType) || bot.role !== firstMoverRole) return;
+
+    const { RoundModel } = await import('../models/Round');
+    const rounds = await RoundModel.findBySession(session.id);
+    const active = rounds.find((r) => r.status === 'active');
+    if (!active) return;
+
+    const config = { ...(session.game_config || {}), time_per_round: session.time_per_round };
+    const delay = 1000 + Math.random() * 3000;
+    const timer = setTimeout(async () => {
+      try {
+        const engine = GameRegistry.get(gameType);
+        const action = strategy.getFirstMoveAction!(bot, config, 1);
+        if (action) {
+          await engine.handleAction(active.id, bot.id, action, session.code, io);
+        }
+      } catch (err) {
+        console.error(`BotService: Error submitting first move for late bot ${bot.name}:`, err);
+      }
+    }, delay);
+    const existing = this.roundTimers.get(active.id) || [];
+    existing.push(timer);
+    this.roundTimers.set(active.id, existing);
+    this.roundSessions.set(active.id, session.id);
+  }
+
+  /**
    * Called when a first-mover submits and the partner is a bot second-mover.
    */
   async onFirstMoveSubmitted(

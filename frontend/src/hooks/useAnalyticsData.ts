@@ -23,6 +23,8 @@ export interface AnalyticsData {
     productionCost?: number;
     totalProfit: number;
     isBot: boolean;
+    /** Set for a student who joined after the session started */
+    lateJoinedAt?: string | null;
   }>;
   rounds: Array<{
     roundNumber: number;

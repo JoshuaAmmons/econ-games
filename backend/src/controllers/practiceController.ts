@@ -115,6 +115,7 @@ export class PracticeController {
         game_type: gameType as any,
         game_config: {
           ...cfg.game_config,
+          practice: true, // one student's session: closed to anyone else once it starts
           market_size: cfg.market_size,
           num_rounds: cfg.num_rounds,
           time_per_round: cfg.time_per_round,

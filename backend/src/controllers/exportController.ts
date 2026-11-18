@@ -92,6 +92,7 @@ async function getResults(req: Request, res: Response) {
       productionCost: p.production_cost != null ? Number(p.production_cost) : null,
       totalProfit: Number(p.total_profit),
       isBot: p.is_bot,
+      lateJoinedAt: p.late_joined_at ?? null,
     }));
 
     // Calculate aggregate stats (Number() wrap needed — pg returns DECIMAL as string)

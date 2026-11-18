@@ -92,6 +92,20 @@ const DEFAULT_DIVIDEND_VALUES = [0, 8, 28, 60]; // cents, equally likely
  * asks (offers to sell). Portfolios (cash + shares) persist across rounds.
  * After the final round the asset expires worthless and final wealth = cash.
  */
+/**
+ * The starting portfolio for a trader who joins after Start: the same as everyone's under equal
+ * endowments; under SSW (1988), Type A (2 shares, 550c) with probability 5/9, else Type B.
+ */
+export function lateJoinerEndowment(config: Record<string, any>): Portfolio {
+  if ((config.endowment_type ?? 'equal') === 'ssw_1988') {
+    return Math.random() < 5 / 9 ? { cash: 550, shares: 2 } : { cash: 180, shares: 4 };
+  }
+  return {
+    cash: config.starting_cash ?? DEFAULT_STARTING_CASH,
+    shares: config.shares_per_player ?? DEFAULT_SHARES_PER_PLAYER,
+  };
+}
+
 export class AssetBubbleEngine implements GameEngine {
   readonly gameType: GameType = 'asset_bubble';
 
@@ -213,6 +227,19 @@ export class AssetBubbleEngine implements GameEngine {
    * Supports SSW (1988) asymmetric endowments: Type A (cash-rich, share-poor)
    * and Type B (share-rich, cash-poor).
    */
+  /**
+   * A trader who joined after Start: add their starting portfolio (set at join, in game_data)
+   * to the running round, so they can trade at once.
+   */
+  async onLateJoin(session: any, player: any, _io: Server): Promise<void> {
+    const rounds = await RoundModel.findBySession(session.id);
+    const active = rounds.find((r) => r.status === 'active');
+    const state = active ? this.roundStates.get(active.id) : undefined;
+    if (!state || state.portfolios.has(player.id)) return;
+    const gd = (player.game_data || {}) as Partial<Portfolio>;
+    state.portfolios.set(player.id, { cash: Number(gd.cash ?? 0), shares: Number(gd.shares ?? 0) });
+  }
+
   async setupPlayers(
     sessionId: string,
     _playerCount: number,
