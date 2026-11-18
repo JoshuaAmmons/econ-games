@@ -250,8 +250,9 @@ export const Market: React.FC = () => {
         seller_profit: Number(data.trade.seller_profit),
       };
       setTrades(prev => [normalizedTrade, ...prev]);
-      setBids(prev => prev.filter(b => b.id !== data.trade.bid_id));
-      setAsks(prev => prev.filter(a => a.id !== data.trade.ask_id));
+      // One trade per player per round: the server withdraws both traders' other open orders
+      setBids(prev => prev.filter(b => b.id !== data.trade.bid_id && b.player_id !== data.trade.buyer_id && b.player_id !== data.trade.seller_id));
+      setAsks(prev => prev.filter(a => a.id !== data.trade.ask_id && a.player_id !== data.trade.buyer_id && a.player_id !== data.trade.seller_id));
 
       refreshPlayer();
 

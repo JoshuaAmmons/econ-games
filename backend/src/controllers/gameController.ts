@@ -7,6 +7,11 @@ import { SubmitBidRequest, SubmitAskRequest, ApiResponse } from '../types';
 import { RoundModel } from '../models/Round';
 import { validateBid, validateAsk } from '../services/gameLogic';
 
+async function hasTradedThisRound(roundId: string, playerId: string): Promise<boolean> {
+  const trades = await TradeModel.findByRound(roundId);
+  return trades.some((t) => t.buyer_id === playerId || t.seller_id === playerId);
+}
+
 export class GameController {
   // Submit bid
   static async submitBid(req: Request, res: Response) {
@@ -57,6 +62,15 @@ export class GameController {
         res.status(409).json({
           success: false,
           error: 'Round is not active'
+        } as ApiResponse);
+        return;
+      }
+
+      // One trade per player per round
+      if (await hasTradedThisRound(round_id, player_id)) {
+        res.status(409).json({
+          success: false,
+          error: 'You have already traded this round'
         } as ApiResponse);
         return;
       }
@@ -128,6 +142,15 @@ export class GameController {
         res.status(409).json({
           success: false,
           error: 'Round is not active'
+        } as ApiResponse);
+        return;
+      }
+
+      // One trade per player per round
+      if (await hasTradedThisRound(round_id, player_id)) {
+        res.status(409).json({
+          success: false,
+          error: 'You have already traded this round'
         } as ApiResponse);
         return;
       }

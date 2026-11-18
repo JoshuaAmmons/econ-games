@@ -54,4 +54,12 @@ export class AskModel {
       [roundId]
     );
   }
+
+  // Withdraw a player's open asks in a round (once the player has traded)
+  static async deactivateForPlayer(roundId: string, playerId: string): Promise<void> {
+    await pool.query(
+      'UPDATE asks SET is_active = false WHERE round_id = $1 AND player_id = $2 AND is_active = true',
+      [roundId, playerId]
+    );
+  }
 }

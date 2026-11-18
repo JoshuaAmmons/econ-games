@@ -108,26 +108,8 @@ export class TaxSubsidyEngine extends DoubleAuctionEngine {
       // Use ?? so a taxAmount of 0 is not replaced by the default
       const taxAmount: number = gameConfig.taxAmount ?? 0;
 
-      // Get active bids and asks
-      const bids = await BidModel.findActiveByRound(roundId);
-      const asks = await AskModel.findActiveByRound(roundId);
-
-      // Get players
-      const bidsWithPlayers = await Promise.all(
-        bids.map(async (bid) => ({
-          ...bid,
-          player: await PlayerModel.findById(bid.player_id),
-        }))
-      );
-      const asksWithPlayers = await Promise.all(
-        asks.map(async (ask) => ({
-          ...ask,
-          player: await PlayerModel.findById(ask.player_id),
-        }))
-      );
-
-      const validBids = bidsWithPlayers.filter((b) => b.player !== null) as any[];
-      const validAsks = asksWithPlayers.filter((a) => a.player !== null) as any[];
+      // Open orders that may still trade (one per player, none from players who have traded)
+      const { bids: validBids, asks: validAsks } = await this.loadTradableOrders(roundId);
 
       const matches = matchTrades(validBids, validAsks);
 
@@ -158,6 +140,7 @@ export class TaxSubsidyEngine extends DoubleAuctionEngine {
 
         await BidModel.markInactive(match.bid.id);
         await AskModel.markInactive(match.ask.id);
+        await this.closeOutTraders(roundId, match.bid.player_id, match.ask.player_id);
 
         await PlayerModel.updateProfit(match.bid.player_id, buyerProfit);
         await PlayerModel.updateProfit(match.ask.player_id, sellerProfit);

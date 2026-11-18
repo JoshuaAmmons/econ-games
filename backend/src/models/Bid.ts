@@ -54,4 +54,12 @@ export class BidModel {
       [roundId]
     );
   }
+
+  // Withdraw a player's open bids in a round (once the player has traded)
+  static async deactivateForPlayer(roundId: string, playerId: string): Promise<void> {
+    await pool.query(
+      'UPDATE bids SET is_active = false WHERE round_id = $1 AND player_id = $2 AND is_active = true',
+      [roundId, playerId]
+    );
+  }
 }

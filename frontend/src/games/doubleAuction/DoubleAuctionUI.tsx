@@ -26,6 +26,10 @@ const DoubleAuctionUI: React.FC<DAGameUIProps> = ({
   const [submitting, setSubmitting] = useState(false);
 
   const isBuyer = player?.role === 'buyer';
+  // One trade per player per round: once this player has traded, the order form closes
+  const hasTraded = !!roundId && trades.some(
+    t => t.round_id === roundId && (t.buyer_id === playerId || t.seller_id === playerId)
+  );
   const privateValue = isBuyer ? player?.valuation : player?.production_cost;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -75,7 +79,11 @@ const DoubleAuctionUI: React.FC<DAGameUIProps> = ({
 
         {/* Submit Form */}
         <Card title={isBuyer ? 'Submit Bid' : 'Submit Ask'}>
-          {roundActive && roundId ? (
+          {roundActive && roundId && hasTraded ? (
+            <p className="text-center text-gray-600 py-4">
+              You have made your trade this round. Wait for the next round.
+            </p>
+          ) : roundActive && roundId ? (
             <form onSubmit={handleSubmit} className="space-y-3">
               <Input
                 label={`${isBuyer ? 'Bid' : 'Ask'} Price`}

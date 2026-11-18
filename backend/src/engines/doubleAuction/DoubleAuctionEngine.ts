@@ -18,6 +18,29 @@ import {
   matchTrades,
 } from '../../services/gameLogic';
 
+/** One trade per player per round: the rule the game's instructions state. */
+const ALREADY_TRADED = 'You have already traded this round. Wait for the next round.';
+
+/** Each player's best open order: highest bid or lowest ask, the earliest on a tie. */
+function bestOrderPerPlayer<T extends { player_id: string; price: any; created_at: any }>(
+  orders: T[],
+  side: 'bid' | 'ask'
+): T[] {
+  const best = new Map<string, T>();
+  for (const o of orders) {
+    const cur = best.get(o.player_id);
+    if (!cur) {
+      best.set(o.player_id, o);
+      continue;
+    }
+    const diff = Number(o.price) - Number(cur.price);
+    const better = (side === 'bid' ? diff > 0 : diff < 0)
+      || (diff === 0 && new Date(o.created_at).getTime() < new Date(cur.created_at).getTime());
+    if (better) best.set(o.player_id, o);
+  }
+  return [...best.values()];
+}
+
 /**
  * Double Auction Engine — wraps the existing DA game logic.
  * This is the original game type, used for Week 4.
@@ -163,8 +186,14 @@ export class DoubleAuctionEngine implements GameEngine {
         return { success: false, error: validation.error };
       }
 
-      // Create bid
-      const bid = await BidModel.create(roundId, playerId, price);
+      // Create bid, unless the player has already traded this round (one trade per player
+      // per round). Runs under the round's lock so it cannot interleave with a matching pass.
+      const bid = await this.underRoundLock(roundId, async () =>
+        (await this.hasTradedThisRound(roundId, playerId)) ? null : BidModel.create(roundId, playerId, price)
+      );
+      if (!bid) {
+        return { success: false, error: ALREADY_TRADED };
+      }
 
       // Broadcast to market
       io.to(`market-${sessionCode}`).emit('bid-submitted', {
@@ -187,8 +216,13 @@ export class DoubleAuctionEngine implements GameEngine {
         return { success: false, error: validation.error };
       }
 
-      // Create ask
-      const ask = await AskModel.create(roundId, playerId, price);
+      // Create ask, unless the player has already traded this round (see the bid branch)
+      const ask = await this.underRoundLock(roundId, async () =>
+        (await this.hasTradedThisRound(roundId, playerId)) ? null : AskModel.create(roundId, playerId, price)
+      );
+      if (!ask) {
+        return { success: false, error: ALREADY_TRADED };
+      }
 
       // Broadcast to market
       io.to(`market-${sessionCode}`).emit('ask-submitted', {
@@ -291,10 +325,61 @@ export class DoubleAuctionEngine implements GameEngine {
     io: Server
   ): Promise<void> {
     // Serialize: wait for any in-flight match to finish before starting a new one
+    await this.underRoundLock(roundId, () => this.executeTradeMatching(roundId, sessionCode, io));
+  }
+
+  /**
+   * Run fn after every earlier piece of work queued for this round (matching passes, order
+   * creation) has finished. Never call it from inside fn: that would wait on itself.
+   */
+  protected underRoundLock<T>(roundId: string, fn: () => Promise<T>): Promise<T> {
     const prevLock = this.tradeMatchLocks.get(roundId) || Promise.resolve();
-    const currentLock = prevLock.then(() => this.executeTradeMatching(roundId, sessionCode, io));
-    this.tradeMatchLocks.set(roundId, currentLock.catch(() => {}));
-    await currentLock;
+    const run = prevLock.then(fn);
+    this.tradeMatchLocks.set(roundId, run.then(() => {}, () => {}));
+    return run;
+  }
+
+  /** Ids of the players who have already traded in this round. */
+  protected async tradedPlayerIds(roundId: string): Promise<Set<string>> {
+    const trades = await TradeModel.findByRound(roundId);
+    const ids = new Set<string>();
+    for (const t of trades) {
+      ids.add(t.buyer_id);
+      ids.add(t.seller_id);
+    }
+    return ids;
+  }
+
+  protected async hasTradedThisRound(roundId: string, playerId: string): Promise<boolean> {
+    return (await this.tradedPlayerIds(roundId)).has(playerId);
+  }
+
+  /**
+   * The open orders that may still trade, with their players attached: none from a player who
+   * has already traded this round, and only each player's best order (highest bid, lowest ask,
+   * earliest on a tie), so no player can trade twice in one matching pass.
+   */
+  protected async loadTradableOrders(roundId: string): Promise<{ bids: any[]; asks: any[] }> {
+    const traded = await this.tradedPlayerIds(roundId);
+    const bids = await BidModel.findActiveByRound(roundId);
+    const asks = await AskModel.findActiveByRound(roundId);
+
+    const withPlayers = (orders: any[]) =>
+      Promise.all(orders.map(async (o) => ({ ...o, player: await PlayerModel.findById(o.player_id) })));
+
+    const validBids = (await withPlayers(bestOrderPerPlayer(bids.filter((b) => !traded.has(b.player_id)), 'bid')))
+      .filter((b) => b.player !== null);
+    const validAsks = (await withPlayers(bestOrderPerPlayer(asks.filter((a) => !traded.has(a.player_id)), 'ask')))
+      .filter((a) => a.player !== null);
+    return { bids: validBids, asks: validAsks };
+  }
+
+  /** After a trade, withdraw both traders' other open orders for the round. */
+  protected async closeOutTraders(roundId: string, buyerId: string, sellerId: string): Promise<void> {
+    for (const id of [buyerId, sellerId]) {
+      await BidModel.deactivateForPlayer(roundId, id);
+      await AskModel.deactivateForPlayer(roundId, id);
+    }
   }
 
   private async executeTradeMatching(
@@ -303,28 +388,8 @@ export class DoubleAuctionEngine implements GameEngine {
     io: Server
   ): Promise<void> {
     try {
-      // Get active bids and asks
-      const bids = await BidModel.findActiveByRound(roundId);
-      const asks = await AskModel.findActiveByRound(roundId);
-
-      // Get players for each bid/ask
-      const bidsWithPlayers = await Promise.all(
-        bids.map(async (bid) => ({
-          ...bid,
-          player: await PlayerModel.findById(bid.player_id),
-        }))
-      );
-
-      const asksWithPlayers = await Promise.all(
-        asks.map(async (ask) => ({
-          ...ask,
-          player: await PlayerModel.findById(ask.player_id),
-        }))
-      );
-
-      // Filter out any with missing players
-      const validBids = bidsWithPlayers.filter((b) => b.player !== null) as any[];
-      const validAsks = asksWithPlayers.filter((a) => a.player !== null) as any[];
+      // Open orders that may still trade (one per player, none from players who have traded)
+      const { bids: validBids, asks: validAsks } = await this.loadTradableOrders(roundId);
 
       const matches = matchTrades(validBids, validAsks);
 
@@ -341,9 +406,10 @@ export class DoubleAuctionEngine implements GameEngine {
           match.ask.id
         );
 
-        // Mark bid and ask as inactive
+        // Mark bid and ask as inactive, and withdraw the traders' other open orders
         await BidModel.markInactive(match.bid.id);
         await AskModel.markInactive(match.ask.id);
+        await this.closeOutTraders(roundId, match.bid.player_id, match.ask.player_id);
 
         // Update player profits
         await PlayerModel.updateProfit(match.bid.player_id, match.buyerProfit);
