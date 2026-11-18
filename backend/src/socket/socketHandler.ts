@@ -39,6 +39,16 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
   // Server-side round timers: auto-end rounds when time expires
   const roundEndTimers: Map<string, NodeJS.Timeout> = new Map();
 
+  // When each active round ends, by the server's clock (18 Nov 2026). The monitor and the players' screens ask the
+  // server for the time left instead of counting from Time per Round on their own clocks, and only the server ends
+  // a round on time: an open monitor page used to end it when its own countdown reached zero.
+  const roundEndsAt: Map<string, number> = new Map();
+
+  function roundTimerPayload(roundId: string) {
+    const endsAt = roundEndsAt.get(roundId);
+    return { roundId, secondsRemaining: endsAt == null ? null : Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)) };
+  }
+
   // Auto-advance timers: auto-start next round after a delay
   const autoAdvanceTimers: Map<string, NodeJS.Timeout> = new Map();
 
@@ -118,16 +128,28 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
     const existing = roundEndTimers.get(roundId);
     if (existing) clearTimeout(existing);
 
-    // Discovery process manages its own internal timers (production + move phases)
+    // The round's length by the server's clock: the engine's own when it sets one (Discovery Process: hunt + camp +
+    // interim), otherwise Time per Round. Announced to the monitor and the players' screens.
+    let seconds = session.time_per_round || 90;
+    try {
+      const eng = GameRegistry.get(gameType);
+      if (eng.getRoundSeconds) seconds = eng.getRoundSeconds(session.game_config || {});
+    } catch { /* unknown game type: keep Time per Round */ }
+    roundEndsAt.set(roundId, Date.now() + seconds * 1000);
+    io.to(`session-${sessionCode}`).emit('round-timer', roundTimerPayload(roundId));
+    io.to(`market-${sessionCode}`).emit('timer-update', { seconds_remaining: seconds });
+
+    // Discovery process manages its own internal timers (hunt, camp, interim) and ends the round itself,
     // so we don't need a separate server-side end timer for it
     if (gameType === 'discovery_process') return;
 
-    const durationMs = (session.time_per_round || 90) * 1000;
+    const durationMs = seconds * 1000;
 
     console.log(`[AutoTimer] Scheduling round end in ${durationMs}ms for ${sessionCode} round ${roundId}`);
 
     const timer = setTimeout(async () => {
       roundEndTimers.delete(roundId);
+      roundEndsAt.delete(roundId);
 
       // Guard against concurrent processing
       if (endingRounds.has(roundId)) return;
@@ -524,6 +546,7 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
           clearTimeout(existingTimer);
           roundEndTimers.delete(roundId);
         }
+        roundEndsAt.delete(roundId);
 
         // Guard against concurrent end-round processing (timer + manual click race)
         if (endingRounds.has(roundId)) {
@@ -589,6 +612,23 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
       } catch (error) {
         console.error('Error ending round:', error);
         socket.emit('error', { message: 'Failed to end round' });
+      }
+    });
+
+    // Time left in the session's active round, by the server's clock (anyone in the session may ask)
+    socket.on('get-round-timer', async (data: { sessionCode: string }) => {
+      try {
+        if (!data?.sessionCode || typeof data.sessionCode !== 'string') return;
+        const session = await SessionModel.findByCode(data.sessionCode);
+        if (!session) return;
+        const round = await RoundModel.getCurrentRound(session.id);
+        if (!round) {
+          socket.emit('round-timer', { roundId: null, secondsRemaining: null });
+          return;
+        }
+        socket.emit('round-timer', roundTimerPayload(round.id));
+      } catch (error) {
+        console.error('Error in get-round-timer:', error);
       }
     });
 

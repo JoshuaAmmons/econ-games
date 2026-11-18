@@ -180,6 +180,12 @@ export interface GameEngine {
   getGameState(roundId: string, playerId?: string): Promise<Record<string, any>>;
 
   /**
+   * How long a round lasts, in seconds, when the engine sets it rather than the session's Time per Round
+   * (Discovery Process: hunt + camp + interim). Used for the round timer that the monitor and players see.
+   */
+  getRoundSeconds?(config: Record<string, any>): number;
+
+  /**
    * Called when a round starts (optional lifecycle hook).
    * Engines can use this to initialize in-memory state, schedule timers, etc.
    */

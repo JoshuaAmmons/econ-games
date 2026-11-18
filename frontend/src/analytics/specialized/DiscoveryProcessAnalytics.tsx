@@ -1,314 +1,242 @@
 import React, { useMemo } from 'react';
 import {
-  LineChart, Line, BarChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  Cell,
+  BarChart, Bar, ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import { ChartCard } from '../../components/charts/ChartCard';
-import { CHART_COLORS, CHART_HEIGHT, CHART_MARGINS, formatDollar, getPlayerColor } from '../../components/charts/chartUtils';
+import { CHART_MARGINS } from '../../components/charts/chartUtils';
 import type { AnalyticsProps } from '../AnalyticsRegistry';
 
-const DiscoveryProcessAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) => {
-  const gameConfig = data.session.gameConfig || {};
-  const numGoods = gameConfig.numGoods ?? 2;
-  const goodNames: string[] = [];
-  const goodColors: string[] = [];
-  for (let i = 1; i <= numGoods; i++) {
-    goodNames.push(gameConfig[`good${i}Name`] || `Good ${i}`);
-    goodColors.push(gameConfig[`good${i}Color`] || CHART_COLORS[i - 1]);
-  }
+// Sized to be read on a projector; the site is dark-themed, so lines that sit on the plot are light
+const TICK = { fontSize: 14 };
+const HEIGHT = 340;
+const BIG = '#f59e0b';
+const SMALL = '#0ea5e9';
+const OUT = '#6b7280';
+const GIFT = '#10b981';
+const POT = '#a78bfa';
+const TAKEN = '#ef4444';
+const EATEN = '#10b981';
+const WASTED = '#9ca3af';
+const NEED = '#e5e7eb';
+const AVG = '#e5e7eb';
 
-  const playerNames = useMemo(
-    () => data.players.map(p => p.name || p.id.slice(0, 6)),
-    [data.players],
-  );
+const Stat: React.FC<{ value: string; label: string; sub?: string }> = ({ value, label, sub }) => (
+  <div className="bg-white rounded-lg shadow p-4 text-center">
+    <div className="text-3xl font-bold text-sky-700">{value}</div>
+    <div className="text-sm font-medium text-gray-700 mt-1">{label}</div>
+    {sub && <div className="text-xs text-gray-500 mt-0.5">{sub}</div>}
+  </div>
+);
 
-  // ---- Earnings Over Rounds (per player) ----
-  const earningsOverRounds = useMemo(() => {
-    return completedRounds.map(round => {
-      const row: Record<string, any> = { round: round.roundNumber };
-      for (const r of round.results || []) {
-        const name = data.players.find(p => p.id === r.playerId)?.name || r.playerId.slice(0, 6);
-        row[name] = Number(r.profit || 0);
-      }
-      return row;
-    });
-  }, [completedRounds, data.players]);
+const sum = (xs: number[]) => xs.reduce((s, x) => s + x, 0);
+const num = (v: any) => Number(v || 0);
 
-  // ---- Cumulative Earnings ----
-  const cumulativeEarnings = useMemo(() => {
-    const cumul: Record<string, number> = {};
-    return completedRounds.map(round => {
-      const row: Record<string, any> = { round: round.roundNumber };
-      for (const r of round.results || []) {
-        const name = data.players.find(p => p.id === r.playerId)?.name || r.playerId.slice(0, 6);
-        cumul[name] = (cumul[name] || 0) + Number(r.profit || 0);
-        row[name] = cumul[name];
-      }
-      return row;
-    });
-  }, [completedRounds, data.players]);
+/**
+ * Discovery Process (the hunter-gatherer island): the Chapter 6 debrief asks who hunted big game, whether gifts or
+ * food pots appeared and when, and what happened to a big catch that one hunter could not eat. The engine records
+ * each player's side in the hunt, food held, eaten and wasted at camp, and health (results), and every catch, gift,
+ * take, pot deposit and withdrawal, stun and chat (actions). The island's numbers come from the results' own record of
+ * the session's settings.
+ */
+const DiscoveryProcessAnalytics: React.FC<AnalyticsProps> = ({ completedRounds }) => {
+  const rounds = useMemo(() => {
+    return [...completedRounds]
+      .sort((a, b) => a.roundNumber - b.roundNumber)
+      .map(round => {
+        const results = (round.results || []).filter(r => r.resultData && r.resultData.health != null);
+        const actions = round.actions || [];
+        const of = (type: string) => actions.filter(a => a.actionType === type);
+        const catches = of('capture_prey');
+        const big = catches.filter(a => a.actionData?.preyType === 'large');
+        const small = catches.filter(a => a.actionData?.preyType === 'small');
+        const island = results.find(r => r.resultData?.island)?.resultData?.island || null;
 
-  // ---- Specialization Pattern (% allocation to Good 1) ----
-  const specializationData = useMemo(() => {
-    return completedRounds.map(round => {
-      const row: Record<string, any> = { round: round.roundNumber };
-      for (const a of round.actions || []) {
-        if (a.actionType !== 'production') continue;
-        const name = data.players.find(p => p.id === a.playerId)?.name || a.playerId.slice(0, 6);
-        const allocation = a.actionData?.allocation as number[] | undefined;
-        if (allocation && allocation.length > 0) {
-          row[name] = parseFloat(allocation[0].toFixed(1));
+        // Where each player hunted: recorded directly since 18 Nov 2026; for older sessions, from the catches
+        const sideRecorded = results.some(r => r.resultData?.huntSide !== undefined);
+        let bigHunters: number, smallHunters: number, stayedOut: number;
+        if (sideRecorded) {
+          bigHunters = results.filter(r => r.resultData.huntSide === 'left').length;
+          smallHunters = results.filter(r => r.resultData.huntSide === 'right').length;
+          stayedOut = results.length - bigHunters - smallHunters;
+        } else {
+          const bigIds = new Set(big.map(a => a.playerId));
+          const smallIds = new Set(small.map(a => a.playerId).filter(id => !bigIds.has(id)));
+          bigHunters = bigIds.size;
+          smallHunters = smallIds.size;
+          stayedOut = Math.max(0, results.length - bigHunters - smallHunters);
         }
-      }
-      return row;
-    });
-  }, [completedRounds, data.players]);
 
-  // ---- Complete Sets per Round ----
-  const completeSetsData = useMemo(() => {
-    return completedRounds.map(round => {
-      const row: Record<string, any> = { round: round.roundNumber };
-      for (const r of round.results || []) {
-        const name = data.players.find(p => p.id === r.playerId)?.name || r.playerId.slice(0, 6);
-        row[name] = r.resultData?.completeSets ?? 0;
-      }
-      return row;
-    });
-  }, [completedRounds, data.players]);
-
-  // ---- Total Wasted Goods (summed across all rounds per player) ----
-  const wastedSummary = useMemo(() => {
-    const totals: Record<string, Record<string, number>> = {};
-    for (const round of completedRounds) {
-      for (const r of round.results || []) {
-        const name = data.players.find(p => p.id === r.playerId)?.name || r.playerId.slice(0, 6);
-        if (!totals[name]) totals[name] = {};
-        const wasted = r.resultData?.wasted as Record<string, number> | undefined;
-        if (wasted) {
-          for (const [good, qty] of Object.entries(wasted)) {
-            totals[name][good] = (totals[name][good] || 0) + Number(qty);
-          }
-        }
-      }
-    }
-    return Object.entries(totals).map(([name, goods]) => ({
-      name,
-      ...goods,
-    }));
-  }, [completedRounds, data.players]);
-
-  // ---- Exchange Activity (goods moved to others' houses per round) ----
-  const exchangeActivity = useMemo(() => {
-    return completedRounds.map(round => {
-      let totalMoves = 0;
-      let goodsMoved = 0;
-      for (const a of round.actions || []) {
-        if (a.actionType !== 'move') continue;
-        const { fromPlayerId, toPlayerId, amount } = a.actionData || {};
-        // Only count moves TO other players (actual trades)
-        if (fromPlayerId && toPlayerId && fromPlayerId !== toPlayerId) {
-          totalMoves++;
-          goodsMoved += Number(amount || 0);
-        }
-      }
-      return {
-        round: round.roundNumber,
-        trades: totalMoves,
-        goodsTraded: goodsMoved,
-      };
-    });
+        const healths = results.map(r => num(r.resultData.health));
+        const eatenRecorded = results.some(r => r.resultData?.foodEaten !== undefined);
+        return {
+          round: round.roundNumber,
+          label: `R${round.roundNumber}`,
+          players: results.length,
+          sideRecorded,
+          bigHunters, smallHunters, stayedOut,
+          bigAttempts: big.length,
+          bigCatches: big.filter(a => a.actionData?.captured).length,
+          bigFood: sum(big.map(a => num(a.actionData?.foodGained))),
+          smallFood: sum(small.map(a => num(a.actionData?.foodGained))),
+          gifts: of('transfer').length,
+          giftFood: sum(of('transfer').map(a => num(a.actionData?.amount))),
+          potIn: sum(of('deposit_pot').map(a => num(a.actionData?.amount))),
+          potOut: sum(of('withdraw_pot').map(a => num(a.actionData?.amount))),
+          potsPlaced: of('place_pot').length,
+          takes: of('take').length,
+          takenFood: sum(of('take').map(a => num(a.actionData?.amount))),
+          stuns: of('stun').length,
+          chats: of('chat').length,
+          eaten: eatenRecorded ? sum(results.map(r => num(r.resultData.foodEaten))) : null,
+          wasted: eatenRecorded
+            ? sum(results.map(r => num(r.resultData.foodWasted))) + num(island?.potFoodLeft)
+            : null,
+          avgHealth: healths.length ? parseFloat((sum(healths) / healths.length).toFixed(1)) : null,
+          minHealth: healths.length ? Math.min(...healths) : null,
+          maxHealth: healths.length ? Math.max(...healths) : null,
+          island,
+        };
+      })
+      .filter(r => r.players > 0);
   }, [completedRounds]);
 
-  // ---- Efficiency: % of produced goods that ended up in complete sets ----
-  const efficiencyData = useMemo(() => {
-    return completedRounds.map(round => {
-      let totalProduced = 0;
-      let totalUsed = 0;
-      for (const r of round.results || []) {
-        const inventory = r.resultData?.inventory as { field: Record<string, number>; house: Record<string, number> } | undefined;
-        const wasted = r.resultData?.wasted as Record<string, number> | undefined;
-        if (inventory) {
-          // Total produced = sum of all goods in field + house
-          for (const v of Object.values(inventory.field)) totalProduced += Number(v || 0);
-          for (const v of Object.values(inventory.house)) totalProduced += Number(v || 0);
-        }
-        if (wasted && inventory) {
-          // Used goods = goods in house - wasted
-          for (const [good, houseQty] of Object.entries(inventory.house)) {
-            totalUsed += Number(houseQty || 0) - Number(wasted[good] || 0);
-          }
-        }
-      }
-      return {
-        round: round.roundNumber,
-        efficiency: totalProduced > 0 ? parseFloat(((totalUsed / totalProduced) * 100).toFixed(1)) : 0,
-      };
-    });
-  }, [completedRounds]);
+  if (rounds.length === 0) return null;
 
-  // ---- Average Earnings by Player Type ----
-  const earningsByType = useMemo(() => {
-    const typeMap: Record<number, { total: number; count: number }> = {};
-    for (const round of completedRounds) {
-      for (const r of round.results || []) {
-        const typeIdx = r.resultData?.typeIndex ?? 0;
-        if (!typeMap[typeIdx]) typeMap[typeIdx] = { total: 0, count: 0 };
-        typeMap[typeIdx].total += Number(r.profit || 0);
-        typeMap[typeIdx].count++;
-      }
-    }
-    return Object.entries(typeMap).map(([idx, { total, count }]) => ({
-      type: `Type ${Number(idx) + 1}`,
-      avgEarnings: parseFloat((total / count).toFixed(2)),
-    }));
-  }, [completedRounds]);
+  const island = rounds.find(r => r.island)?.island || null;
+  // the health the island burns each round, and the big game on offer if every animal is tried
+  const need = island ? num(island.players) * num(island.healthDecay) : null;
+  const bigOnOffer = island ? num(island.largePrey) * num(island.largePreyValue) * num(island.largePreyCaptureProb) : null;
+  const smallOnOffer = island ? num(island.smallPrey) * num(island.smallPreyValue) : null;
+  const startHealth = island ? num(island.startHealth) : null;
+  // the food axis must reach the need line, or the chart drops it (it sits above the bars when the island goes hungry)
+  const foodTop = Math.ceil((Math.max(...rounds.map(r => r.bigFood + r.smallFood), need ?? 0) * 1.1) / 20) * 20;
+  const maxHealthCap = island ? num(island.maxHealth) : 100;
+
+  const first = rounds[0];
+  const last = rounds[rounds.length - 1];
+  const caught = sum(rounds.map(r => r.bigFood + r.smallFood));
+  const shared = sum(rounds.map(r => r.giftFood + r.potIn));
+  const wastedTotal = rounds.every(r => r.wasted != null) ? sum(rounds.map(r => r.wasted as number)) : null;
+  const firstShare = rounds.find(r => r.gifts > 0 || r.potIn > 0);
+
+  const sideNote = first.sideRecorded
+    ? 'The side each player took in the hunt (big game on the left, small game on the right).'
+    : 'Counted from catches, since this session predates the record of sides: a big-game hunter who never reached an animal counts as having stayed out.';
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Earnings per Round */}
-      {earningsOverRounds.length > 0 && (
-        <ChartCard title="Earnings per Round" description="Each player's earnings by period — do they increase with specialization?">
-          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-            <LineChart data={earningsOverRounds} margin={CHART_MARGINS}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="round" label={{ value: 'Round', position: 'insideBottom', offset: -2 }} />
-              <YAxis tickFormatter={formatDollar} />
-              <Tooltip formatter={(v: any) => formatDollar(v)} />
-              <Legend />
-              {playerNames.map((name, i) => (
-                <Line key={name} type="monotone" dataKey={name} stroke={getPlayerColor(i)} strokeWidth={2} dot={{ r: 3 }} />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      )}
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Stat value={`${first.bigHunters} → ${last.bigHunters}`} label="Hunted big game"
+              sub={`round ${first.round} to round ${last.round}, of ${last.players} players`} />
+        <Stat value={`${shared}`} label="Food shared" sub={firstShare
+          ? `gifts and pot deposits; first in round ${firstShare.round}`
+          : 'no gifts or pot deposits'} />
+        <Stat value={wastedTotal != null ? `${wastedTotal}` : 'not recorded'} label="Food wasted"
+              sub={wastedTotal != null && caught > 0 ? `${Math.round((100 * wastedTotal) / caught)}% of the ${caught} caught` : undefined} />
+        <Stat value={`${first.avgHealth ?? '-'} → ${last.avgHealth ?? '-'}`} label="Average health"
+              sub={startHealth != null ? `after round ${first.round} and round ${last.round}; everyone started at ${startHealth}` : undefined} />
+      </div>
 
-      {/* Cumulative Earnings */}
-      {cumulativeEarnings.length > 0 && (
-        <ChartCard title="Cumulative Earnings" description="Running total of earnings — shows long-run gains from trade">
-          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-            <LineChart data={cumulativeEarnings} margin={CHART_MARGINS}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ChartCard title="Who Hunted Where"
+                   description={`Players on each side of the hunt, round by round. ${sideNote}`}>
+          <ResponsiveContainer width="100%" height={HEIGHT}>
+            <BarChart data={rounds} margin={CHART_MARGINS}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="round" label={{ value: 'Round', position: 'insideBottom', offset: -2 }} />
-              <YAxis tickFormatter={formatDollar} />
-              <Tooltip formatter={(v: any) => formatDollar(v)} />
-              <Legend />
-              {playerNames.map((name, i) => (
-                <Line key={name} type="monotone" dataKey={name} stroke={getPlayerColor(i)} strokeWidth={2} dot={{ r: 3 }} />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      )}
-
-      {/* Specialization Pattern */}
-      {specializationData.length > 0 && (
-        <ChartCard
-          title="Specialization Over Rounds"
-          description={`% of production time allocated to ${goodNames[0]} — convergence toward 0% or 100% signals specialization`}
-        >
-          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-            <LineChart data={specializationData} margin={CHART_MARGINS}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="round" label={{ value: 'Round', position: 'insideBottom', offset: -2 }} />
-              <YAxis domain={[0, 100]} label={{ value: `% to ${goodNames[0]}`, angle: -90, position: 'insideLeft' }} />
-              <Tooltip formatter={(v: any) => `${v}%`} />
-              <Legend />
-              {playerNames.map((name, i) => (
-                <Line key={name} type="monotone" dataKey={name} stroke={getPlayerColor(i)} strokeWidth={2} dot={{ r: 3 }} />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      )}
-
-      {/* Complete Sets per Round */}
-      {completeSetsData.length > 0 && (
-        <ChartCard title="Complete Sets per Round" description="Number of earning sets assembled — more sets = more earnings">
-          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-            <BarChart data={completeSetsData} margin={CHART_MARGINS}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="round" label={{ value: 'Round', position: 'insideBottom', offset: -2 }} />
-              <YAxis allowDecimals={false} />
+              <XAxis dataKey="label" tick={TICK} />
+              <YAxis allowDecimals={false} tick={TICK} label={{ value: 'Players', angle: -90, position: 'insideLeft', fontSize: 14 }} />
               <Tooltip />
-              <Legend />
-              {playerNames.map((name, i) => (
-                <Bar key={name} dataKey={name} fill={getPlayerColor(i)} radius={[4, 4, 0, 0]} />
-              ))}
+              <Legend wrapperStyle={{ fontSize: 14 }} />
+              <Bar dataKey="bigHunters" name="Big game" stackId="s" fill={BIG} />
+              <Bar dataKey="smallHunters" name="Small game" stackId="s" fill={SMALL} />
+              <Bar dataKey="stayedOut" name="Stayed out" stackId="s" fill={OUT} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
-      )}
 
-      {/* Exchange Activity */}
-      {exchangeActivity.length > 0 && (
-        <ChartCard title="Exchange Activity" description="Number of goods traded between players — does exchange emerge?">
-          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-            <BarChart data={exchangeActivity} margin={CHART_MARGINS}>
+        <ChartCard title="Food Caught Against What the Island Needs"
+                   description={need != null
+                     ? `Food caught each round, by kind of game. The line is the health the island loses each round (${island.players} players × ${island.healthDecay}). If every big animal is tried, big game yields about ${Math.round(bigOnOffer as number)} food a round; small game offers ${smallOnOffer}.`
+                     : 'Food caught each round, by kind of game.'}>
+          <ResponsiveContainer width="100%" height={HEIGHT}>
+            <ComposedChart data={rounds} margin={{ ...CHART_MARGINS, right: 110 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="round" label={{ value: 'Round', position: 'insideBottom', offset: -2 }} />
-              <YAxis allowDecimals={false} />
+              <XAxis dataKey="label" tick={TICK} />
+              <YAxis domain={[0, foodTop]} tick={TICK} label={{ value: 'Food', angle: -90, position: 'insideLeft', fontSize: 14 }} />
+              <Tooltip formatter={(v: any, name: any, item: any) => {
+                if (name === 'Big game') return [`${v} (${item.payload.bigCatches} of ${item.payload.bigAttempts} tries caught)`, name];
+                return [v, name];
+              }} />
+              <Legend wrapperStyle={{ fontSize: 14 }} />
+              {need != null && (
+                <ReferenceLine y={need} stroke={NEED} strokeWidth={2} strokeDasharray="6 4"
+                               label={{ value: `Health lost ${need}`, position: 'right', fontSize: 14, fill: NEED }} />
+              )}
+              <Bar dataKey="bigFood" name="Big game" stackId="f" fill={BIG} />
+              <Bar dataKey="smallFood" name="Small game" stackId="f" fill={SMALL} radius={[4, 4, 0, 0]} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Sharing and Taking"
+                   description="Food given as gifts, put into food pots, and taken by stun-and-take, round by round. Hover a bar for how many times each happened.">
+          <ResponsiveContainer width="100%" height={HEIGHT}>
+            <BarChart data={rounds} margin={CHART_MARGINS}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="label" tick={TICK} />
+              <YAxis allowDecimals={false} tick={TICK} label={{ value: 'Food', angle: -90, position: 'insideLeft', fontSize: 14 }} />
+              <Tooltip formatter={(v: any, name: any, item: any) => {
+                const p = item.payload;
+                if (name === 'Gifts') return [`${v} food in ${p.gifts} gift${p.gifts === 1 ? '' : 's'}`, name];
+                if (name === 'Into pots') return [`${v} food (${p.potsPlaced} pot${p.potsPlaced === 1 ? '' : 's'} placed, ${p.potOut} taken out)`, name];
+                if (name === 'Taken') return [`${v} food in ${p.takes} take${p.takes === 1 ? '' : 's'} (${p.stuns} stun${p.stuns === 1 ? '' : 's'})`, name];
+                return [v, name];
+              }} />
+              <Legend wrapperStyle={{ fontSize: 14 }} />
+              <Bar dataKey="giftFood" name="Gifts" fill={GIFT} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="potIn" name="Into pots" fill={POT} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="takenFood" name="Taken" fill={TAKEN} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        {rounds.every(r => r.eaten != null) && (
+          <ChartCard title="Eaten and Wasted"
+                     description="The food players held at camp: what turned into health, and what was wasted because the player was already at full health or past the hearth's limit, plus food left in pots.">
+            <ResponsiveContainer width="100%" height={HEIGHT}>
+              <BarChart data={rounds} margin={CHART_MARGINS}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="label" tick={TICK} />
+                <YAxis allowDecimals={false} tick={TICK} label={{ value: 'Food', angle: -90, position: 'insideLeft', fontSize: 14 }} />
+                <Tooltip />
+                <Legend wrapperStyle={{ fontSize: 14 }} />
+                <Bar dataKey="eaten" name="Eaten" stackId="e" fill={EATEN} />
+                <Bar dataKey="wasted" name="Wasted" stackId="e" fill={WASTED} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        )}
+
+        <ChartCard title="Health Each Round"
+                   description={`Average, lowest and highest health after each round's camp${startHealth != null ? `; everyone started at ${startHealth}` : ''}. Earnings each round are health × ${island ? island.earningsMultiplier : 'the earnings rate'}.`}>
+          <ResponsiveContainer width="100%" height={HEIGHT}>
+            <ComposedChart data={rounds} margin={{ ...CHART_MARGINS, right: 90 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="label" tick={TICK} />
+              <YAxis domain={[0, maxHealthCap]} tick={TICK} label={{ value: 'Health', angle: -90, position: 'insideLeft', fontSize: 14 }} />
               <Tooltip />
-              <Legend />
-              <Bar dataKey="trades" name="# Transfers" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="goodsTraded" name="Goods Moved" fill={CHART_COLORS[2]} radius={[4, 4, 0, 0]} />
-            </BarChart>
+              <Legend wrapperStyle={{ fontSize: 14 }} />
+              {startHealth != null && (
+                <ReferenceLine y={startHealth} stroke={NEED} strokeWidth={2} strokeDasharray="4 4"
+                               label={{ value: `Start ${startHealth}`, position: 'right', fontSize: 14, fill: NEED }} />
+              )}
+              <Line dataKey="maxHealth" name="Highest" stroke={GIFT} strokeWidth={2} dot={{ r: 4 }} />
+              <Line dataKey="avgHealth" name="Average" stroke={AVG} strokeWidth={3} dot={{ r: 5 }} />
+              <Line dataKey="minHealth" name="Lowest" stroke={TAKEN} strokeWidth={2} dot={{ r: 4 }} />
+            </ComposedChart>
           </ResponsiveContainer>
         </ChartCard>
-      )}
-
-      {/* Exchange Efficiency */}
-      {efficiencyData.length > 0 && (
-        <ChartCard title="Exchange Efficiency" description="% of all produced goods that ended up in complete earning sets">
-          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-            <LineChart data={efficiencyData} margin={CHART_MARGINS}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="round" label={{ value: 'Round', position: 'insideBottom', offset: -2 }} />
-              <YAxis domain={[0, 100]} tickFormatter={(v: any) => `${v}%`} />
-              <Tooltip formatter={(v: any) => `${v}%`} />
-              <Line type="monotone" dataKey="efficiency" name="Efficiency" stroke={CHART_COLORS[4]} strokeWidth={2} dot={{ r: 4 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      )}
-
-      {/* Wasted Goods Summary */}
-      {wastedSummary.length > 0 && (
-        <ChartCard title="Total Wasted Goods" description="Goods in house that didn't form complete earning sets (summed across all rounds)">
-          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-            <BarChart data={wastedSummary} margin={CHART_MARGINS}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="name" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Legend />
-              {goodNames.map((good, i) => (
-                <Bar key={good} dataKey={good} name={good} fill={goodColors[i]} radius={[4, 4, 0, 0]} />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      )}
-
-      {/* Average Earnings by Player Type */}
-      {earningsByType.length > 1 && (
-        <ChartCard title="Average Earnings by Player Type" description="Do both types earn similarly? Balanced gains signal efficient exchange.">
-          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-            <BarChart data={earningsByType} margin={CHART_MARGINS}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="type" />
-              <YAxis tickFormatter={formatDollar} />
-              <Tooltip formatter={(v: any) => formatDollar(v)} />
-              <Bar dataKey="avgEarnings" name="Avg Earnings / Round" radius={[4, 4, 0, 0]}>
-                {earningsByType.map((_, i) => (
-                  <Cell key={i} fill={getPlayerColor(i)} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      )}
+      </div>
     </div>
   );
 };

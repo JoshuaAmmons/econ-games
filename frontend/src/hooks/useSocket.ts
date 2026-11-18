@@ -70,6 +70,11 @@ export function useSocket(sessionCode: string, playerId: string) {
     });
   }, [playerId, sessionCode]);
 
+  // Time left in the active round, by the server's clock; the answer arrives as 'round-timer' (18 Nov 2026)
+  const requestRoundTimer = useCallback(() => {
+    socketRef.current?.emit('get-round-timer', { sessionCode });
+  }, [sessionCode]);
+
   const requestGameState = useCallback((roundId: string) => {
     socketRef.current?.emit('get-game-state', {
       sessionCode,
@@ -95,6 +100,7 @@ export function useSocket(sessionCode: string, playerId: string) {
     submitAsk,
     submitAction,
     requestGameState,
+    requestRoundTimer,
     onEvent,
   };
 }

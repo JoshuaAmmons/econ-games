@@ -43,7 +43,7 @@ export const Market: React.FC = () => {
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const playerId = localStorage.getItem('playerId') || '';
-  const { connected, submitBid, submitAsk, submitAction: socketSubmitAction, requestGameState, onEvent } = useSocket(code || '', playerId);
+  const { connected, submitBid, submitAsk, submitAction: socketSubmitAction, requestGameState, requestRoundTimer, onEvent } = useSocket(code || '', playerId);
 
   // Determine if current game is DA-based (for order book loading)
   const gameType = session?.game_type || 'double_auction';
@@ -326,6 +326,12 @@ export const Market: React.FC = () => {
     cleanups.push(onEvent('timer-update', (data: { seconds_remaining: number }) => {
       setTimeRemaining(data.seconds_remaining);
     }));
+
+    // The server's time left for the active round (asked for on connecting, so a page opened mid-round is right)
+    cleanups.push(onEvent('round-timer', (data: { secondsRemaining: number | null }) => {
+      if (data && data.secondsRemaining != null) setTimeRemaining(data.secondsRemaining);
+    }));
+    requestRoundTimer();
 
     cleanups.push(onEvent('auto-advance-scheduled', (data: { delayMs: number }) => {
       const seconds = Math.ceil(data.delayMs / 1000);

@@ -164,6 +164,12 @@ const SessionMonitorContent: React.FC = () => {
 
   // Use socket for admin controls — use 'admin' as playerId since this is the monitor
   const { socket: rawSocket, connected, onEvent } = useSocket(code || '', 'admin');
+  const socketRef = useRef(rawSocket);
+  socketRef.current = rawSocket;
+  // Ask the server how long the active round has left (its clock decides; 18 Nov 2026)
+  const requestRoundTimer = useCallback(() => {
+    if (code) socketRef.current?.emit('get-round-timer', { sessionCode: code });
+  }, [code]);
 
   // Admin-authorized socket emitters that include the admin password
   const startRound = useCallback((roundNumber: number) => {
@@ -227,6 +233,11 @@ const SessionMonitorContent: React.FC = () => {
       loadSession();
     }));
 
+    // The server's time left for the active round, sent when a round starts and whenever the monitor asks
+    cleanups.push(onEvent('round-timer', (data: { roundId: string | null; secondsRemaining: number | null }) => {
+      if (data && data.secondsRemaining != null) setTimeRemaining(data.secondsRemaining);
+    }));
+
     cleanups.push(onEvent('trade-executed', () => {
       // Refresh players to see updated profits — use ref to avoid stale closure
       if (sessionRef.current) {
@@ -258,22 +269,17 @@ const SessionMonitorContent: React.FC = () => {
       timerIntervalRef.current = null;
     }
 
-    if (currentRound && currentRound.status === 'active' && timeRemaining > 0) {
+    // The countdown is a display. The server ends the round when its own timer runs out (or the engine does, for
+    // Discovery Process), so the monitor never sends end-round by itself: it used to, and a round whose real length
+    // differed from Time per Round, or a browser clock out of step with the server's, ended rounds early.
+    if (currentRound && currentRound.status === 'active') {
       timerIntervalRef.current = setInterval(() => {
         setTimeRemaining(prev => {
+          if (prev <= 0) return 0;
           const next = prev - 1;
           // Broadcast timer to players every 5 seconds
           if (next > 0 && next % 5 === 0) {
             sendTimerUpdateRef.current(next);
-          }
-          if (next <= 0) {
-            if (timerIntervalRef.current) {
-              clearInterval(timerIntervalRef.current);
-              timerIntervalRef.current = null;
-            }
-            // Auto-end round when timer expires
-            handleEndRoundRef.current();
-            return 0;
           }
           return next;
         });
@@ -343,10 +349,10 @@ const SessionMonitorContent: React.FC = () => {
       const activeRound = roundData.find(r => r.status === 'active');
       if (activeRound && (!currentRound || currentRound.id !== activeRound.id)) {
         setCurrentRound(activeRound);
-        // Set timer based on session config
+        // A first guess from the session settings; the server's answer below replaces it at once
         if (activeRound.started_at) {
           const elapsed = Math.floor((Date.now() - new Date(activeRound.started_at).getTime()) / 1000);
-          const remaining = Math.max(0, data.time_per_round - elapsed);
+          const remaining = Math.max(0, Math.min(data.time_per_round, data.time_per_round - elapsed));
           setTimeRemaining(remaining);
         } else {
           setTimeRemaining(data.time_per_round);
@@ -354,6 +360,8 @@ const SessionMonitorContent: React.FC = () => {
       } else if (!activeRound) {
         setCurrentRound(null);
       }
+      // Keep the countdown in step with the server's clock (this runs every 5 seconds)
+      if (activeRound) requestRoundTimer();
     } catch (error) {
       console.error('Failed to load session:', error);
     } finally {
@@ -366,10 +374,9 @@ const SessionMonitorContent: React.FC = () => {
     try {
       await sessionsApi.start(session.id, storedAdminPassword);
       toast.success('Session started!');
-      // The session start also starts round 1, so set timer
+      // The session start also starts round 1; the server announces its length (and tells the players)
       setTimeRemaining(session.time_per_round);
-      // Send initial timer to players
-      sendTimerUpdate(session.time_per_round);
+      requestRoundTimer();
       loadSession();
     } catch (error) {
       console.error('Failed to start session:', error);
@@ -392,9 +399,9 @@ const SessionMonitorContent: React.FC = () => {
   const handleStartRound = useCallback((roundNumber: number) => {
     if (!session) return;
     startRound(roundNumber);
+    // The server announces the round's length to the monitor and the players when it starts it
     setTimeRemaining(session.time_per_round);
-    sendTimerUpdate(session.time_per_round);
-  }, [session, startRound, sendTimerUpdate]);
+  }, [session, startRound]);
 
   const handleEndRound = useCallback(() => {
     if (!currentRound) return;

@@ -85,6 +85,11 @@ interface PlayerState {
   tugAmount: number;             // food at stake in the current tug
   // Per-round earnings
   roundEarnings: number;
+  // Recorded for the instructor's analytics (18 Nov 2026)
+  huntSide: 'left' | 'right' | null;   // the side the player hunted on (left = big game), null = stayed out
+  campHealth: number | null;           // health on reaching camp, before the round's decay and the meal
+  foodEaten: number;                   // food that turned into health
+  foodWasted: number;                  // food held at camp that could not be eaten (full health or hearth limit)
 }
 
 interface PreyState {
@@ -205,6 +210,51 @@ function moveToward(pos: Position, target: Position, speed: number, worldW: numb
   return { x: newX, y: newY };
 }
 
+/**
+ * Camp at the end of a round: each player loses the round's decay, then eats what they hold, up to the hearth's
+ * capacity and full health. Records health on reaching camp, food eaten and food wasted for the analytics.
+ */
+function applyCamp(state: RoundState): void {
+  const cfg = state.config;
+  for (const ps of state.players.values()) {
+    ps.campHealth = ps.health;
+    const afterDecay = ps.health - cfg.healthDecay;
+    const restore = Math.min(ps.food, cfg.hearthCapacity);
+    ps.foodEaten = Math.max(0, Math.min(restore, cfg.maxHealth - afterDecay));
+    ps.foodWasted = Math.max(0, ps.food - ps.foodEaten);
+    ps.health = Math.max(Math.min(afterDecay + restore, cfg.maxHealth), 0);
+    ps.roundEarnings = Math.round(ps.health * cfg.earningsMultiplier * 100) / 100;
+  }
+}
+
+/** One player's round result: the outcome, plus what the instructor's analytics need (18 Nov 2026). */
+function resultRecord(state: RoundState, ps: PlayerState): Record<string, any> {
+  const cfg = state.config;
+  return {
+    food: ps.food,
+    health: ps.health,
+    earnings: ps.roundEarnings,
+    huntSide: ps.huntSide,
+    campHealth: ps.campHealth,
+    foodEaten: ps.foodEaten,
+    foodWasted: ps.foodWasted,
+    island: {
+      players: state.players.size,
+      largePrey: cfg.largePrey,
+      largePreyValue: cfg.largePreyValue,
+      largePreyCaptureProb: cfg.largePreyCaptureProb,
+      smallPrey: cfg.smallPrey,
+      smallPreyValue: cfg.smallPreyValue,
+      healthDecay: cfg.healthDecay,
+      maxHealth: cfg.maxHealth,
+      hearthCapacity: cfg.hearthCapacity,
+      startHealth: cfg.startHealth,
+      earningsMultiplier: cfg.earningsMultiplier,
+      potFoodLeft: Array.from(state.pots.values()).reduce((s, p) => s + p.food, 0),
+    },
+  };
+}
+
 function mergeConfig(gameConfig: Record<string, any>): HunterGathererConfig {
   const cfg = { ...DEFAULT_CONFIG };
   for (const key of Object.keys(DEFAULT_CONFIG) as (keyof HunterGathererConfig)[]) {
@@ -271,6 +321,12 @@ export class DiscoveryProcessEngine implements GameEngine {
   // ------------------------------------------------------------------
   // validateConfig
   // ------------------------------------------------------------------
+  /** A round is the hunt, the camp and the interim; the engine ends it itself. */
+  getRoundSeconds(config: Record<string, any>): number {
+    const cfg = mergeConfig(config || {});
+    return cfg.huntingDuration + cfg.tradingDuration + cfg.interimDuration;
+  }
+
   validateConfig(config: Record<string, any>): ValidationResult {
     const hd = config.huntingDuration ?? DEFAULT_CONFIG.huntingDuration;
     if (hd < 5) return { valid: false, error: 'Hunting duration must be >= 5 seconds' };
@@ -345,6 +401,10 @@ export class DiscoveryProcessEngine implements GameEngine {
         tugTickCount: 0,
         tugAmount: 0,
         roundEarnings: 0,
+        huntSide: null,
+        campHealth: null,
+        foodEaten: 0,
+        foodWasted: 0,
       });
     }
 
@@ -578,6 +638,7 @@ export class DiscoveryProcessEngine implements GameEngine {
 
     // Move all players to middle zone
     for (const ps of state.players.values()) {
+      ps.huntSide = ps.lockedZone;
       const middleX = (cfg.leftZoneEnd + cfg.middleZoneEnd) / 2;
       ps.pos.x = clamp(ps.pos.x, cfg.leftZoneEnd + 50, cfg.middleZoneEnd - 50);
       ps.target = null;
@@ -607,13 +668,7 @@ export class DiscoveryProcessEngine implements GameEngine {
     }
 
     // Calculate health update: decay + food restore
-    for (const ps of state.players.values()) {
-      ps.health -= cfg.healthDecay;
-      const restore = Math.min(ps.food, cfg.hearthCapacity);
-      ps.health = Math.min(ps.health + restore, cfg.maxHealth);
-      ps.health = Math.max(ps.health, 0);
-      ps.roundEarnings = Math.round(ps.health * cfg.earningsMultiplier * 100) / 100;
-    }
+    applyCamp(state);
 
     // Broadcast interim results
     const interimData: Record<string, any> = {};
@@ -654,11 +709,7 @@ export class DiscoveryProcessEngine implements GameEngine {
     // Persist results
     for (const ps of state.players.values()) {
       try {
-        await GameResultModel.create(roundId, ps.id, {
-          food: ps.food,
-          health: ps.health,
-          earnings: ps.roundEarnings,
-        }, ps.roundEarnings);
+        await GameResultModel.create(roundId, ps.id, resultRecord(state, ps), ps.roundEarnings);
 
         await PlayerModel.updateProfit(ps.id, ps.roundEarnings);
       } catch (e) {
@@ -1183,25 +1234,17 @@ export class DiscoveryProcessEngine implements GameEngine {
 
       // Calculate interim if not done
       if (state.phase !== 'interim') {
-        const cfg = state.config;
-        for (const ps of state.players.values()) {
-          ps.health -= cfg.healthDecay;
-          const restore = Math.min(ps.food, cfg.hearthCapacity);
-          ps.health = Math.min(ps.health + restore, cfg.maxHealth);
-          ps.health = Math.max(ps.health, 0);
-          ps.roundEarnings = Math.round(ps.health * cfg.earningsMultiplier * 100) / 100;
+        if (state.phase === 'hunting') {
+          for (const ps of state.players.values()) ps.huntSide = ps.lockedZone;
         }
+        applyCamp(state);
       }
 
       // Persist results
       const playerResults: RoundResult['playerResults'] = [];
       for (const ps of state.players.values()) {
         try {
-          await GameResultModel.create(roundId, ps.id, {
-            food: ps.food,
-            health: ps.health,
-            earnings: ps.roundEarnings,
-          }, ps.roundEarnings);
+          await GameResultModel.create(roundId, ps.id, resultRecord(state, ps), ps.roundEarnings);
 
           await PlayerModel.updateProfit(ps.id, ps.roundEarnings);
         } catch (e) {
