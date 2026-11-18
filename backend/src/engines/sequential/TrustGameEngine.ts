@@ -45,7 +45,7 @@ export class TrustGameEngine extends SequentialBaseEngine {
           type: 'number',
           default: 6,
           min: 2,
-          max: 40,
+          max: 300,
           step: 2,
           description: 'Must be even (pairs of sender + receiver)',
         },

@@ -96,7 +96,7 @@ const FALLBACK_GAME_TYPES: Array<{
   { value: 'gift_exchange', label: 'Gift Exchange', description: 'Employer offers wage, worker chooses effort', weekNumber: 19, category: 'Sequential Move', usesValuationCost: false, configFields: [] },
   { value: 'principal_agent', label: 'Principal-Agent', description: 'Contract design and effort choice', weekNumber: 14, category: 'Sequential Move', usesValuationCost: false, configFields: [] },
   { value: 'trust_game', label: 'Trust Game', description: 'Sender sends money (multiplied), receiver decides how much to return', weekNumber: 20, category: 'Sequential Move', usesValuationCost: false, configFields: [
-    { name: 'market_size', label: 'Number of Players', type: 'number' as const, default: 6, min: 2, max: 40, step: 2 },
+    { name: 'market_size', label: 'Number of Players', type: 'number' as const, default: 6, min: 2, max: 300, step: 2 },
     { name: 'num_rounds', label: 'Number of Rounds', type: 'number' as const, default: 5, min: 1, max: 20 },
     { name: 'time_per_round', label: 'Time per Round (seconds)', type: 'number' as const, default: 120, min: 30, max: 300 },
     { name: 'endowment', label: 'Endowment ($)', type: 'number' as const, default: 10, min: 1, max: 100, step: 1 },

@@ -41,7 +41,7 @@ CREATE TABLE sessions (
 
     -- Constraints
     CONSTRAINT status_check CHECK (status IN ('waiting', 'active', 'completed', 'cancelled')),
-    CONSTRAINT market_size_check CHECK (market_size >= 2 AND market_size <= 100),
+    CONSTRAINT market_size_check CHECK (market_size >= 2 AND market_size <= 300),
     CONSTRAINT num_rounds_check CHECK (num_rounds >= 1 AND num_rounds <= 50),
     CONSTRAINT time_per_round_check CHECK (time_per_round >= 30 AND time_per_round <= 600),
     CONSTRAINT valuation_range_check CHECK (valuation_min < valuation_max),

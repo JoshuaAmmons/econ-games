@@ -50,6 +50,10 @@ async function applyConstraintUpdates() {
     // Ensure admin_password column exists on sessions table
     await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS admin_password VARCHAR(50) DEFAULT NULL`);
 
+    // Allow sessions of up to 300 players (a lecture-hall Trust Game); was 100
+    await pool.query(`ALTER TABLE sessions DROP CONSTRAINT IF EXISTS market_size_check`);
+    await pool.query(`ALTER TABLE sessions ADD CONSTRAINT market_size_check CHECK (market_size >= 2 AND market_size <= 300)`);
+
     console.log('Database constraints updated successfully');
   } catch (err) {
     console.error('Error updating database constraints:', err);
