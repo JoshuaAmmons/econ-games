@@ -38,6 +38,9 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   trust_game: 'Trust Game',
   bargaining: 'Bargaining Game',
   auction: 'Sealed-Bid Auction',
+  ellsberg: 'Ellsberg Urn Choice',
+  newsvendor: 'Newsvendor Problem',
+  asset_bubble: 'Asset Bubble',
 };
 
 const AnalyticsContent: React.FC = () => {

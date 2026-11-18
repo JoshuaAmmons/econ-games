@@ -41,6 +41,22 @@ export const formatDollar = (v: any) => `$${Number(v || 0).toFixed(2)}`;
 export const formatDollarShort = (v: any) => `$${Math.round(Number(v || 0))}`;
 export const formatPercent = (v: any) => `${(Number(v || 0) * 100).toFixed(0)}%`;
 export const formatNumber = (v: any) => Number(v || 0).toFixed(1);
+export const formatCents = (v: any) => `${Math.round(Number(v || 0))}¢`;
+
+/**
+ * Games whose round results store each player's running total so far (Asset Bubble stores cash minus starting
+ * cash after every period), not the round's own profit. Their per-round profit is the change from the previous
+ * round; summing the stored values would count every earlier round again.
+ */
+export const CUMULATIVE_RESULT_GAMES = new Set(['asset_bubble']);
+
+/** Games that count money in cents rather than dollars. */
+export const CENT_GAMES = new Set(['asset_bubble']);
+
+/** Formats money in the game's own unit: cents for Asset Bubble, dollars for every other game. */
+export function moneyFormatter(gameType: string): (v: any) => string {
+  return CENT_GAMES.has(gameType) ? formatCents : formatDollar;
+}
 
 export const CHART_MARGINS = { top: 20, right: 30, left: 20, bottom: 5 };
 export const CHART_HEIGHT = 300;
@@ -85,12 +101,16 @@ export function computePerRoundProfits(
     trades?: Array<{ buyerId: string; sellerId: string; buyerProfit: number; sellerProfit: number }>;
     results?: Array<{ playerId: string; profit: number }>;
   }>,
-  isDA: boolean
+  isDA: boolean,
+  gameType?: string
 ): Map<string, number[]> {
   const profitMap = new Map<string, number[]>();
   for (const player of players) {
     profitMap.set(player.id, []);
   }
+  // Running totals stored per round (Asset Bubble): each round's profit is the change from the last total
+  const cumulative = gameType ? CUMULATIVE_RESULT_GAMES.has(gameType) : false;
+  const lastTotal = new Map<string, number>();
 
   const completedRounds = rounds.filter(r => r.roundNumber != null).sort((a, b) => a.roundNumber - b.roundNumber);
 
@@ -107,9 +127,16 @@ export function computePerRoundProfits(
         profitMap.get(player.id)!.push(roundProfits.get(player.id) || 0);
       }
     } else if (round.results) {
-      const resultMap = new Map(round.results.map(r => [r.playerId, r.profit]));
+      const resultMap = new Map(round.results.map(r => [r.playerId, Number(r.profit)]));
       for (const player of players) {
-        profitMap.get(player.id)!.push(resultMap.get(player.id) || 0);
+        if (cumulative) {
+          const prev = lastTotal.get(player.id) ?? 0;
+          const cur = resultMap.has(player.id) ? resultMap.get(player.id)! : prev;
+          profitMap.get(player.id)!.push(cur - prev);
+          lastTotal.set(player.id, cur);
+        } else {
+          profitMap.get(player.id)!.push(resultMap.get(player.id) || 0);
+        }
       }
     }
   }

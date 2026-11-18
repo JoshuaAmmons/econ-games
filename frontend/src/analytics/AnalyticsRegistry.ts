@@ -37,6 +37,9 @@ const analyticsRegistry: Record<string, React.LazyExoticComponent<React.Componen
   bargaining: React.lazy(() => import('./sequential/BargainingAnalytics')),
   auction: React.lazy(() => import('./simultaneous/AuctionAnalytics')),
   matching_pennies: React.lazy(() => import('./simultaneous/MatchingPenniesAnalytics')),
+  ellsberg: React.lazy(() => import('./simultaneous/EllsbergAnalytics')),
+  newsvendor: React.lazy(() => import('./simultaneous/NewsvendorAnalytics')),
+  asset_bubble: React.lazy(() => import('./specialized/AssetBubbleAnalytics')),
 };
 
 export function getAnalyticsComponent(gameType: string): React.LazyExoticComponent<React.ComponentType<AnalyticsProps>> | null {

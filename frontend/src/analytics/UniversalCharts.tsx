@@ -6,7 +6,7 @@ import {
 import { ChartCard } from '../components/charts/ChartCard';
 import {
   CHART_COLORS, PROFIT_COLORS, CHART_HEIGHT, CHART_MARGINS,
-  formatDollar, getPlayerColor, computePerRoundProfits,
+  getPlayerColor, computePerRoundProfits, moneyFormatter, CENT_GAMES, CUMULATIVE_RESULT_GAMES,
 } from '../components/charts/chartUtils';
 import type { AnalyticsData } from '../hooks/useAnalyticsData';
 
@@ -22,9 +22,10 @@ interface Props {
  */
 export const CumulativeProfitChart: React.FC<Props> = ({ data, completedRounds }) => {
   const isDA = DA_GAME_TYPES.includes(data.session.gameType);
+  const money = moneyFormatter(data.session.gameType);
 
   const chartData = useMemo(() => {
-    const profitMap = computePerRoundProfits(data.players, completedRounds, isDA);
+    const profitMap = computePerRoundProfits(data.players, completedRounds, isDA, data.session.gameType);
     const roundNumbers = completedRounds.map(r => r.roundNumber).sort((a, b) => a - b);
 
     return roundNumbers.map((rn, idx) => {
@@ -39,18 +40,22 @@ export const CumulativeProfitChart: React.FC<Props> = ({ data, completedRounds }
       }
       return point;
     });
-  }, [data.players, completedRounds, isDA]);
+  }, [data.players, completedRounds, isDA, data.session.gameType]);
 
   if (completedRounds.length === 0) return null;
 
+  const description = data.session.gameType === 'asset_bubble'
+    ? "Each line is one player's cash gained or lost since the start, in cents (shares pay nothing after the last period)"
+    : "Each line represents one player's running total profit";
+
   return (
-    <ChartCard title="Cumulative Profit Over Rounds" description="Each line represents one player's running total profit">
+    <ChartCard title="Cumulative Profit Over Rounds" description={description}>
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
         <LineChart data={chartData} margin={CHART_MARGINS}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="round" label={{ value: 'Round', position: 'insideBottom', offset: -2 }} />
-          <YAxis tickFormatter={formatDollar} />
-          <Tooltip formatter={(value: any) => formatDollar(value)} />
+          <YAxis tickFormatter={money} />
+          <Tooltip formatter={(value: any) => money(value)} />
           <Legend />
           <ReferenceLine y={0} stroke="#999" strokeDasharray="3 3" />
           {data.players.map((player, i) => (
@@ -75,6 +80,7 @@ export const CumulativeProfitChart: React.FC<Props> = ({ data, completedRounds }
  * Profit Distribution — histogram of final profits
  */
 export const ProfitDistributionChart: React.FC<Props> = ({ data }) => {
+  const cents = CENT_GAMES.has(data.session.gameType);
   const chartData = useMemo(() => {
     const profits = data.players.map(p => p.totalProfit);
     if (profits.length === 0) return [];
@@ -90,13 +96,13 @@ export const ProfitDistributionChart: React.FC<Props> = ({ data }) => {
       const lo = min + i * binSize;
       const hi = lo + binSize;
       bins.push({
-        label: `$${lo.toFixed(0)}-${hi.toFixed(0)}`,
+        label: cents ? `${lo.toFixed(0)}-${hi.toFixed(0)}¢` : `$${lo.toFixed(0)}-${hi.toFixed(0)}`,
         midpoint: (lo + hi) / 2,
         count: profits.filter(p => p >= lo && (i === binCount - 1 ? p <= hi : p < hi)).length,
       });
     }
     return bins;
-  }, [data.players]);
+  }, [data.players, cents]);
 
   if (data.players.length === 0) return null;
 
@@ -123,6 +129,7 @@ export const ProfitDistributionChart: React.FC<Props> = ({ data }) => {
  * Player Ranking — horizontal bar chart sorted by profit
  */
 export const PlayerRankingChart: React.FC<Props> = ({ data }) => {
+  const money = moneyFormatter(data.session.gameType);
   const chartData = useMemo(() => {
     return [...data.players]
       .sort((a, b) => a.totalProfit - b.totalProfit) // ascending for horizontal layout
@@ -143,9 +150,9 @@ export const PlayerRankingChart: React.FC<Props> = ({ data }) => {
       <ResponsiveContainer width="100%" height={height}>
         <BarChart data={chartData} layout="vertical" margin={{ ...CHART_MARGINS, left: 80 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis type="number" tickFormatter={formatDollar} />
+          <XAxis type="number" tickFormatter={money} />
           <YAxis type="category" dataKey="name" width={70} tick={{ fontSize: 11 }} />
-          <Tooltip formatter={(value: any) => formatDollar(value)} />
+          <Tooltip formatter={(value: any) => money(value)} />
           <ReferenceLine x={0} stroke="#999" />
           <Bar dataKey="profit" name="Total Profit" radius={[0, 4, 4, 0]}>
             {chartData.map((entry, i) => {
@@ -168,9 +175,17 @@ export const PlayerRankingChart: React.FC<Props> = ({ data }) => {
  */
 export const RoundSummaryChart: React.FC<Props> = ({ data, completedRounds }) => {
   const isDA = DA_GAME_TYPES.includes(data.session.gameType);
+  const money = moneyFormatter(data.session.gameType);
+  const cumulative = CUMULATIVE_RESULT_GAMES.has(data.session.gameType);
 
   const chartData = useMemo(() => {
+    // Running totals (Asset Bubble): use each player's change over the round, not the stored total
+    const perRound = cumulative
+      ? computePerRoundProfits(data.players, completedRounds, false, data.session.gameType)
+      : null;
+    const order = [...completedRounds].sort((a, b) => a.roundNumber - b.roundNumber).map(r => r.roundNumber);
     return completedRounds.map(round => {
+      const idx = order.indexOf(round.roundNumber);
       const row: Record<string, any> = { round: `R${round.roundNumber}` };
 
       if (isDA && round.trades) {
@@ -182,29 +197,30 @@ export const RoundSummaryChart: React.FC<Props> = ({ data, completedRounds }) =>
           round.trades.reduce((s, t) => s + Number(t.buyerProfit) + Number(t.sellerProfit), 0).toFixed(2)
         );
       } else if (round.results) {
-        row.players = round.results.length;
-        row.avgProfit = round.results.length > 0
-          ? parseFloat((round.results.reduce((s, r) => s + r.profit, 0) / round.results.length).toFixed(2))
+        const profits = round.results.map(r => (perRound ? (perRound.get(r.playerId)?.[idx] ?? 0) : Number(r.profit)));
+        row.players = profits.length;
+        row.avgProfit = profits.length > 0
+          ? parseFloat((profits.reduce((s, p) => s + p, 0) / profits.length).toFixed(2))
           : 0;
-        row.totalProfit = parseFloat(round.results.reduce((s, r) => s + r.profit, 0).toFixed(2));
+        row.totalProfit = parseFloat(profits.reduce((s, p) => s + p, 0).toFixed(2));
       }
       return row;
     });
-  }, [completedRounds, isDA]);
+  }, [completedRounds, isDA, cumulative, data.players, data.session.gameType]);
 
   if (completedRounds.length === 0) return null;
 
   return (
-    <ChartCard title="Round Summary" description={isDA ? 'Trade volume, average price, and surplus per round' : 'Average and total profit per round'}>
+    <ChartCard title="Round Summary" description={isDA ? 'Trade volume, average price, and surplus per round' : cumulative ? 'Average and total change in cash per round, in cents' : 'Average and total profit per round'}>
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
         <BarChart data={chartData} margin={CHART_MARGINS}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="round" />
-          <Tooltip formatter={(value: any) => formatDollar(value)} />
+          <Tooltip formatter={(value: any) => money(value)} />
           <Legend />
           {isDA ? (
             <>
-              <YAxis yAxisId="left" tickFormatter={formatDollar} />
+              <YAxis yAxisId="left" tickFormatter={money} />
               <YAxis yAxisId="right" orientation="right" />
               <Bar yAxisId="left" dataKey="avgPrice" name="Avg Price" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} />
               <Bar yAxisId="left" dataKey="totalSurplus" name="Total Surplus" fill={CHART_COLORS[2]} radius={[4, 4, 0, 0]} />
@@ -212,7 +228,7 @@ export const RoundSummaryChart: React.FC<Props> = ({ data, completedRounds }) =>
             </>
           ) : (
             <>
-              <YAxis tickFormatter={formatDollar} />
+              <YAxis tickFormatter={money} />
               <Bar dataKey="avgProfit" name="Avg Profit" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} />
               <Bar dataKey="totalProfit" name="Total Profit" fill={CHART_COLORS[2]} radius={[4, 4, 0, 0]} />
             </>
