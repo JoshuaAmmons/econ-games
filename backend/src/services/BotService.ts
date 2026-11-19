@@ -5,6 +5,7 @@ import { SessionModel } from '../models/Session';
 import { RoundModel } from '../models/Round';
 import { GameActionModel } from '../models/GameAction';
 import { GameResultModel } from '../models/GameResult';
+import { TradeModel } from '../models/Trade';
 import { GameRegistry } from '../engines/GameRegistry';
 import { generateValuations, generateProductionCosts } from './gameLogic';
 import { BotStrategyRegistry } from './botStrategies';
@@ -241,10 +242,13 @@ export class BotService {
 
     if (CONTINUOUS_TRADING_TYPES.has(gameType)) {
       // DA variants and asset_bubble: schedule periodic bid/ask submissions. What a bot knows of
-      // earlier periods is read once here: the Asset Bubble's average price in each earlier period.
+      // earlier periods is read once here: the DA's last average trade price (bots anchor on it from
+      // period 2), the Asset Bubble's average price in each earlier period.
       const roundInfo: Record<string, any> = { roundNumber };
       if (gameType === 'asset_bubble') {
         roundInfo.priceHistory = await this.assetBubblePriceHistory(session.id, roundNumber);
+      } else {
+        roundInfo.previousMeanPrice = await this.previousMeanTradePrice(session.id, roundNumber);
       }
       for (const [botIndex, bot] of bots.entries()) {
         this.scheduleDABotActions(bot, roundId, sessionCode, gameType, config, io, timers, { ...roundInfo, botIndex });
@@ -439,6 +443,20 @@ export class BotService {
       });
     }
     return history;
+  }
+
+  /** Double Auction: the average trade price of the latest earlier round that had trades, or null. */
+  private async previousMeanTradePrice(sessionId: string, roundNumber: number): Promise<number | null> {
+    const earlier = (await RoundModel.findBySession(sessionId))
+      .filter((r) => r.round_number < roundNumber)
+      .sort((a, b) => b.round_number - a.round_number);
+    for (const r of earlier) {
+      const trades = await TradeModel.findByRound(r.id);
+      if (trades.length > 0) {
+        return trades.reduce((sum, t) => sum + Number(t.price), 0) / trades.length;
+      }
+    }
+    return null;
   }
 
   /** Asset Bubble: each earlier period's average trade price (null when it had no trades), oldest first. */
