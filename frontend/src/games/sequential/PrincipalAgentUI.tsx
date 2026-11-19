@@ -12,7 +12,8 @@ interface PairResult {
   secondMoverId: string;
   secondMoverName: string;
   firstMoveAction: { fixedWage: number; bonus: number };
-  secondMoveAction: { highEffort: boolean };
+  // The server strips the agent's effort from what every player receives (it is hidden information)
+  secondMoveAction: { type?: string } | null;
   firstMoverProfit: number;
   secondMoverProfit: number;
   firstMoverResultData: { isHighOutput: boolean; output: number; bonusPaid: number };
@@ -37,6 +38,9 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
   const [submitted, setSubmitted] = useState(false);
   const [partnerContract, setPartnerContract] = useState<{ fixedWage: number; bonus: number } | null>(null);
   const [results, setResults] = useState<PairResult[] | null>(null);
+  // An agent's own effort choice this round (the results never carry it): from the choice made on this
+  // screen, or from the game state after a reload. Shown only to that agent, on their own pair.
+  const [myEffort, setMyEffort] = useState<boolean | null>(null);
 
   const gameConfig = session?.game_config || {};
   const highOutput = Number(gameConfig.highOutput ?? 100);
@@ -55,6 +59,7 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
       setBonus('');
       setPartnerContract(null);
       setResults(null);
+      setMyEffort(null);
     }
   }, [roundId, roundActive]);
 
@@ -65,6 +70,7 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
     cleanups.push(onEvent('game-state', (state: any) => {
       if (state.myAction) {
         setSubmitted(true);
+        if (!isPrincipal && typeof state.myAction.highEffort === 'boolean') setMyEffort(state.myAction.highEffort);
       }
       if (!isPrincipal && state.partnerAction) {
         setPartnerContract({ fixedWage: state.partnerAction.fixedWage, bonus: state.partnerAction.bonus });
@@ -124,6 +130,7 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
     if (!roundId || submitted) return;
     submitAction({ type: 'second_move', highEffort });
     setSubmitted(true);
+    setMyEffort(highEffort);
     toast.success(highEffort ? 'Chose high effort!' : 'Chose low effort');
   };
 
@@ -305,8 +312,9 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
                         </span>
                       </div>
                       <div className="text-xs text-gray-500">
-                        Wage: ${pair.firstMoveAction?.fixedWage ?? "N/A"} | Bonus: ${pair.firstMoverResultData?.bonusPaid ?? "N/A"} |
-                        Effort: {pair.secondMoveAction?.highEffort ? 'High' : 'Low'}
+                        Wage: ${pair.firstMoveAction?.fixedWage ?? "N/A"} | Bonus: ${pair.firstMoverResultData?.bonusPaid ?? "N/A"}
+                        {/* Effort is hidden: only the agent sees their own, on their own pair */}
+                        {isMyPair && !isPrincipal && myEffort !== null && <> | Your effort: {myEffort ? 'High' : 'Low'}</>}
                       </div>
                     </div>
                   </div>
