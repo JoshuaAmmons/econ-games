@@ -15,6 +15,28 @@ import toast from 'react-hot-toast';
 const LATE_PAIRING_GAMES = new Set(['ultimatum', 'market_for_lemons', 'principal_agent', 'gift_exchange', 'trust_game']);
 
 /**
+ * Asks the server for this player's game state once the game panel has mounted (19 Nov 2026).
+ * The panels are loaded lazily, so the request Market makes on connecting is often answered before the
+ * panel has registered its 'game-state' listener, and the answer was lost: an agent whose page opened
+ * after the contract was sent saw "Waiting for principal..." all round, even after a reload. React runs
+ * a child's effects before its parent's, so when this effect runs the panel's listeners exist. Applies
+ * to every game panel; later requests (reconnect, new round, pairing) are still made by Market.
+ */
+const RequestStateWhenMounted: React.FC<{
+  roundId: string | null;
+  connected: boolean;
+  requestGameState: (roundId: string) => void;
+  children: React.ReactNode;
+}> = ({ roundId, connected, requestGameState, children }) => {
+  useEffect(() => {
+    if (connected && roundId) requestGameState(roundId);
+    // Once, on mount: Market's own effect covers every later change of round or connection
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return <>{children}</>;
+};
+
+/**
  * Market page — game router.
  * Looks up the session's game_type and renders the appropriate game UI.
  * Handles shared concerns: socket events, round lifecycle, timer, header.
@@ -492,6 +514,7 @@ export const Market: React.FC = () => {
             <Spinner />
           </div>
         }>
+          <RequestStateWhenMounted roundId={roundId} connected={connected} requestGameState={requestGameState}>
           <GameUIComponent
             session={session}
             player={player}
@@ -513,6 +536,7 @@ export const Market: React.FC = () => {
             submitBid={submitBid}
             submitAsk={submitAsk}
           />
+          </RequestStateWhenMounted>
         </Suspense>
       </div>
     </div>
