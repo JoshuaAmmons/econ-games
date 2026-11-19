@@ -70,6 +70,7 @@ const FALLBACK_GAME_TYPES: Array<{
     { name: 'time_per_round', label: 'Time per Round (seconds)', type: 'number' as const, default: 60, min: 15, max: 300 },
     { name: 'stagPayoff', label: 'Stag Payoff', type: 'number' as const, default: 5, min: 1, max: 100, step: 1 },
     { name: 'harePayoff', label: 'Hare Payoff', type: 'number' as const, default: 3, min: 1, max: 100, step: 1 },
+    { name: 'stag_threshold', label: 'Stag Hunters Needed', type: 'number' as const, default: '', min: 0, max: 40, step: 1, description: 'Stag pays only when at least this many players hunt stag. Leave blank (or 0) for everyone, the classic rule.' },
   ]},
   { value: 'dictator', label: 'Dictator Game', description: 'Each player decides how much of their endowment to give away', weekNumber: 21, category: 'Simultaneous Move', usesValuationCost: false, configFields: [
     { name: 'market_size', label: 'Group Size', type: 'number' as const, default: 8, min: 2, max: 40 },

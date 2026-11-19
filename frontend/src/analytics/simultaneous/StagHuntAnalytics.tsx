@@ -6,10 +6,12 @@ import {
 import { ChartCard } from '../../components/charts/ChartCard';
 import { CHART_COLORS, CHART_HEIGHT, CHART_MARGINS, formatDollar } from '../../components/charts/chartUtils';
 import type { AnalyticsProps } from '../AnalyticsRegistry';
+import { stagThreshold } from '../../games/simultaneous/stagThreshold';
 
 const StagHuntAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) => {
   const gameConfig = data.session.gameConfig || {};
   const stagPayoff = gameConfig.stagStagPayoff ?? gameConfig.stagPayoff ?? 4;
+  const needed = stagThreshold(gameConfig);   // null = the hunt needs every player on stag
 
   // Stag/Hare choice counts per round
   const choiceDistribution = useMemo(() => {
@@ -26,13 +28,15 @@ const StagHuntAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) 
     });
   }, [completedRounds]);
 
-  // Coordination success rate: % of rounds where ALL players chose stag
+  // Coordination success rate: % of rounds where ALL players chose stag (or at least `needed`, if set)
   const coordinationData = useMemo(() => {
     let cumulativeSuccess = 0;
     return completedRounds.map((round, idx) => {
       const results = round.results || [];
       const choices = results.map(r => r.resultData?.choice ?? r.resultData?.action ?? '');
-      const allStag = results.length > 0 && choices.every(c => c === 'stag');
+      const allStag = needed === null
+        ? results.length > 0 && choices.every(c => c === 'stag')
+        : choices.filter(c => c === 'stag').length >= needed;
       if (allStag) cumulativeSuccess += 1;
       const rate = ((cumulativeSuccess / (idx + 1)) * 100);
       return {
@@ -41,7 +45,7 @@ const StagHuntAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) 
         allStagThisRound: allStag ? 100 : 0,
       };
     });
-  }, [completedRounds]);
+  }, [completedRounds, needed]);
 
   // Average payoff per round
   const avgPayoffData = useMemo(() => {
@@ -77,7 +81,9 @@ const StagHuntAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) 
 
       {/* Coordination Success Rate */}
       {coordinationData.length > 0 && (
-        <ChartCard title="Coordination Success Rate" description="Cumulative percentage of rounds where all players chose stag (payoff-dominant equilibrium)">
+        <ChartCard title="Coordination Success Rate" description={needed === null
+          ? 'Cumulative percentage of rounds where all players chose stag (payoff-dominant equilibrium)'
+          : `Cumulative percentage of rounds where at least ${needed} players chose stag (the hunt succeeded)`}>
           <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
             <LineChart data={coordinationData} margin={CHART_MARGINS}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -86,7 +92,7 @@ const StagHuntAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) 
               <Tooltip formatter={(value: any) => `${value}%`} />
               <Legend />
               <Line type="monotone" dataKey="coordinationRate" name="Cumulative Coordination %" stroke={CHART_COLORS[0]} strokeWidth={2} dot={{ r: 4 }} />
-              <Line type="stepAfter" dataKey="allStagThisRound" name="All Stag This Round" stroke={CHART_COLORS[2]} strokeWidth={1} dot={{ r: 3 }} strokeDasharray="3 3" />
+              <Line type="stepAfter" dataKey="allStagThisRound" name={needed === null ? 'All Stag This Round' : 'Hunt Succeeded This Round'} stroke={CHART_COLORS[2]} strokeWidth={1} dot={{ r: 3 }} strokeDasharray="3 3" />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>

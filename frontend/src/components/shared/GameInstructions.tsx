@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { HelpCircle, ChevronDown, ChevronUp, BookOpen, ExternalLink } from 'lucide-react';
-import { gameInstructions } from '../../games/gameInstructions';
+import { instructionsFor } from '../../games/gameInstructions';
 import type { GameInstructionSet } from '../../games/gameInstructions';
 
 interface GameInstructionsProps {
   gameType: string;
   variant?: 'student' | 'instructor';
   defaultExpanded?: boolean;
+  /** The session's game_config, for games whose rules depend on a setting (Stag Hunt's stag_threshold) */
+  gameConfig?: Record<string, any> | null;
 }
 
 /**
@@ -14,9 +16,9 @@ interface GameInstructionsProps {
  * - 'student' variant: shows how-to-play instructions (for the Market page)
  * - 'instructor' variant: shows payoff functions, equilibrium, and teaching notes (for the Monitor page)
  */
-export const GameInstructions: React.FC<GameInstructionsProps> = ({ gameType, variant = 'student', defaultExpanded = false }) => {
+export const GameInstructions: React.FC<GameInstructionsProps> = ({ gameType, variant = 'student', defaultExpanded = false, gameConfig }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
-  const instructions = gameInstructions[gameType];
+  const instructions = instructionsFor(gameType, gameConfig);
 
   if (!instructions) return null;
 

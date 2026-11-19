@@ -12,6 +12,7 @@ import { GameInstructions } from '../components/shared/GameInstructions';
 import { moneyFormatter } from '../components/charts/chartUtils';
 import { AdminPasswordGate } from '../components/shared/AdminPasswordGate';
 import { duplicateSession, isPracticeSession } from '../components/shared/duplicateSession';
+import { stagThreshold } from '../games/simultaneous/stagThreshold';
 import { QRCodeSVG } from 'qrcode.react';
 import { toPng } from 'html-to-image';
 import toast from 'react-hot-toast';
@@ -112,6 +113,7 @@ const CONFIG_LABELS: Record<string, string> = {
   // Stag Hunt
   stagPayoff: 'Stag Payoff (All Cooperate)',
   harePayoff: 'Hare Payoff (Safe Option)',
+  stag_threshold: 'Stag Hunters Needed',
   // Dictator
   // (endowment already listed above)
   // Matching Pennies
@@ -684,7 +686,7 @@ const SessionMonitorContent: React.FC = () => {
                 return (
                   <div key={key} className="text-center bg-gray-50 rounded p-3">
                     <p className="text-xs text-gray-500 mb-1">{label}</p>
-                    <p className="text-lg font-bold">{value == null ? '—' : typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)}</p>
+                    <p className="text-lg font-bold">{key === 'stag_threshold' && stagThreshold(session.game_config) === null ? 'Everyone' : value == null ? '—' : typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)}</p>
                   </div>
                 );
               })}
@@ -693,7 +695,7 @@ const SessionMonitorContent: React.FC = () => {
         )}
 
         {/* Instructor Notes */}
-        <GameInstructions gameType={session.game_type} variant="instructor" />
+        <GameInstructions gameType={session.game_type} variant="instructor" gameConfig={session.game_config} />
 
         {/* Round Progress */}
         {session.status !== 'waiting' && (

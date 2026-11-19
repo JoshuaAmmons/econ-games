@@ -3,6 +3,8 @@
  * Each game type maps to student-facing rules and instructor-facing technical notes.
  */
 
+import { stagThreshold } from './simultaneous/stagThreshold';
+
 export interface SourcePaper {
   title: string;
   authors: string;
@@ -917,6 +919,7 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       keyParameters: [
         'stagPayoff — payoff when all hunt stag (default 5)',
         'harePayoff — guaranteed payoff for hunting hare (default 3)',
+        'stag_threshold — stag hunters needed for stag to pay (blank = everyone, the classic rule)',
       ],
       teachingNotes: [
         'Illustrates the difference between payoff dominance and risk dominance.',
@@ -1794,3 +1797,47 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
     ],
   },
 };
+
+/**
+ * The instruction set for a session: the static text, except where a game's settings change its rules.
+ * Stag Hunt with stag_threshold set: stag pays when at least that many players hunt stag, not only when all do.
+ */
+export function instructionsFor(gameType: string, gameConfig?: Record<string, any> | null): GameInstructionSet | undefined {
+  const base = gameInstructions[gameType];
+  if (!base) return base;
+  if (gameType === 'stag_hunt') {
+    const t = stagThreshold(gameConfig);
+    if (t !== null) {
+      return {
+        ...base,
+        studentInstructions: {
+          ...base.studentInstructions,
+          premise:
+            `You are in a group where players must coordinate. Each player simultaneously chooses to Hunt Stag (pays only if at least ${t} players hunt stag) or Hunt Hare (safe but less rewarding).`,
+          yourGoal:
+            `Earn the most by coordinating with your group. Hunting stag pays more, but only if at least ${t} players hunt stag.`,
+          howToPlay: [
+            'Each round, choose: Hunt Stag or Hunt Hare.',
+            `If at least ${t} players choose Stag: every Stag hunter earns the Stag payoff (higher).`,
+            'If you choose Hare: you earn the Hare payoff regardless of others.',
+            `If you choose Stag but fewer than ${t} players choose Stag: you earn $0 (the stag escapes).`,
+          ],
+          tips: [
+            `Stag is better if you trust at least ${t - 1 === 1 ? 'one other player' : `${t - 1} others`} to hunt stag with you, but risky.`,
+            'Hare is the safe choice — guaranteed payoff no matter what.',
+            'This game has two equilibria: all-Stag (better) and all-Hare (safer).',
+          ],
+        },
+        instructorNotes: {
+          ...base.instructorNotes,
+          payoffFunctions: [
+            `At least ${t} choose Stag: each Stag hunter earns stagPayoff`,
+            'Choose Hare: earn harePayoff (regardless of others)',
+            `Choose Stag when fewer than ${t} choose Stag: earn 0`,
+          ],
+        },
+      };
+    }
+  }
+  return base;
+}

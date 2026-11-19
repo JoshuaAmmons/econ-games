@@ -7,6 +7,7 @@ import { sessionsApi } from '../api/sessions';
 import type { Player, Session } from '../types';
 import { User } from 'lucide-react';
 import { GameInstructions } from '../components/shared/GameInstructions';
+import { stagThreshold } from '../games/simultaneous/stagThreshold';
 
 const DA_GAME_TYPES = ['double_auction', 'double_auction_tax', 'double_auction_price_controls'];
 
@@ -307,10 +308,17 @@ export const Lobby: React.FC = () => {
   const gameType = session?.game_type || 'double_auction';
   const isDA = DA_GAME_TYPES.includes(gameType);
   const role = player?.role || 'player';
-  const gameInfo = ROLE_INFO[gameType]?.[role] || [
-    `You are a ${role}`,
-    'Wait for the instructor to start the session',
-  ];
+  const stagNeeded = gameType === 'stag_hunt' ? stagThreshold(session?.game_config) : null;
+  const gameInfo = stagNeeded !== null
+    ? [
+        'Choose to hunt Stag (risky, high reward) or Hare (safe, low reward)',
+        `Stag succeeds only if at least ${stagNeeded} players hunt stag`,
+        `If fewer than ${stagNeeded} hunt stag, stag hunters get nothing`,
+      ]
+    : ROLE_INFO[gameType]?.[role] || [
+        `You are a ${role}`,
+        'Wait for the instructor to start the session',
+      ];
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center safe-top safe-bottom">
@@ -332,7 +340,7 @@ export const Lobby: React.FC = () => {
             </div>
 
             <div className="text-left mb-6">
-              <GameInstructions gameType={gameType} variant="student" defaultExpanded />
+              <GameInstructions gameType={gameType} variant="student" defaultExpanded gameConfig={session?.game_config} />
             </div>
 
             <div className="bg-gray-50 rounded-lg p-6">

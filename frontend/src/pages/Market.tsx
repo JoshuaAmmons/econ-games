@@ -479,7 +479,7 @@ export const Market: React.FC = () => {
 
       {/* Game UI */}
       <div className="max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-6 safe-bottom touch-game">
-        <GameInstructions gameType={gameType} variant="student" />
+        <GameInstructions gameType={gameType} variant="student" gameConfig={session?.game_config} />
         {unpaired && (
           <div className="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
             {LATE_PAIRING_GAMES.has(gameType)

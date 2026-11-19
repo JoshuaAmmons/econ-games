@@ -5,6 +5,7 @@ import type { GameUIProps } from '../GameUIRegistry';
 import { DollarSign, Target, Shield, BarChart3 } from 'lucide-react';
 import { WaitingIndicator } from '../../components/shared/WaitingIndicator';
 import toast from 'react-hot-toast';
+import { stagThreshold } from './stagThreshold';
 
 interface RoundResult {
   playerId: string;
@@ -17,12 +18,19 @@ interface RoundResult {
   groupSize: number;
   stagPayoff: number;
   harePayoff: number;
+  /** Only when the session sets stag_threshold: hunters needed, and whether the hunt succeeded */
+  stagThreshold?: number;
+  stagSucceeded?: boolean;
 }
+
+/** Did this round's stag hunt succeed? (everyone chose stag, or enough did when a threshold is set) */
+const huntSucceeded = (r?: RoundResult | null): boolean => !!(r && (r.stagSucceeded ?? r.allChoseStag));
 
 /**
  * Stag Hunt UI
  * Players simultaneously choose to hunt Stag (risky cooperation) or Hare (safe defection).
- * All must choose Stag for the stag hunt to succeed. Hare guarantees a smaller payoff.
+ * All must choose Stag for the stag hunt to succeed (or at least stag_threshold players, if set).
+ * Hare guarantees a smaller payoff.
  */
 const StagHuntUI: React.FC<GameUIProps> = ({
   session,
@@ -43,6 +51,7 @@ const StagHuntUI: React.FC<GameUIProps> = ({
   const gameConfig = session?.game_config || {};
   const stagPayoff = Number(gameConfig.stagPayoff ?? 5);
   const harePayoff = Number(gameConfig.harePayoff ?? 3);
+  const needed = stagThreshold(gameConfig);   // null = everyone must hunt stag
 
   // Reset state when new round starts
   useEffect(() => {
@@ -79,7 +88,7 @@ const StagHuntUI: React.FC<GameUIProps> = ({
       refreshPlayer();
       const myResult = data.results.find(r => r.playerId === playerId);
       if (myResult) {
-        if (myResult.allChoseStag) {
+        if (huntSucceeded(myResult)) {
           toast.success(`The stag hunt succeeded! Payoff: $${Number(myResult.profit).toFixed(2)}`);
         } else if (myResult.choice === 'hare') {
           toast(`You hunted hare. Payoff: $${Number(myResult.profit).toFixed(2)}`, { icon: '🐇' });
@@ -119,8 +128,17 @@ const StagHuntUI: React.FC<GameUIProps> = ({
                 <span className="font-medium text-green-700">Hunt Stag (Cooperate)</span>
               </div>
               <div className="text-xs text-green-600 space-y-1 ml-6">
-                <div>All choose Stag: <strong>${stagPayoff.toFixed(2)}</strong> each</div>
-                <div>Someone defects: <strong>$0.00</strong></div>
+                {needed === null ? (
+                  <>
+                    <div>All choose Stag: <strong>${stagPayoff.toFixed(2)}</strong> each</div>
+                    <div>Someone defects: <strong>$0.00</strong></div>
+                  </>
+                ) : (
+                  <>
+                    <div>At least {needed} choose Stag: <strong>${stagPayoff.toFixed(2)}</strong> each</div>
+                    <div>Fewer than {needed} choose Stag: <strong>$0.00</strong></div>
+                  </>
+                )}
               </div>
             </div>
             <div className="bg-amber-50 rounded-lg p-3">
@@ -133,7 +151,11 @@ const StagHuntUI: React.FC<GameUIProps> = ({
               </div>
             </div>
             <div className="text-xs text-gray-400 p-2 bg-gray-50 rounded">
-              The stag hunt requires <em>everyone</em> to cooperate. Hare is the safe choice, but stag pays more if all coordinate.
+              {needed === null ? (
+                <>The stag hunt requires <em>everyone</em> to cooperate. Hare is the safe choice, but stag pays more if all coordinate.</>
+              ) : (
+                <>The stag hunt needs <em>at least {needed}</em> players to hunt stag. Hare is the safe choice, but stag pays more if enough coordinate.</>
+              )}
             </div>
           </div>
         </Card>
@@ -199,11 +221,16 @@ const StagHuntUI: React.FC<GameUIProps> = ({
           {results ? (
             <div className="space-y-4">
               {/* Hunt Outcome Summary */}
-              <div className={`rounded-lg p-4 ${myResult?.allChoseStag ? 'bg-green-50' : 'bg-amber-50'}`}>
+              <div className={`rounded-lg p-4 ${huntSucceeded(myResult) ? 'bg-green-50' : 'bg-amber-50'}`}>
                 <div className="text-center mb-3">
-                  <div className={`text-lg font-bold ${myResult?.allChoseStag ? 'text-green-700' : 'text-amber-700'}`}>
-                    {myResult?.allChoseStag ? 'Stag Hunt Succeeded!' : 'Stag Hunt Failed'}
+                  <div className={`text-lg font-bold ${huntSucceeded(myResult) ? 'text-green-700' : 'text-amber-700'}`}>
+                    {huntSucceeded(myResult) ? 'Stag Hunt Succeeded!' : 'Stag Hunt Failed'}
                   </div>
+                  {myResult?.stagThreshold != null && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      Stag pays when at least {myResult.stagThreshold} players hunt stag
+                    </div>
+                  )}
                 </div>
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
@@ -242,7 +269,7 @@ const StagHuntUI: React.FC<GameUIProps> = ({
                   >
                     <div className="flex items-center gap-3">
                       {r.choice === 'stag' ? (
-                        <Target className={`w-5 h-5 ${r.allChoseStag ? 'text-green-600' : 'text-red-400'}`} />
+                        <Target className={`w-5 h-5 ${huntSucceeded(r) ? 'text-green-600' : 'text-red-400'}`} />
                       ) : (
                         <Shield className="w-5 h-5 text-amber-500" />
                       )}
@@ -278,9 +305,13 @@ const StagHuntUI: React.FC<GameUIProps> = ({
                   </div>
                   <p className="text-blue-600">
                     {myResult.choice === 'stag'
-                      ? myResult.allChoseStag
-                        ? `Everyone cooperated! You earned $${Number(myResult.profit).toFixed(2)} from the stag hunt.`
-                        : `You chose Stag, but ${myResult.hareCount} player(s) chose Hare. The hunt failed and you earned $0.00.`
+                      ? myResult.stagThreshold != null
+                        ? myResult.stagSucceeded
+                          ? `${myResult.stagCount} players hunted stag (at least ${myResult.stagThreshold} needed). You earned $${Number(myResult.profit).toFixed(2)} from the stag hunt.`
+                          : `You chose Stag, but only ${myResult.stagCount} player(s) did (at least ${myResult.stagThreshold} needed). The hunt failed and you earned $0.00.`
+                        : myResult.allChoseStag
+                          ? `Everyone cooperated! You earned $${Number(myResult.profit).toFixed(2)} from the stag hunt.`
+                          : `You chose Stag, but ${myResult.hareCount} player(s) chose Hare. The hunt failed and you earned $0.00.`
                       : `You safely hunted Hare and earned $${Number(myResult.profit).toFixed(2)}, regardless of others' choices.`}
                   </p>
                 </div>

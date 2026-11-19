@@ -11,6 +11,9 @@ import { SimultaneousBaseEngine } from './SimultaneousBaseEngine';
  * - If a player chooses hare: they get harePayoff (default 3), regardless of others
  * - If a player chooses stag but not all others did: they get 0 (the hunt fails)
  *
+ * With stag_threshold = T set, "ALL" becomes "at least T": each stag hunter gets stagPayoff when
+ * T or more players choose stag, and 0 otherwise. Unset, blank or 0 keeps the everyone rule.
+ *
  * This creates a coordination game with two Nash equilibria:
  * - All-stag is payoff-dominant (higher total payoff)
  * - All-hare is risk-dominant (safe regardless of others' choices)
@@ -18,8 +21,18 @@ import { SimultaneousBaseEngine } from './SimultaneousBaseEngine';
  * game_config: {
  *   stagPayoff: number,  // payoff when all choose stag (default 5)
  *   harePayoff: number,  // payoff for choosing hare (default 3)
+ *   stag_threshold?: number,  // stag hunters needed for stag to pay (unset/blank/0 = everyone)
  * }
  */
+
+/** Stag hunters needed for stag to pay (game_config.stag_threshold), or null for everyone. */
+export function stagThreshold(config: Record<string, any>): number | null {
+  const raw = config?.stag_threshold;
+  if (raw === undefined || raw === null || raw === '') return null;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : null;
+}
+
 export class StagHuntEngine extends SimultaneousBaseEngine {
   readonly gameType: GameType = 'stag_hunt';
 
@@ -68,7 +81,7 @@ export class StagHuntEngine extends SimultaneousBaseEngine {
           min: 1,
           max: 100,
           step: 1,
-          description: 'Payoff to each player when ALL choose stag',
+          description: 'Payoff to each stag hunter when ALL choose stag (or enough do, if Stag Hunters Needed is set)',
         },
         {
           name: 'harePayoff',
@@ -79,6 +92,16 @@ export class StagHuntEngine extends SimultaneousBaseEngine {
           max: 100,
           step: 1,
           description: 'Payoff for choosing hare (regardless of others)',
+        },
+        {
+          name: 'stag_threshold',
+          label: 'Stag Hunters Needed',
+          type: 'number',
+          default: '',
+          min: 0,
+          max: 40,
+          step: 1,
+          description: 'Stag pays only when at least this many players hunt stag. Leave blank (or 0) for everyone, the classic rule.',
         },
       ],
     };
@@ -97,6 +120,17 @@ export class StagHuntEngine extends SimultaneousBaseEngine {
       config.stagPayoff <= config.harePayoff
     ) {
       return { valid: false, error: 'Stag payoff should be greater than hare payoff for a meaningful coordination game' };
+    }
+    const raw = config.stag_threshold;
+    if (raw !== undefined && raw !== null && raw !== '' && Number(raw) !== 0) {
+      const t = Number(raw);
+      if (!Number.isInteger(t) || t < 2) {
+        return { valid: false, error: 'Stag hunters needed must be a whole number of at least 2 (blank or 0 = everyone)' };
+      }
+      const groupSize = Number(config.market_size);
+      if (Number.isFinite(groupSize) && groupSize > 0 && t > groupSize) {
+        return { valid: false, error: `Stag hunters needed (${t}) cannot be more than the group size (${groupSize})` };
+      }
     }
     return { valid: true };
   }
@@ -136,14 +170,18 @@ export class StagHuntEngine extends SimultaneousBaseEngine {
     const allChoseStag = stagCount === actions.length && actions.length === allPlayers.length;
     const groupSize = actions.length;
 
+    // Does the stag hunt succeed? Everyone (the classic rule), or at least stag_threshold hunters
+    const threshold = stagThreshold(config);
+    const stagSucceeded = threshold === null ? allChoseStag : stagCount >= threshold;
+
     return choices.map((c) => {
       let profit: number;
       if (c.choice === 'hare') {
         // Hare hunters always get harePayoff
         profit = harePayoff;
       } else {
-        // Stag hunters get stagPayoff only if ALL chose stag, otherwise 0
-        profit = allChoseStag ? stagPayoff : 0;
+        // Stag hunters get stagPayoff only if the hunt succeeds, otherwise 0
+        profit = stagSucceeded ? stagPayoff : 0;
       }
 
       return {
@@ -157,6 +195,8 @@ export class StagHuntEngine extends SimultaneousBaseEngine {
           groupSize,
           stagPayoff,
           harePayoff,
+          // Only with a threshold, so a session without one records exactly what it did before
+          ...(threshold === null ? {} : { stagThreshold: threshold, stagSucceeded }),
         },
       };
     });
