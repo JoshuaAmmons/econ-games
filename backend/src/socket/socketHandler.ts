@@ -241,6 +241,27 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
   // =========================================================================
 
   /**
+   * Tell clients what happens when the pause after a round is over: the next round starts, or, after the
+   * last round, the session ends (lastRound: true). Without the flag, players saw "Next round starting"
+   * after the final round.
+   */
+  async function notifyAutoAdvance(sessionCode: string): Promise<void> {
+    let lastRound = false;
+    try {
+      const session = await SessionModel.findByCode(sessionCode);
+      if (session) {
+        const rounds = await RoundModel.findBySession(session.id);
+        lastRound = !rounds.some(r => r.status === 'waiting');
+      }
+    } catch (err) {
+      console.error('[AutoAdvance] Could not check for a next round:', err);
+    }
+    const payload = { delayMs: AUTO_ADVANCE_DELAY_MS, lastRound };
+    io.to(`session-${sessionCode}`).emit('auto-advance-scheduled', payload);
+    io.to(`market-${sessionCode}`).emit('auto-advance-scheduled', payload);
+  }
+
+  /**
    * Schedule auto-start of the next round for a session.
    * Called after any round ends (from timer, admin click, or engine internal).
    * Exported so the DiscoveryProcessEngine can also trigger it.
@@ -252,13 +273,8 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
 
     console.log(`[AutoAdvance] Scheduling next round in ${AUTO_ADVANCE_DELAY_MS}ms for ${sessionCode}`);
 
-    // Notify clients about the upcoming auto-advance
-    io.to(`session-${sessionCode}`).emit('auto-advance-scheduled', {
-      delayMs: AUTO_ADVANCE_DELAY_MS,
-    });
-    io.to(`market-${sessionCode}`).emit('auto-advance-scheduled', {
-      delayMs: AUTO_ADVANCE_DELAY_MS,
-    });
+    // Notify clients about the upcoming auto-advance, and whether another round follows
+    void notifyAutoAdvance(sessionCode);
 
     const timer = setTimeout(async () => {
       autoAdvanceTimers.delete(sessionCode);

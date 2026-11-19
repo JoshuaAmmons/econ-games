@@ -355,7 +355,8 @@ export const Market: React.FC = () => {
     }));
     requestRoundTimer();
 
-    cleanups.push(onEvent('auto-advance-scheduled', (data: { delayMs: number }) => {
+    cleanups.push(onEvent('auto-advance-scheduled', (data: { delayMs: number; lastRound?: boolean }) => {
+      if (data.lastRound) return;   // no next round: "Session complete!" follows when the pause is over
       const seconds = Math.ceil(data.delayMs / 1000);
       toast(`Next round starting in ${seconds}s...`, { icon: '⏭️', duration: data.delayMs, id: 'auto-advance' });
     }));

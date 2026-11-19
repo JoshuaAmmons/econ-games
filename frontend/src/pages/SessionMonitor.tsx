@@ -154,6 +154,7 @@ const SessionMonitorContent: React.FC = () => {
   const [currentRound, setCurrentRound] = useState<Round | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState(0);
+  const [sessionEnding, setSessionEnding] = useState(false);   // the last round is over; the session ends after the pause
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoAdvanceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -218,13 +219,18 @@ const SessionMonitorContent: React.FC = () => {
 
     cleanups.push(onEvent('round-ended', () => {
       loadSession();
-      toast('Round ended!', { icon: '🏁' });
+      toast('Round ended!', { icon: '🏁', id: 'round-ended' });   // the monitor is in two rooms and hears it twice
     }));
 
-    cleanups.push(onEvent('auto-advance-scheduled', (data: { delayMs: number }) => {
+    cleanups.push(onEvent('auto-advance-scheduled', (data: { delayMs: number; lastRound?: boolean }) => {
       const seconds = Math.ceil(data.delayMs / 1000);
       setAutoAdvanceCountdown(seconds);
-      toast(`Next round starting in ${seconds}s...`, { icon: '⏭️' });
+      setSessionEnding(!!data.lastRound);
+      if (data.lastRound) {
+        toast(`Last round over. The session ends in ${seconds}s...`, { icon: '🏁', id: 'auto-advance' });
+      } else {
+        toast(`Next round starting in ${seconds}s...`, { icon: '⏭️', id: 'auto-advance' });
+      }
     }));
 
     cleanups.push(onEvent('session-ended', () => {
@@ -554,10 +560,10 @@ const SessionMonitorContent: React.FC = () => {
               )}
               {session.status === 'active' && !currentRound && autoAdvanceCountdown > 0 && (
                 <span className="px-3 py-2 bg-amber-100 text-amber-800 rounded text-sm font-medium">
-                  Next round in {autoAdvanceCountdown}s...
+                  {sessionEnding ? `Session ends in ${autoAdvanceCountdown}s...` : `Next round in ${autoAdvanceCountdown}s...`}
                 </span>
               )}
-              {session.status === 'active' && !currentRound && autoAdvanceCountdown <= 0 && (
+              {session.status === 'active' && !currentRound && autoAdvanceCountdown <= 0 && !sessionEnding && (
                 <Button onClick={handleNextRound}>
                   <SkipForward className="w-4 h-4 inline mr-2" />
                   Start Next Round
