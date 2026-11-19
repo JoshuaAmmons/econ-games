@@ -93,11 +93,30 @@ export const sessionsApi = {
     });
   },
 
-  // Get CSV export URL (with admin password as query param for download links)
-  getExportUrl: (id: string, type: string, adminPassword?: string): string => {
+  // Get CSV export URL (a plain download link: for a session without an admin password)
+  getExportUrl: (id: string, type: string): string => {
     const baseUrl = apiClient.defaults.baseURL || '';
     const params = new URLSearchParams({ type });
-    if (adminPassword) params.set('admin_password', adminPassword);
     return `${baseUrl}/sessions/${id}/export?${params.toString()}`;
+  },
+
+  // Download a CSV export for a session with an admin password. The server takes the password only
+  // in the x-admin-password header (never in the URL), so a plain link cannot carry it: fetch the
+  // file with the header and save it from the browser.
+  downloadExport: async (id: string, type: string, filename: string, adminPassword: string): Promise<void> => {
+    const response = await apiClient.get(`/sessions/${id}/export`, {
+      params: { type },
+      headers: { 'x-admin-password': adminPassword },
+      responseType: 'blob',
+      timeout: 60000,
+    });
+    const url = URL.createObjectURL(response.data as Blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
   },
 };

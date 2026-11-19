@@ -150,11 +150,24 @@ const ResultsContent: React.FC = () => {
     }
   };
 
-  const handleExport = (type: string) => {
+  const handleExport = async (type: string) => {
     if (!data) return;
-    const url = sessionsApi.getExportUrl(data.session.id, type, storedAdminPassword);
-    window.open(url, '_blank');
-    toast.success(`Downloading ${type} CSV...`);
+    if (!storedAdminPassword) {
+      // No admin password: a plain download link, as before
+      const url = sessionsApi.getExportUrl(data.session.id, type);
+      window.open(url, '_blank');
+      toast.success(`Downloading ${type} CSV...`);
+      return;
+    }
+    // Password-protected session: the password goes in a header, so fetch the file and save it
+    try {
+      const filename = `${data.session.code}_${data.session.gameType}_${type}_${new Date().toISOString().slice(0, 10)}.csv`;
+      await sessionsApi.downloadExport(data.session.id, type, filename, storedAdminPassword);
+      toast.success(`Downloaded ${type} CSV`);
+    } catch (error) {
+      console.error(`Failed to download ${type} CSV:`, error);
+      toast.error(`Failed to download ${type} CSV`);
+    }
   };
 
   if (loading) {

@@ -47,8 +47,8 @@ async function applyConstraintUpdates() {
     // Ensure passcode column exists on sessions table
     await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS passcode VARCHAR(20) DEFAULT NULL`);
 
-    // Ensure admin_password column exists on sessions table
-    await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS admin_password VARCHAR(50) DEFAULT NULL`);
+    // Ensure admin_password column exists on sessions table (widened below if it is older and narrower)
+    await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS admin_password VARCHAR(255) DEFAULT NULL`);
 
     // Allow sessions of up to 300 players (a lecture-hall Trust Game); was 100
     await pool.query(`ALTER TABLE sessions DROP CONSTRAINT IF EXISTS market_size_check`);
@@ -57,6 +57,22 @@ async function applyConstraintUpdates() {
     console.log('Database constraints updated successfully');
   } catch (err) {
     console.error('Error updating database constraints:', err);
+  }
+
+  // Admin passwords are stored as bcrypt hashes (60 characters), which did not fit the old VARCHAR(50):
+  // creating a session with an admin password failed. Widen the column once; own try, like the one below.
+  try {
+    const col = await pool.query(
+      `SELECT character_maximum_length AS len FROM information_schema.columns
+       WHERE table_schema = current_schema() AND table_name = 'sessions' AND column_name = 'admin_password'`
+    );
+    const len = col.rows[0]?.len;
+    if (len != null && Number(len) < 255) {
+      await pool.query(`ALTER TABLE sessions ALTER COLUMN admin_password TYPE VARCHAR(255)`);
+      console.log(`Widened sessions.admin_password from VARCHAR(${len}) to VARCHAR(255)`);
+    }
+  } catch (err) {
+    console.error('Error widening sessions.admin_password:', err);
   }
 
   // Late joiners (students who join after Start): own try, so it runs even if an update above fails
