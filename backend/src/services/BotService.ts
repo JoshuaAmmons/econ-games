@@ -262,7 +262,9 @@ export class BotService {
         const timer = setTimeout(async () => {
           try {
             const engine = GameRegistry.get(gameType);
-            const action = strategy.getFirstMoveAction?.(bot, config, roundNumber);
+            // A strategy that needs the bot's own game state (e.g. a Lemons seller's quality) gets it
+            const view = strategy.needsView ? await engine.getGameState(roundId, bot.id) : undefined;
+            const action = strategy.getFirstMoveAction?.(bot, config, roundNumber, view);
             if (action) {
               await engine.handleAction(roundId, bot.id, action, sessionCode, io);
             }
@@ -338,7 +340,8 @@ export class BotService {
     const timer = setTimeout(async () => {
       try {
         const engine = GameRegistry.get(gameType);
-        const action = strategy.getFirstMoveAction!(bot, config, active.round_number);
+        const view = strategy.needsView ? await engine.getGameState(active.id, bot.id) : undefined;
+        const action = strategy.getFirstMoveAction!(bot, config, active.round_number, view);
         if (action) {
           await engine.handleAction(active.id, bot.id, action, session.code, io);
         }

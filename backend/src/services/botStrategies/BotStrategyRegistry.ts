@@ -26,12 +26,19 @@ export interface BotStrategy {
     history?: BotRoundRecord[]
   ): Record<string, any>;
 
-  /** Sequential games: first-mover action */
+  /**
+   * Sequential games: first-mover action. view is the bot's own game state for the round (what a
+   * human in its seat would be sent), fetched only for strategies that set needsView.
+   */
   getFirstMoveAction?(
     player: Player,
     config: Record<string, any>,
-    roundNumber: number
+    roundNumber: number,
+    view?: Record<string, any>
   ): Record<string, any>;
+
+  /** Set when getFirstMoveAction needs the bot's game state (e.g. a Lemons seller's assigned quality). */
+  needsView?: boolean;
 
   /** Sequential games: second-mover response to partner's first move */
   getSecondMoveAction?(
