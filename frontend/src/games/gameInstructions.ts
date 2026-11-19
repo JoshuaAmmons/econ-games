@@ -39,7 +39,7 @@ export const gameInstructions: Record<string, GameInstructionSet> = {
       howToPlay: [
         'Buyers submit bids (offers to buy) and sellers submit asks (offers to sell).',
         'A trade happens automatically when a bid meets or exceeds an ask.',
-        'The trade price is set at the price of the earlier order.',
+        'The trade price is halfway between the bid and the ask.',
         'Buyer profit = Your Valuation - Trade Price.',
         'Seller profit = Trade Price - Your Cost.',
         'You can submit multiple bids/asks per round, but each player can only complete one trade per round.',
