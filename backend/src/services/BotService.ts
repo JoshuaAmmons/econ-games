@@ -2,9 +2,12 @@ import type { Server } from 'socket.io';
 import type { Player, Session } from '../types';
 import { PlayerModel } from '../models/Player';
 import { SessionModel } from '../models/Session';
+import { RoundModel } from '../models/Round';
+import { GameActionModel } from '../models/GameAction';
 import { GameRegistry } from '../engines/GameRegistry';
 import { generateValuations, generateProductionCosts } from './gameLogic';
 import { BotStrategyRegistry } from './botStrategies';
+import type { BotRoundRecord } from './botStrategies/BotStrategyRegistry';
 import { isLiveBotStrategy, type LiveBotStrategy } from './botStrategies/SpecializedBotStrategies';
 
 // Import to ensure all strategies are registered
@@ -231,6 +234,10 @@ export class BotService {
     this.roundStartTimes.set(roundId, Date.now());
     this.roundSessions.set(roundId, session.id);
 
+    // The real round number (until 19 Nov 2026 every bot was told it was round 1)
+    const round = await RoundModel.findById(roundId);
+    const roundNumber = round?.round_number ?? 1;
+
     if (CONTINUOUS_TRADING_TYPES.has(gameType)) {
       // DA variants and asset_bubble: schedule periodic bid/ask submissions
       for (const bot of bots) {
@@ -245,8 +252,7 @@ export class BotService {
         const timer = setTimeout(async () => {
           try {
             const engine = GameRegistry.get(gameType);
-            // Get the round number from the round
-            const action = strategy.getFirstMoveAction?.(bot, config, 1);
+            const action = strategy.getFirstMoveAction?.(bot, config, roundNumber);
             if (action) {
               await engine.handleAction(roundId, bot.id, action, sessionCode, io);
             }
@@ -262,7 +268,7 @@ export class BotService {
     } else if (strategy.getSpecializedActions) {
       // Specialized games with custom action sequences
       for (const bot of bots) {
-        const actions = strategy.getSpecializedActions(bot, config, {}, 1);
+        const actions = strategy.getSpecializedActions(bot, config, {}, roundNumber);
         botLog(`[BotService] ${bot.name}: ${actions.length} specialized actions scheduled for ${gameType}`);
         for (const { action, delayMs } of actions) {
           const timer = setTimeout(async () => {
@@ -278,13 +284,16 @@ export class BotService {
         }
       }
     } else {
-      // Simultaneous games: submit with random delay
+      // Simultaneous games: submit with random delay. Every bot gets the real round number and the
+      // session's earlier decisions (Prisoner's Dilemma tit-for-tat and the Public Goods conditional
+      // cooperators use them; the other strategies ignore them).
+      const history = await this.getDecisionHistory(session.id, roundNumber);
       for (const bot of bots) {
         const delay = 1000 + Math.random() * 4000;
         const timer = setTimeout(async () => {
           try {
             const engine = GameRegistry.get(gameType);
-            const action = strategy.getSimultaneousAction?.(bot, config, 1);
+            const action = strategy.getSimultaneousAction?.(bot, config, roundNumber, history);
             if (action) {
               await engine.handleAction(roundId, bot.id, action, sessionCode, io);
             }
@@ -310,7 +319,6 @@ export class BotService {
     const [firstMoverRole] = PAIRED_ROLES[gameType] || [];
     if (!strategy?.getFirstMoveAction || !SEQUENTIAL_TYPES.has(gameType) || bot.role !== firstMoverRole) return;
 
-    const { RoundModel } = await import('../models/Round');
     const rounds = await RoundModel.findBySession(session.id);
     const active = rounds.find((r) => r.status === 'active');
     if (!active) return;
@@ -320,7 +328,7 @@ export class BotService {
     const timer = setTimeout(async () => {
       try {
         const engine = GameRegistry.get(gameType);
-        const action = strategy.getFirstMoveAction!(bot, config, 1);
+        const action = strategy.getFirstMoveAction!(bot, config, active.round_number);
         if (action) {
           await engine.handleAction(active.id, bot.id, action, session.code, io);
         }
@@ -353,13 +361,15 @@ export class BotService {
 
     const config = session.game_config || {};
     const sessionCode = session.code;
+    const round = await RoundModel.findById(roundId);
+    const roundNumber = round?.round_number ?? 1;
 
     // Small delay for realism (1–3 seconds)
     const delay = 1000 + Math.random() * 2000;
     const timer = setTimeout(async () => {
       try {
         const engine = GameRegistry.get(gameType);
-        const action = strategy.getSecondMoveAction!(bot, config, partnerAction, 1);
+        const action = strategy.getSecondMoveAction!(bot, config, partnerAction, roundNumber);
         if (action) {
           await engine.handleAction(roundId, bot.id, action, sessionCode, io);
         }
@@ -399,6 +409,31 @@ export class BotService {
   }
 
   // ─── Private Helpers ───────────────────────────────────────────────────
+
+  /**
+   * The session's rounds before roundNumber, oldest first, with every 'decision' made in each and
+   * whether its player is a bot. Read once per round start (not per bot).
+   */
+  private async getDecisionHistory(sessionId: string, roundNumber: number): Promise<BotRoundRecord[]> {
+    const earlier = (await RoundModel.findBySession(sessionId))
+      .filter((r) => r.round_number < roundNumber)
+      .sort((a, b) => a.round_number - b.round_number);
+    if (earlier.length === 0) return [];
+    const isBot = new Map((await PlayerModel.findBySession(sessionId)).map((p) => [p.id, !!p.is_bot]));
+    const history: BotRoundRecord[] = [];
+    for (const r of earlier) {
+      const decisions = await GameActionModel.findByRoundAndType(r.id, 'decision');
+      history.push({
+        roundNumber: r.round_number,
+        decisions: decisions.map((d) => ({
+          playerId: d.player_id,
+          isBot: isBot.get(d.player_id) ?? false,
+          action: d.action_data || {},
+        })),
+      });
+    }
+    return history;
+  }
 
   /**
    * Drive bots for a real-time game. Every `liveTickMs` each bot reads the

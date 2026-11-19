@@ -1,17 +1,29 @@
 import type { Player } from '../../types';
 
 /**
+ * One earlier round of a simultaneous game, as BotService hands it to a bot: every decision made in
+ * that round, with whether the player who made it is a bot.
+ */
+export interface BotRoundRecord {
+  roundNumber: number;
+  decisions: Array<{ playerId: string; isBot: boolean; action: Record<string, any> }>;
+}
+
+/**
  * Interface for game-specific bot strategies.
  * Each method returns an action object in the exact format the engine expects.
  * Return null to skip (e.g., DA bot deciding not to act this tick).
  */
 export interface BotStrategy {
-  /** Simultaneous-move games: return the decision action */
+  /**
+   * Simultaneous-move games: return the decision action. roundNumber is the session's current round;
+   * history holds the session's earlier rounds, oldest first (empty in round 1).
+   */
   getSimultaneousAction?(
     player: Player,
     config: Record<string, any>,
     roundNumber: number,
-    previousResults?: any[]
+    history?: BotRoundRecord[]
   ): Record<string, any>;
 
   /** Sequential games: first-mover action */

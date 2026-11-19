@@ -11,31 +11,42 @@ const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(mi
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
 // ─── Prisoner's Dilemma ────────────────────────────────────────────────────
+/**
+ * Exact tit-for-tat against the human players (the textbook's Chapter 4 lab: "every bot retaliates
+ * in the following round ... a single round of cooperation restores the cooperative path").
+ * Round 1: cooperate. Later rounds: copy the human's most recent move. Bots ignore one another's
+ * moves (they only answer humans); since every bot copies the same human move, bots never drift into
+ * defecting against each other. With several humans (a class session with bots), the bot copies the
+ * majority of the humans' moves in the latest round any human played, cooperating on a tie. If no
+ * human has played yet, it cooperates.
+ */
 export const prisonerDilemmaStrategy: BotStrategy = {
-  getSimultaneousAction(_player, _config, roundNumber, previousResults) {
-    // Tit-for-tat: cooperate on round 1, then mirror majority of opponents' last moves
-    if (roundNumber <= 1 || !previousResults?.length) {
+  getSimultaneousAction(_player, _config, roundNumber, history) {
+    if (roundNumber <= 1 || !history?.length) {
       return { choice: 'cooperate' };
     }
-    // Look at last round's results to see what opponents did
-    const lastRound = previousResults[previousResults.length - 1];
-    if (lastRound?.opponentDefected) {
-      return { choice: 'defect' };
+    for (let i = history.length - 1; i >= 0; i--) {
+      const humanMoves = history[i].decisions.filter((d) => !d.isBot);
+      if (humanMoves.length === 0) continue; // no human played that round: look further back
+      const defections = humanMoves.filter((d) => d.action?.choice === 'defect').length;
+      return { choice: defections * 2 > humanMoves.length ? 'defect' : 'cooperate' };
     }
-    // Default: cooperate with 70% probability
-    return { choice: Math.random() < 0.7 ? 'cooperate' : 'defect' };
+    return { choice: 'cooperate' };
   },
 };
 
 // ─── Beauty Contest ────────────────────────────────────────────────────────
 export const beautyContestStrategy: BotStrategy = {
-  getSimultaneousAction(_player, config, roundNumber) {
+  getSimultaneousAction(_player, config, _roundNumber) {
     const maxNumber = config.maxNumber || 100;
     const fraction = config.fraction || 0.67;
-    // Level-2 thinking: guess fraction² × midpoint, with noise decreasing over rounds
+    // Level-2 thinking: guess fraction² × midpoint (22.2 at the defaults), ±4.5 noise every round.
+    // Until 19 Nov 2026 BotService passed round 1 to every bot, so the noise never shrank; it is held
+    // at the round-1 width so the calibration students have played does not change now that the real
+    // round number arrives (the textbook's Chapter 1 lab describes level-two bots, nothing more).
     const midpoint = maxNumber / 2;
     const level2 = fraction * fraction * midpoint;
-    const noise = rand(-5, 5) * Math.max(0.3, 1 - roundNumber * 0.1);
+    const noise = rand(-5, 5) * 0.9;
     return { number: clamp(r2(level2 + noise), 0, maxNumber) };
   },
 };
