@@ -493,27 +493,113 @@ export const discoveryProcessStrategy: BotStrategy & LiveBotStrategy = {
 };
 
 // ─── Asset Bubble (SSW) ───────────────────────────────────────────────────
+/**
+ * A trader's private value for a share this period, by type. The bots are a fixed mix by seat
+ * (BotService's botIndex, in creation order): seats 1-5 of every five are
+ * fundamental, speculator, trend follower, speculator, trend follower. The mix reproduces the
+ * Smith-Suchanek-Williams (1988) pattern the textbook's Chapter 7 lab promises ("prices rise above
+ * fundamental value for most of the horizon and then crash near the end"); bots that all priced
+ * around the true value would trade around it and there would be no bubble to see.
+ *
+ * FV = expected dividend x periods remaining (24c x 8 = 192c in period 1 of practice, down to 24c).
+ * - Fundamental trader: values a share at FV x U(0.9, 1.1).
+ * - Speculator ("greater fool", momentum across periods): in period 1, FV x U(0.8, 1.1); later,
+ *   max(FV, last period's average price) x its own optimism (fixed per bot, 1.00-1.25) x U(0.95, 1.05):
+ *   it expects to resell at least at last period's price. So while FV falls, its value does not.
+ * - Trend follower (momentum within the period): the latest trade price (this period's, else last
+ *   period's average, else FV) x U(0.85, 1.15).
+ * - The end of the horizon: speculators and trend followers expect fewer buyers to resell to. Their
+ *   premium over FV shrinks steadily in the periods just before the last quarter of the horizon (to half
+ *   with 3 of 8 periods left in practice), and in the last quarter (the final 2 of 8 periods) they value
+ *   a share at no more than its dividends: speculators FV x U(0.6, 1.0), trend followers FV x U(0.7, 1.05).
+ * Simulated with an idle student over 20 practice games (19 Nov 2026): prices near or below FV in
+ * period 1, rising to about twice FV by period 5, then near or below FV in periods 7-8.
+ */
+export const ASSET_BUBBLE_MIX = ['fundamental', 'speculator', 'trend', 'speculator', 'trend'] as const;
+export type AssetBubbleTraderType = typeof ASSET_BUBBLE_MIX[number];
+
+/** A stable number in [0, 1) from a string (a bot's id), so each bot keeps its optimism all game. */
+function unitHash(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0) / 4294967296;
+}
+
+export function assetBubbleTraderType(botIndex: number): AssetBubbleTraderType {
+  return ASSET_BUBBLE_MIX[((botIndex % ASSET_BUBBLE_MIX.length) + ASSET_BUBBLE_MIX.length) % ASSET_BUBBLE_MIX.length];
+}
+
+/** The bot's value for one share now (cents), from its view of the market (see BotService). */
+export function assetBubbleValue(player: Player, view: Record<string, any>): number {
+  const type = assetBubbleTraderType(Number(view.botIndex) || 0);
+  const expectedDividend = Number(view.expectedDividend ?? 24);
+  const totalPeriods = Math.max(1, Number(view.totalRounds) || 1);
+  const periodsRemaining = Math.max(1, Number(view.periodsRemaining) || 1);
+  const FV = expectedDividend * periodsRemaining;
+  if (type === 'fundamental') return FV * rand(0.9, 1.1);
+
+  // Resale confidence: 1 until the end nears, 0.5 one step before the last quarter, 0 in the last quarter
+  const lastQuarter = Math.max(1, Math.round(totalPeriods * 0.25));
+  const confidence = clamp((periodsRemaining - lastQuarter) / lastQuarter, 0, 1);
+  const history: Array<{ round: number; avgPrice: number | null }> = view.priceHistory || [];
+  const lastPeriod = [...history].reverse().find((h) => h.avgPrice != null && h.avgPrice > 0);
+
+  let premiumValue: number;
+  if (type === 'speculator') {
+    if (confidence === 0) return FV * rand(0.6, 1.0);
+    const optimism = 1 + 0.25 * unitHash(player.id);
+    premiumValue = lastPeriod
+      ? Math.max(FV, Number(lastPeriod.avgPrice)) * optimism * rand(0.95, 1.05)
+      : FV * rand(0.8, 1.1);
+  } else {
+    if (confidence === 0) return FV * rand(0.7, 1.05);
+    const trades: Array<{ price: number }> = view.trades || [];
+    const ref = trades.length ? Number(trades[trades.length - 1].price)
+      : lastPeriod ? Number(lastPeriod.avgPrice) : FV;
+    premiumValue = ref * rand(0.85, 1.15);
+  }
+  return FV + confidence * (premiumValue - FV);
+}
+
+/**
+ * Asset Bubble bots. BotService hands each bot its live view of the round (AssetBubbleEngine
+ * getTraderView: period, portfolio, order book, this period's trades) plus the earlier periods'
+ * average prices and its seat (botIndex). The bot values a share (assetBubbleValue), then:
+ * buys at the best ask when that is at or below its value, or sells at the best bid when that is at
+ * or above it (70% of the time each), otherwise posts a bid at 85-100% of its value (never more than
+ * its cash) or an ask at 100-115% of it. replace: true tells BotService to withdraw the bot's own
+ * resting order on that side first, so each bot keeps at most one bid and one ask in the book.
+ */
 export const assetBubbleStrategy: BotStrategy = {
-  getDAAction(player, config, gameState, elapsedSeconds) {
-    // Compute fundamental value: E[dividend] × periods remaining
-    const expectedDividend = config.expectedDividend ?? 24;
-    const totalPeriods = config.numRounds ?? gameState.totalPeriods ?? 15;
-    const currentPeriod = gameState.currentPeriod ?? gameState.roundNumber ?? 1;
-    const periodsRemaining = Math.max(1, totalPeriods - currentPeriod + 1);
-    const FV = expectedDividend * periodsRemaining;
+  getDAAction(player, _config, gameState, _elapsedSeconds) {
+    const view = gameState || {};
+    const portfolio = view.myPortfolio;
+    if (!portfolio) return null;
+    const cash = Number(portfolio.cash) || 0;
+    const shares = Number(portfolio.shares) || 0;
+    const value = assetBubbleValue(player, view);
 
-    // Early in the round use wider spread, later tighter
-    const spreadFactor = elapsedSeconds < 20 ? 0.6 : 0.7;
-    const spreadRange = elapsedSeconds < 20 ? 0.8 : 0.6;
+    const othersAsks = (view.asks || []).filter((a: any) => a.playerId !== player.id);
+    const othersBids = (view.bids || []).filter((b: any) => b.playerId !== player.id);
+    const bestAsk = othersAsks.reduce((m: number, a: any) => Math.min(m, Number(a.price)), Infinity);
+    const bestBid = othersBids.reduce((m: number, b: any) => Math.max(m, Number(b.price)), 0);
 
-    // 50% chance bid, 50% chance ask (noise trader)
-    if (Math.random() < 0.5) {
-      const price = Math.round(FV * (spreadFactor + Math.random() * spreadRange));
-      return { type: 'bid', price: Math.max(1, price) };
-    } else {
-      const price = Math.round(FV * (spreadFactor + Math.random() * spreadRange));
-      return { type: 'ask', price: Math.max(1, price) };
+    if (bestAsk <= value && bestAsk <= cash && Math.random() < 0.7) {
+      return { type: 'bid', price: Math.round(bestAsk), replace: true };
     }
+    if (bestBid > 0 && bestBid >= value && shares > 0 && Math.random() < 0.7) {
+      return { type: 'ask', price: Math.round(bestBid), replace: true };
+    }
+
+    const side = shares <= 0 ? 'bid' : cash < value * 0.5 ? 'ask' : Math.random() < 0.5 ? 'bid' : 'ask';
+    if (side === 'bid') {
+      const price = Math.min(Math.round(value * rand(0.85, 1.0)), Math.floor(cash));
+      return price >= 1 ? { type: 'bid', price, replace: true } : null;
+    }
+    return { type: 'ask', price: Math.max(1, Math.round(value * rand(1.0, 1.15))), replace: true };
   },
 };
 

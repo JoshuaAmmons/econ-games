@@ -4,6 +4,7 @@ import { PlayerModel } from '../models/Player';
 import { SessionModel } from '../models/Session';
 import { RoundModel } from '../models/Round';
 import { GameActionModel } from '../models/GameAction';
+import { GameResultModel } from '../models/GameResult';
 import { GameRegistry } from '../engines/GameRegistry';
 import { generateValuations, generateProductionCosts } from './gameLogic';
 import { BotStrategyRegistry } from './botStrategies';
@@ -239,9 +240,14 @@ export class BotService {
     const roundNumber = round?.round_number ?? 1;
 
     if (CONTINUOUS_TRADING_TYPES.has(gameType)) {
-      // DA variants and asset_bubble: schedule periodic bid/ask submissions
-      for (const bot of bots) {
-        this.scheduleDABotActions(bot, roundId, sessionCode, gameType, config, io, timers);
+      // DA variants and asset_bubble: schedule periodic bid/ask submissions. What a bot knows of
+      // earlier periods is read once here: the Asset Bubble's average price in each earlier period.
+      const roundInfo: Record<string, any> = { roundNumber };
+      if (gameType === 'asset_bubble') {
+        roundInfo.priceHistory = await this.assetBubblePriceHistory(session.id, roundNumber);
+      }
+      for (const [botIndex, bot] of bots.entries()) {
+        this.scheduleDABotActions(bot, roundId, sessionCode, gameType, config, io, timers, { ...roundInfo, botIndex });
       }
     } else if (SEQUENTIAL_TYPES.has(gameType)) {
       // Sequential games: only first-movers act now; second-movers respond reactively
@@ -435,6 +441,23 @@ export class BotService {
     return history;
   }
 
+  /** Asset Bubble: each earlier period's average trade price (null when it had no trades), oldest first. */
+  private async assetBubblePriceHistory(
+    sessionId: string,
+    roundNumber: number
+  ): Promise<Array<{ round: number; avgPrice: number | null }>> {
+    const earlier = (await RoundModel.findBySession(sessionId))
+      .filter((r) => r.round_number < roundNumber)
+      .sort((a, b) => a.round_number - b.round_number);
+    const history: Array<{ round: number; avgPrice: number | null }> = [];
+    for (const r of earlier) {
+      const results = await GameResultModel.findByRound(r.id);
+      const avg = Number(results[0]?.result_data?.avg_trade_price);
+      history.push({ round: r.round_number, avgPrice: Number.isFinite(avg) && avg > 0 ? avg : null });
+    }
+    return history;
+  }
+
   /**
    * Drive bots for a real-time game. Every `liveTickMs` each bot reads the
    * engine's per-player view (getGameState — the same visibility-filtered
@@ -523,7 +546,8 @@ export class BotService {
     gameType: string,
     config: Record<string, any>,
     io: Server,
-    timers: NodeJS.Timeout[]
+    timers: NodeJS.Timeout[],
+    roundInfo: Record<string, any> = {}
   ): void {
     const strategy = BotStrategyRegistry.get(gameType);
     if (!strategy?.getDAAction) return;
@@ -538,7 +562,25 @@ export class BotService {
         const elapsed = (Date.now() - startTime) / 1000;
         try {
           const engine = GameRegistry.get(gameType);
-          const action = strategy.getDAAction!(bot, config, {}, elapsed);
+          // Asset Bubble bots read their live view of the period (portfolio, book, this period's
+          // trades) from the engine's memory; DA bots need only what onRoundStart read.
+          let gameState: Record<string, any> = roundInfo;
+          if (gameType === 'asset_bubble') {
+            const view = (engine as any).getTraderView?.(roundId, bot.id);
+            gameState = view ? { ...view, ...roundInfo } : {};
+          }
+          const proposed = strategy.getDAAction!(bot, config, gameState, elapsed);
+          let action = proposed;
+          if (proposed?.replace) {
+            // Withdraw the bot's own resting orders on this side first (one bid and one ask at most)
+            const { replace: _replace, ...rest } = proposed;
+            action = rest;
+            const own: any[] = (proposed.type === 'bid' ? gameState.myBids : gameState.myAsks) || [];
+            const cancelType = proposed.type === 'bid' ? 'cancel_bid' : 'cancel_ask';
+            for (const o of own) {
+              await engine.handleAction(roundId, bot.id, { type: cancelType, orderId: o.id }, sessionCode, io);
+            }
+          }
           if (action) {
             const result = await engine.handleAction(roundId, bot.id, action, sessionCode, io);
             botLog(`BotService DA: ${bot.name} (${bot.role}) submitted ${action.type} @ ${action.price} → ${result?.success ? 'OK' : result?.error || 'unknown'}`);

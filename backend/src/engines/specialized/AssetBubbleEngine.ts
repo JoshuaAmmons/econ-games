@@ -52,6 +52,7 @@ interface RoundState {
   roundNumber: number;
   totalRounds: number;
   sessionId: string;
+  expectedDividend: number;
 }
 
 interface DividendHistoryEntry {
@@ -336,6 +337,10 @@ export class AssetBubbleEngine implements GameEngine {
       }
     }
 
+    // Compute fundamental value info
+    const dividendValues = config.dividend_values ?? DEFAULT_DIVIDEND_VALUES;
+    const expectedDividend = dividendValues.reduce((s: number, v: number) => s + v, 0) / dividendValues.length;
+
     // Create new round state with empty order book
     const state: RoundState = {
       bids: [],
@@ -346,6 +351,7 @@ export class AssetBubbleEngine implements GameEngine {
       roundNumber: round.round_number,
       totalRounds,
       sessionId: session.id,
+      expectedDividend,
     };
 
     this.roundStates.set(roundId, state);
@@ -353,9 +359,6 @@ export class AssetBubbleEngine implements GameEngine {
     // Build dividend history from previous rounds
     const dividendHistory = await this.getDividendHistory(session.id, config);
 
-    // Compute fundamental value info
-    const dividendValues = config.dividend_values ?? DEFAULT_DIVIDEND_VALUES;
-    const expectedDividend = dividendValues.reduce((s: number, v: number) => s + v, 0) / dividendValues.length;
     const periodsRemaining = totalRounds - round.round_number + 1;
     const fundamentalValue = Math.round(expectedDividend * periodsRemaining * 100) / 100;
 
@@ -1139,6 +1142,31 @@ export class AssetBubbleEngine implements GameEngine {
     }
 
     return gameState;
+  }
+
+  /**
+   * A bot trader's view of the running period, from memory only (no database reads, since bots ask
+   * every few seconds): the period, the true fundamental-value inputs (24c x periods remaining by
+   * default), its portfolio and own orders, the book and this period's trades. Null once the period
+   * has ended. Used by BotService for the practice bots; humans' screens use getGameState.
+   */
+  getTraderView(roundId: string, playerId: string): Record<string, any> | null {
+    const state = this.roundStates.get(roundId);
+    if (!state) return null;
+    const portfolio = state.portfolios.get(playerId);
+    const order = (o: OrderEntry) => ({ id: o.id, playerId: o.playerId, price: o.price, timestamp: o.timestamp });
+    return {
+      roundNumber: state.roundNumber,
+      totalRounds: state.totalRounds,
+      periodsRemaining: state.totalRounds - state.roundNumber + 1,
+      expectedDividend: state.expectedDividend,
+      myPortfolio: portfolio ? { cash: portfolio.cash, shares: portfolio.shares } : null,
+      myBids: state.bids.filter(b => b.playerId === playerId).map(order),
+      myAsks: state.asks.filter(a => a.playerId === playerId).map(order),
+      bids: state.bids.map(order),
+      asks: state.asks.map(order),
+      trades: state.trades.map(t => ({ price: t.price, timestamp: t.timestamp })),
+    };
   }
 
   // ========================================================================
