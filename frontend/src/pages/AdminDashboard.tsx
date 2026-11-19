@@ -5,8 +5,9 @@ import { Card } from '../components/shared/Card';
 import { Spinner } from '../components/shared/Spinner';
 import { sessionsApi } from '../api/sessions';
 import type { Session } from '../types';
-import { Plus, Users, Clock, ArrowLeft, Trash2, Gamepad2 } from 'lucide-react';
+import { Plus, Users, Clock, ArrowLeft, Trash2, Gamepad2, Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { duplicateSession, isPracticeSession } from '../components/shared/duplicateSession';
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -51,6 +52,11 @@ export const AdminDashboard: React.FC = () => {
       console.error('Failed to delete session:', error);
       toast.error('Failed to delete session');
     }
+  };
+
+  const handleDuplicate = async (session: Session) => {
+    const copy = await duplicateSession(session);
+    if (copy) navigate(`/session/${copy.code}/monitor`);
   };
 
   const formatGameType = (gt: string) =>
@@ -146,6 +152,17 @@ export const AdminDashboard: React.FC = () => {
                     >
                       View
                     </Button>
+                    {!isPracticeSession(session) && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleDuplicate(session)}
+                        title="Create a new session with these settings (no players or results)"
+                      >
+                        <Copy className="w-3.5 h-3.5 inline mr-1" />
+                        Duplicate
+                      </Button>
+                    )}
                     <Button
                       variant="danger"
                       size="sm"

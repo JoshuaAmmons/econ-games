@@ -31,6 +31,9 @@ router.post('/:id/start', requireAdmin, SessionController.start);
 // End session (admin only)
 router.post('/:id/end', requireAdmin, SessionController.end);
 
+// Duplicate session: same settings, no players or results (admin only)
+router.post('/:id/duplicate', requireAdmin, SessionController.duplicate);
+
 // Delete session (admin only)
 router.delete('/:id', requireAdmin, SessionController.delete);
 

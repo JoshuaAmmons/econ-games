@@ -43,6 +43,28 @@ export class SessionModel {
     return result.rows[0];
   }
 
+  // Create a new session with the same settings as an existing one: every column that
+  // create() sets, copied in the database. The admin password is copied as its stored hash, so
+  // the copy has the same admin password without the plain password being needed.
+  // Players, rounds and results are not copied; the copy starts in 'waiting'.
+  static async duplicate(id: string): Promise<Session | null> {
+    const code = await this.generateUniqueCode();
+    const result = await pool.query<Session>(
+      `INSERT INTO sessions (
+        code, game_type, game_config, market_size, num_rounds, time_per_round,
+        valuation_min, valuation_max, valuation_increments,
+        cost_min, cost_max, cost_increments, bot_enabled, passcode, admin_password
+      )
+      SELECT $1, game_type, game_config, market_size, num_rounds, time_per_round,
+        valuation_min, valuation_max, valuation_increments,
+        cost_min, cost_max, cost_increments, bot_enabled, passcode, admin_password
+      FROM sessions WHERE id = $2
+      RETURNING *`,
+      [code, id]
+    );
+    return result.rows[0] || null;
+  }
+
   // Get session by ID
   static async findById(id: string): Promise<Session | null> {
     const result = await pool.query<Session>(

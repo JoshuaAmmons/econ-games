@@ -11,6 +11,7 @@ import { ArrowLeft, Play, Square, Users, Copy, Check, SkipForward, Clock, BarCha
 import { GameInstructions } from '../components/shared/GameInstructions';
 import { moneyFormatter } from '../components/charts/chartUtils';
 import { AdminPasswordGate } from '../components/shared/AdminPasswordGate';
+import { duplicateSession, isPracticeSession } from '../components/shared/duplicateSession';
 import { QRCodeSVG } from 'qrcode.react';
 import { toPng } from 'html-to-image';
 import toast from 'react-hot-toast';
@@ -396,6 +397,12 @@ const SessionMonitorContent: React.FC = () => {
     }
   };
 
+  const handleDuplicate = async () => {
+    if (!session) return;
+    const copy = await duplicateSession(session);
+    if (copy) navigate(`/session/${copy.code}/monitor`);
+  };
+
   const handleStartRound = useCallback((roundNumber: number) => {
     if (!session) return;
     startRound(roundNumber);
@@ -527,6 +534,16 @@ const SessionMonitorContent: React.FC = () => {
               <Button variant="secondary" onClick={() => navigate(`/session/${code}/results`)}>
                 Results
               </Button>
+              {!isPracticeSession(session) && (
+                <Button
+                  variant="secondary"
+                  onClick={handleDuplicate}
+                  title="Create a new session with these settings (no players or results)"
+                >
+                  <Copy className="w-4 h-4 inline mr-2" />
+                  Duplicate
+                </Button>
+              )}
               {session.status === 'waiting' && (
                 <Button onClick={handleStart}>
                   <Play className="w-4 h-4 inline mr-2" />
@@ -761,7 +778,8 @@ const SessionMonitorContent: React.FC = () => {
 export const SessionMonitor: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   return (
-    <AdminPasswordGate sessionCode={code || ''}>
+    // key: a fresh monitor when the code changes (e.g. after Duplicate opens the copy)
+    <AdminPasswordGate key={code} sessionCode={code || ''}>
       <SessionMonitorContent />
     </AdminPasswordGate>
   );

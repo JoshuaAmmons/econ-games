@@ -119,4 +119,12 @@ export const sessionsApi = {
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   },
+
+  // Create a new session with the same settings as an existing one (fresh rounds; no players or results)
+  duplicate: async (id: string, adminPassword?: string): Promise<Session> => {
+    const headers: Record<string, string> = {};
+    if (adminPassword) headers['x-admin-password'] = adminPassword;
+    const response = await apiClient.post<ApiResponse<Session>>(`/sessions/${id}/duplicate`, {}, { headers });
+    return response.data.data!;
+  },
 };

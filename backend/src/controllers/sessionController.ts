@@ -128,6 +128,50 @@ export class SessionController {
     }
   }
 
+  // Duplicate a session: a new 'waiting' session with the same settings (game type, sizes, rounds,
+  // timing, bots, valuation/cost ranges, the whole game_config, passcode and admin password).
+  // Players, results and trades are not copied; fresh rounds are created as on create.
+  // Admin only (requireAdmin), so a password-protected session needs its password.
+  static async duplicate(req: Request, res: Response) {
+    try {
+      const original = await SessionModel.findById(req.params.id as string);
+      if (!original) {
+        res.status(404).json({ success: false, error: 'Session not found' } as ApiResponse);
+        return;
+      }
+      if ((original.game_config as any)?.practice) {
+        res.status(400).json({
+          success: false,
+          error: 'Practice sessions cannot be duplicated; start a new practice game instead',
+        } as ApiResponse);
+        return;
+      }
+
+      const session = await SessionModel.duplicate(original.id);
+      if (!session) {
+        res.status(404).json({ success: false, error: 'Session not found' } as ApiResponse);
+        return;
+      }
+      for (let i = 1; i <= session.num_rounds; i++) {
+        await RoundModel.create(session.id, i);
+      }
+
+      const { passcode: _pc, admin_password: _ap, ...safeSession } = session as any;
+      res.status(201).json({
+        success: true,
+        data: {
+          ...safeSession,
+          has_passcode: !!_pc,
+          has_admin_password: !!_ap,
+        },
+        message: `Session ${original.code} duplicated as ${session.code}`,
+      } as ApiResponse);
+    } catch (error) {
+      console.error('Error duplicating session:', error);
+      res.status(500).json({ success: false, error: 'Failed to duplicate session' } as ApiResponse);
+    }
+  }
+
   // Get session by ID
   static async getById(req: Request, res: Response) {
     try {
