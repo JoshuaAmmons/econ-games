@@ -3,6 +3,7 @@ import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
 import { Input } from '../../components/shared/Input';
 import type { GameUIProps } from '../GameUIRegistry';
+import { useUnpairedNotice, UnpairedNotice } from '../sequential/unpairedNotice';
 import { DollarSign, Users, Check, X, HelpCircle, Car } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -34,6 +35,8 @@ const MarketForLemonsUI: React.FC<GameUIProps> = ({
   const [sellerQuality, setSellerQuality] = useState<number | null>(null);
   const [partnerPrice, setPartnerPrice] = useState<number | null>(null);
   const [results, setResults] = useState<PairResult[] | null>(null);
+  // Why this player's pair has no result this round, if it has none (unpaired-results)
+  const unpairedNotice = useUnpairedNotice({ onEvent, playerId, roundId, roundActive });
 
   const gameConfig = session?.game_config || {};
   const sellerCostFraction = Number(gameConfig.sellerCostFraction ?? 0.5);
@@ -249,7 +252,9 @@ const MarketForLemonsUI: React.FC<GameUIProps> = ({
 
       <div>
         <Card title="Round Results">
-          {myPair ? (() => {
+          {unpairedNotice ? (
+            <UnpairedNotice message={unpairedNotice} />
+          ) : myPair ? (() => {
             const traded = myPair.secondMoveAction?.accept;
             // Quality is the seller's private information; the buyer learns it only by buying.
             // The seller's own quality is on this screen (the results do not carry it); a buyer who

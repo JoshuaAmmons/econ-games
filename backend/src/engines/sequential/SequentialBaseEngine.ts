@@ -571,7 +571,11 @@ export abstract class SequentialBaseEngine implements GameEngine {
         if (!partnerIsActive) {
           reason = 'partner_disconnected';
         } else if (!submitted) {
-          reason = 'did_not_submit';
+          // A second mover cannot act before the first move arrives: if the partner never made it,
+          // the partner is the one who did not act (until 19 Nov 2026 this said did_not_submit)
+          const partnerMoved = !isFirstMover && (await GameActionModel.findByRoundAndPlayer(roundId, partnerId))
+            .some(a => a.action_type === 'first_move');
+          reason = isFirstMover || partnerMoved ? 'did_not_submit' : 'partner_did_not_submit';
         } else {
           reason = isFirstMover ? 'partner_did_not_respond' : 'partner_did_not_submit';
         }
@@ -724,12 +728,20 @@ export abstract class SequentialBaseEngine implements GameEngine {
       }
     }
 
+    // A player whose pair did not finish (or who had no partner) has a $0 result marked unpaired once the
+    // round has ended; a page loaded after that shows the reason (the 'unpaired-results' event is gone)
+    const myResult = playerId ? results.find(r => r.player_id === playerId) : undefined;
+    const myUnpairedResult = myResult?.result_data?.unpaired
+      ? { reason: myResult.result_data.reason, role: myResult.result_data.role, submitted: !!myResult.result_data.submitted }
+      : null;
+
     return {
       myRole,
       myAction,
       partnerAction,
       partnerDisconnected,
       paired,
+      myUnpairedResult,
       firstMovesSubmitted: firstMoveActions.length,
       totalFirstMovers: firstMovers.length,
       secondMovesSubmitted: secondMoveActions.length,

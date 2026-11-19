@@ -3,6 +3,7 @@ import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
 import { Input } from '../../components/shared/Input';
 import type { GameUIProps } from '../GameUIRegistry';
+import { useUnpairedNotice, UnpairedNotice } from './unpairedNotice';
 import { DollarSign, Users, FileText, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -38,6 +39,8 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
   const [submitted, setSubmitted] = useState(false);
   const [partnerContract, setPartnerContract] = useState<{ fixedWage: number; bonus: number } | null>(null);
   const [results, setResults] = useState<PairResult[] | null>(null);
+  // Why this player's pair has no result this round, if it has none (unpaired-results)
+  const unpairedNotice = useUnpairedNotice({ onEvent, playerId, roundId, roundActive });
   // An agent's own effort choice this round (the results never carry it): from the choice made on this
   // screen, or from the game state after a reload. Shown only to that agent, on their own pair.
   const [myEffort, setMyEffort] = useState<boolean | null>(null);
@@ -291,7 +294,9 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
       {/* Right: Results */}
       <div>
         <Card title="Round Results">
-          {myPair ? (() => {
+          {unpairedNotice ? (
+            <UnpairedNotice message={unpairedNotice} />
+          ) : myPair ? (() => {
             const isHigh = myPair.firstMoverResultData?.isHighOutput;
             const myProfit = isPrincipal ? myPair.firstMoverProfit : myPair.secondMoverProfit;
             const profitClass = (v: number) => `font-bold ${v > 0 ? 'text-green-600' : v < 0 ? 'text-red-600' : 'text-gray-500'}`;

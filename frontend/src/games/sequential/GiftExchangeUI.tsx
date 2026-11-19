@@ -3,6 +3,7 @@ import { Card } from '../../components/shared/Card';
 import { Button } from '../../components/shared/Button';
 import { Input } from '../../components/shared/Input';
 import type { GameUIProps } from '../GameUIRegistry';
+import { useUnpairedNotice, UnpairedNotice } from './unpairedNotice';
 import { DollarSign, Users, Briefcase, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -37,6 +38,8 @@ const GiftExchangeUI: React.FC<GameUIProps> = ({
   const [submitted, setSubmitted] = useState(false);
   const [partnerWage, setPartnerWage] = useState<number | null>(null);
   const [results, setResults] = useState<PairResult[] | null>(null);
+  // Why this player's pair has no result this round, if it has none (unpaired-results)
+  const unpairedNotice = useUnpairedNotice({ onEvent, playerId, roundId, roundActive });
 
   const gameConfig = session?.game_config || {};
   const maxWage = Number(gameConfig.maxWage ?? 50);
@@ -257,6 +260,7 @@ const GiftExchangeUI: React.FC<GameUIProps> = ({
         <Card title="Round Results">
           {results ? (
             <div className="space-y-3">
+              {unpairedNotice && <UnpairedNotice message={unpairedNotice} />}
               {results.map((pair, i) => {
                 const isMyPair = pair.firstMoverId === playerId || pair.secondMoverId === playerId;
                 return (
@@ -285,6 +289,8 @@ const GiftExchangeUI: React.FC<GameUIProps> = ({
                 );
               })}
             </div>
+          ) : unpairedNotice ? (
+            <UnpairedNotice message={unpairedNotice} />
           ) : (
             <div className="text-center text-gray-400 py-8">
               <Briefcase className="w-12 h-12 mx-auto mb-3 opacity-30" />
