@@ -80,7 +80,7 @@ export const Practice: React.FC = () => {
                     <div className="text-xs opacity-70 mb-2">{g.description}</div>
                   )}
                   <div className="text-xs opacity-60">
-                    {g.marketSize} players (you + {g.marketSize - 1} bots) · {g.numRounds}{' '}
+                    {g.marketSize} players (you + {g.marketSize - 1} {g.marketSize - 1 === 1 ? 'bot' : 'bots'}) · {g.numRounds}{' '}
                     {g.numRounds === 1 ? 'round' : 'rounds'} · {g.timePerRound}s each
                   </div>
                 </button>
