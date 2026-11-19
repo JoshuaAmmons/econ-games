@@ -39,6 +39,9 @@ const MarketForLemonsUI: React.FC<GameUIProps> = ({
   const sellerCostFraction = Number(gameConfig.sellerCostFraction ?? 0.5);
   const buyerValueFraction = Number(gameConfig.buyerValueFraction ?? 1.5);
   const isSeller = player?.role === 'seller';
+  // Each student sees only their own pair: other pairs' profits would reveal those sellers' quality.
+  // The instructor's monitor, results and analytics keep every pair.
+  const myPair = results?.find(p => p.firstMoverId === playerId || p.secondMoverId === playerId) ?? null;
 
   useEffect(() => {
     if (roundActive && roundId) {
@@ -246,47 +249,41 @@ const MarketForLemonsUI: React.FC<GameUIProps> = ({
 
       <div>
         <Card title="Round Results">
-          {results ? (
-            <div className="space-y-3">
-              {results.map((pair, i) => {
-                const isMyPair = pair.firstMoverId === playerId || pair.secondMoverId === playerId;
-                const traded = pair.secondMoveAction?.accept;
-                // Quality is the seller's private information; the buyer learns it only by buying.
-                // The seller's own quality is on this screen (the results do not carry it); a buyer who
-                // bought finds it in their own result. Other pairs' quality is not shown.
-                const myQuality = !isMyPair ? null
-                  : isSeller ? sellerQuality
-                  : traded ? pair.secondMoverResultData?.quality ?? null
-                  : null;
-                return (
-                  <div key={i} className={`rounded-lg p-4 ${isMyPair ? 'bg-sky-50 border border-sky-200' : 'bg-gray-50'}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={`text-sm font-medium px-2 py-0.5 rounded ${traded ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {traded ? 'Traded' : 'No Trade'}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        Price: ${Number(pair.firstMoveAction?.price ?? 0).toFixed(2)}
-                      </span>
+          {myPair ? (() => {
+            const traded = myPair.secondMoveAction?.accept;
+            // Quality is the seller's private information; the buyer learns it only by buying.
+            // The seller's own quality is on this screen (the results do not carry it); a buyer who
+            // bought finds it in their own result.
+            const myQuality = isSeller ? sellerQuality
+              : traded ? myPair.secondMoverResultData?.quality ?? null
+              : null;
+            return (
+              <div className="rounded-lg p-4 bg-sky-50 border border-sky-200">
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-sm font-medium px-2 py-0.5 rounded ${traded ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {traded ? 'Traded' : 'No Trade'}
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    Price: ${Number(myPair.firstMoveAction?.price ?? 0).toFixed(2)}
+                  </span>
+                </div>
+                <div className="text-sm space-y-1">
+                  {myQuality != null ? (
+                    <div className="flex justify-between">
+                      <span>Quality: {myQuality}</span>
+                      <span>Value to {isSeller ? 'buyer' : 'you'}: ${(myQuality * buyerValueFraction).toFixed(2)}</span>
                     </div>
-                    <div className="text-sm space-y-1">
-                      {myQuality != null ? (
-                        <div className="flex justify-between">
-                          <span>Quality: {myQuality}</span>
-                          <span>Value to {isSeller ? 'buyer' : 'you'}: ${(myQuality * buyerValueFraction).toFixed(2)}</span>
-                        </div>
-                      ) : isMyPair && !isSeller ? (
-                        <div className="text-xs text-gray-500">Quality: not revealed (no purchase)</div>
-                      ) : null}
-                      <div className="flex justify-between text-xs">
-                        <span>Seller: ${Number(pair.firstMoverProfit).toFixed(2)}</span>
-                        <span>Buyer: ${Number(pair.secondMoverProfit).toFixed(2)}</span>
-                      </div>
-                    </div>
+                  ) : !isSeller ? (
+                    <div className="text-xs text-gray-500">Quality: not revealed (no purchase)</div>
+                  ) : null}
+                  <div className="flex justify-between text-xs">
+                    <span>Seller: ${Number(myPair.firstMoverProfit).toFixed(2)}</span>
+                    <span>Buyer: ${Number(myPair.secondMoverProfit).toFixed(2)}</span>
                   </div>
-                );
-              })}
-            </div>
-          ) : (
+                </div>
+              </div>
+            );
+          })() : (
             <div className="text-center text-gray-400 py-8">
               <Car className="w-12 h-12 mx-auto mb-3 opacity-30" />
               <p>Results will appear after all pairs complete</p>

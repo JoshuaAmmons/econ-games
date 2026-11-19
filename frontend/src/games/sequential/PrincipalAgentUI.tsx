@@ -51,6 +51,9 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
   const maxWage = Number(gameConfig.maxWage ?? 50);
   const maxBonus = Number(gameConfig.maxBonus ?? 50);
   const isPrincipal = player?.role === 'principal';
+  // Each student sees only their own pair: other pairs' agent profits (wage + bonus paid - effort cost)
+  // would reveal those agents' hidden effort. The instructor's monitor, results and analytics keep every pair.
+  const myPair = results?.find(p => p.firstMoverId === playerId || p.secondMoverId === playerId) ?? null;
 
   useEffect(() => {
     if (roundActive && roundId) {
@@ -172,7 +175,7 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
           {roundActive && roundId ? (
             isPrincipal ? (
               submitted ? (
-                results ? (
+                myPair ? (
                   <div className="text-center py-4">
                     <div className="text-green-600 font-medium">Results are in! See the panel on the right.</div>
                   </div>
@@ -216,9 +219,9 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
               submitted ? (
                 <div className="text-center py-4">
                   <div className="text-green-600 font-medium">
-                    {results ? 'Results are in! See the panel on the right.' : 'Effort Choice Submitted!'}
+                    {myPair ? 'Results are in! See the panel on the right.' : 'Effort Choice Submitted!'}
                   </div>
-                  {!results && <p className="text-sm text-gray-500 mt-1">Waiting for output to be revealed...</p>}
+                  {!myPair && <p className="text-sm text-gray-500 mt-1">Waiting for output to be revealed...</p>}
                 </div>
               ) : partnerContract ? (
                 <div className="space-y-4">
@@ -288,40 +291,36 @@ const PrincipalAgentUI: React.FC<GameUIProps> = ({
       {/* Right: Results */}
       <div>
         <Card title="Round Results">
-          {results ? (
-            <div className="space-y-3">
-              {results.map((pair, i) => {
-                const isMyPair = pair.firstMoverId === playerId || pair.secondMoverId === playerId;
-                const isHigh = pair.firstMoverResultData?.isHighOutput;
-                return (
-                  <div key={i} className={`rounded-lg p-4 ${isMyPair ? 'bg-sky-50 border border-sky-200' : 'bg-gray-50'}`}>
-                    <div className={`text-center mb-2 px-2 py-1 rounded text-sm font-medium ${isHigh ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      Output: {isHigh ? 'HIGH' : 'LOW'} (${pair.firstMoverResultData?.output ?? "?"})
-                    </div>
-                    <div className="text-sm space-y-2">
-                      <div className="flex justify-between">
-                        <span>{pair.firstMoverName || 'Principal'}</span>
-                        <span className={`font-bold ${Number(pair.firstMoverProfit) > 0 ? 'text-green-600' : Number(pair.firstMoverProfit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
-                          ${Number(pair.firstMoverProfit).toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>{pair.secondMoverName || 'Agent'}</span>
-                        <span className={`font-bold ${Number(pair.secondMoverProfit) > 0 ? 'text-green-600' : Number(pair.secondMoverProfit) < 0 ? 'text-red-600' : 'text-gray-500'}`}>
-                          ${Number(pair.secondMoverProfit).toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        Wage: ${pair.firstMoveAction?.fixedWage ?? "N/A"} | Bonus: ${pair.firstMoverResultData?.bonusPaid ?? "N/A"}
-                        {/* Effort is hidden: only the agent sees their own, on their own pair */}
-                        {isMyPair && !isPrincipal && myEffort !== null && <> | Your effort: {myEffort ? 'High' : 'Low'}</>}
-                      </div>
-                    </div>
+          {myPair ? (() => {
+            const isHigh = myPair.firstMoverResultData?.isHighOutput;
+            const myProfit = isPrincipal ? myPair.firstMoverProfit : myPair.secondMoverProfit;
+            const profitClass = (v: number) => `font-bold ${v > 0 ? 'text-green-600' : v < 0 ? 'text-red-600' : 'text-gray-500'}`;
+            return (
+              <div className="rounded-lg p-4 bg-sky-50 border border-sky-200">
+                <div className={`text-center mb-2 px-2 py-1 rounded text-sm font-medium ${isHigh ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  Output: {isHigh ? 'HIGH' : 'LOW'} (${myPair.firstMoverResultData?.output ?? "?"})
+                </div>
+                <div className="text-sm space-y-2">
+                  <div className="flex justify-between">
+                    <span>Your profit ({isPrincipal ? 'Principal' : 'Agent'})</span>
+                    <span className={profitClass(Number(myProfit))}>${Number(myProfit).toFixed(2)}</span>
                   </div>
-                );
-              })}
-            </div>
-          ) : (
+                  {/* The principal does not see the agent's profit: it would reveal the agent's effort */}
+                  {!isPrincipal && (
+                    <div className="flex justify-between">
+                      <span>Principal's profit</span>
+                      <span className={profitClass(Number(myPair.firstMoverProfit))}>${Number(myPair.firstMoverProfit).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="text-xs text-gray-500">
+                    Wage: ${myPair.firstMoveAction?.fixedWage ?? "N/A"} | Bonus paid: ${myPair.firstMoverResultData?.bonusPaid ?? "N/A"}
+                    {/* Effort is hidden: only the agent sees their own */}
+                    {!isPrincipal && myEffort !== null && <> | Your effort: {myEffort ? 'High' : 'Low'}</>}
+                  </div>
+                </div>
+              </div>
+            );
+          })() : (
             <div className="text-center text-gray-400 py-8">
               <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
               <p>Results will appear after all pairs complete</p>
