@@ -8,13 +8,33 @@ import { ChartCard } from '../../components/charts/ChartCard';
 import { CHART_COLORS, CHART_HEIGHT, CHART_MARGINS, formatDollar } from '../../components/charts/chartUtils';
 import type { AnalyticsProps } from '../AnalyticsRegistry';
 
+/**
+ * A result from a finished pair: the contract was offered, effort chosen and output drawn. Unfinished
+ * pairs (a partner who did not act, no partner, a partner who left) have $0 results with no contract,
+ * effort or output; counting them as wage 0, bonus 0, low effort and low output distorted every chart,
+ * so they are left out (19 Nov 2026).
+ */
+const isFinishedPairResult = (r: { resultData?: Record<string, any> }) =>
+  !!r.resultData && !r.resultData.unpaired && !r.resultData.partnerDisconnected
+  && typeof r.resultData.output === 'number';
+
 const PrincipalAgentAnalytics: React.FC<AnalyticsProps> = ({ data, completedRounds }) => {
   const gameConfig = data.session.gameConfig || {};
 
+  // Each round's results from finished pairs only
+  const finished = useMemo(
+    () => completedRounds.map(round => ({ ...round, results: (round.results || []).filter(isFinishedPairResult) })),
+    [completedRounds]
+  );
+  const unfinishedCount = useMemo(
+    () => completedRounds.reduce((n, round) => n + (round.results || []).filter(r => !isFinishedPairResult(r)).length, 0),
+    [completedRounds]
+  );
+
   // Contract design over rounds
   const contractData = useMemo(() => {
-    return completedRounds.map(round => {
-      const principals = (round.results || []).filter(r => r.resultData?.role === 'principal');
+    return finished.map(round => {
+      const principals = round.results.filter(r => r.resultData?.role === 'principal');
       const wages = principals.map(r => r.resultData?.fixedWage ?? 0);
       const bonuses = principals.map(r => r.resultData?.bonus ?? 0);
       const avg = (arr: number[]) => arr.length > 0 ? arr.reduce((s, v) => s + v, 0) / arr.length : 0;
@@ -24,12 +44,12 @@ const PrincipalAgentAnalytics: React.FC<AnalyticsProps> = ({ data, completedRoun
         avgBonus: parseFloat(avg(bonuses).toFixed(2)),
       };
     });
-  }, [completedRounds]);
+  }, [finished]);
 
   // Effort choice rate per round
   const effortData = useMemo(() => {
-    return completedRounds.map(round => {
-      const agents = (round.results || []).filter(r => r.resultData?.role === 'agent');
+    return finished.map(round => {
+      const agents = round.results.filter(r => r.resultData?.role === 'agent');
       const highEffort = agents.filter(r => r.resultData?.highEffort).length;
       return {
         round: round.roundNumber,
@@ -38,13 +58,13 @@ const PrincipalAgentAnalytics: React.FC<AnalyticsProps> = ({ data, completedRoun
         total: agents.length,
       };
     });
-  }, [completedRounds]);
+  }, [finished]);
 
   // Bonus vs effort scatter
   const bonusEffortScatter = useMemo(() => {
     const points: { bonus: number; highEffort: number; round: number }[] = [];
-    for (const round of completedRounds) {
-      for (const r of round.results || []) {
+    for (const round of finished) {
+      for (const r of round.results) {
         if (r.resultData?.role === 'agent') {
           points.push({
             bonus: r.resultData.bonus ?? 0,
@@ -55,14 +75,14 @@ const PrincipalAgentAnalytics: React.FC<AnalyticsProps> = ({ data, completedRoun
       }
     }
     return points;
-  }, [completedRounds]);
+  }, [finished]);
 
   // Output distribution pie
   const outputDist = useMemo(() => {
     let high = 0;
     let low = 0;
-    for (const round of completedRounds) {
-      for (const r of round.results || []) {
+    for (const round of finished) {
+      for (const r of round.results) {
         if (r.resultData?.role === 'principal') {
           if (r.resultData.isHighOutput) high++;
           else low++;
@@ -73,7 +93,7 @@ const PrincipalAgentAnalytics: React.FC<AnalyticsProps> = ({ data, completedRoun
       { name: 'High Output', value: high, fill: CHART_COLORS[2] },
       { name: 'Low Output', value: low, fill: CHART_COLORS[3] },
     ];
-  }, [completedRounds]);
+  }, [finished]);
 
   const theoreticalHighPct = useMemo(() => {
     // Expected: weighted average of highEffortProb and lowEffortProb based on actual effort choices
@@ -88,6 +108,10 @@ const PrincipalAgentAnalytics: React.FC<AnalyticsProps> = ({ data, completedRoun
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <p className="lg:col-span-2 text-sm text-gray-500">
+        These charts count finished pairs only. Results from pairs that did not finish (a partner did not act or left, or a
+        player had no partner) are left out{unfinishedCount > 0 ? `: ${unfinishedCount} player result${unfinishedCount === 1 ? '' : 's'} in this session` : ''}.
+      </p>
       {/* Contract design over rounds */}
       {contractData.length > 0 && (
         <ChartCard title="Contract Design Over Rounds" description="How principals adjust fixed wage and bonus offers">
