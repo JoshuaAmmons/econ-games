@@ -135,6 +135,8 @@ export abstract class SimultaneousBaseEngine implements GameEngine {
     // Check if all players have submitted
     if (expectedPlayers.every((p) => submittedIds.has(p.id))) {
       await this.resolveRound(roundId, sessionCode, io, session, activePlayers);
+      // A practice round then ends after a short pause rather than at Time per Round (socketHandler)
+      await (io as any).__onEveryoneActed?.(roundId, sessionCode);
     }
 
     return { success: true };

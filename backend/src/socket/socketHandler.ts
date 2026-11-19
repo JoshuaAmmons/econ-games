@@ -11,6 +11,11 @@ import { BotService } from '../services/BotService';
 // Delay between round end and auto-starting the next round (milliseconds)
 const AUTO_ADVANCE_DELAY_MS = 5000;
 
+// Practice mode (one student and bots): once everyone has acted and the results are showing, the round ends after
+// this pause instead of waiting out Time per Round (18 Nov 2026). With the auto-advance delay, the student has about
+// 13 seconds with the results before the next round. Class sessions keep the full time, as the instructor sets it.
+const PRACTICE_RESULTS_PAUSE_MS = 8000;
+
 export function setupSocketHandlers(httpServer: HTTPServer) {
   const allowedOrigins = [
     'http://localhost:5173',
@@ -147,61 +152,88 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
 
     console.log(`[AutoTimer] Scheduling round end in ${durationMs}ms for ${sessionCode} round ${roundId}`);
 
-    const timer = setTimeout(async () => {
-      roundEndTimers.delete(roundId);
-      roundEndsAt.delete(roundId);
+    roundEndTimers.set(roundId, setTimeout(() => endRoundOnTimer(roundId, sessionCode, gameType), durationMs));
+  }
 
-      // Guard against concurrent processing
-      if (endingRounds.has(roundId)) return;
-      endingRounds.add(roundId);
+  /** End a round when its server timer fires (Time per Round, or a practice round's results pause). */
+  async function endRoundOnTimer(roundId: string, sessionCode: string, gameType: string): Promise<void> {
+    roundEndTimers.delete(roundId);
+    roundEndsAt.delete(roundId);
 
-      try {
-        const round = await RoundModel.findById(roundId);
-        if (!round || round.status === 'completed') {
-          console.log(`[AutoTimer] Round ${roundId} already ended, skipping`);
-          return;
-        }
+    // Guard against concurrent processing
+    if (endingRounds.has(roundId)) return;
+    endingRounds.add(roundId);
 
-        console.log(`[AutoTimer] Auto-ending round for ${sessionCode}`);
-
-        // Clean up bot timers before ending the round
-        BotService.getInstance().onRoundEnd(roundId);
-
-        const engine = GameRegistry.get(gameType);
-        const endedRound = await RoundModel.end(roundId);
-        if (!endedRound) return;
-
-        const roundResult = await engine.processRoundEnd(roundId, sessionCode, io);
-
-        const rawTrades = await TradeModel.findByRound(roundId);
-        const trades = rawTrades.map(t => ({
-          ...t,
-          price: Number(t.price),
-          buyer_profit: Number(t.buyer_profit),
-          seller_profit: Number(t.seller_profit),
-        }));
-
-        io.to(`session-${sessionCode}`).emit('round-ended', {
-          roundId,
-          trades,
-          results: roundResult,
-        });
-        io.to(`market-${sessionCode}`).emit('round-ended', {
-          roundId,
-          trades,
-          results: roundResult,
-        });
-
-        // Schedule auto-advance to next round
-        scheduleAutoAdvance(sessionCode);
-      } catch (err) {
-        console.error(`[AutoTimer] Error auto-ending round:`, err);
-      } finally {
-        endingRounds.delete(roundId);
+    try {
+      const round = await RoundModel.findById(roundId);
+      if (!round || round.status === 'completed') {
+        console.log(`[AutoTimer] Round ${roundId} already ended, skipping`);
+        return;
       }
-    }, durationMs);
 
-    roundEndTimers.set(roundId, timer);
+      console.log(`[AutoTimer] Auto-ending round for ${sessionCode}`);
+
+      // Clean up bot timers before ending the round
+      BotService.getInstance().onRoundEnd(roundId);
+
+      const engine = GameRegistry.get(gameType);
+      const endedRound = await RoundModel.end(roundId);
+      if (!endedRound) return;
+
+      const roundResult = await engine.processRoundEnd(roundId, sessionCode, io);
+
+      const rawTrades = await TradeModel.findByRound(roundId);
+      const trades = rawTrades.map(t => ({
+        ...t,
+        price: Number(t.price),
+        buyer_profit: Number(t.buyer_profit),
+        seller_profit: Number(t.seller_profit),
+      }));
+
+      io.to(`session-${sessionCode}`).emit('round-ended', {
+        roundId,
+        trades,
+        results: roundResult,
+      });
+      io.to(`market-${sessionCode}`).emit('round-ended', {
+        roundId,
+        trades,
+        results: roundResult,
+      });
+
+      // Schedule auto-advance to next round
+      scheduleAutoAdvance(sessionCode);
+    } catch (err) {
+      console.error(`[AutoTimer] Error auto-ending round:`, err);
+    } finally {
+      endingRounds.delete(roundId);
+    }
+  }
+
+  /**
+   * Called by the simultaneous and paired (sequential) engines when every player has acted and the round's results
+   * are out. In a practice session the round's end timer is brought forward to a short pause, so the student is not
+   * left waiting out Time per Round; the round then ends exactly as it would on time. Class sessions are untouched.
+   */
+  async function onEveryoneActed(roundId: string, sessionCode: string): Promise<void> {
+    try {
+      const session = await SessionModel.findByCode(sessionCode);
+      if (!session || !(session.game_config as any)?.practice) return;
+      const existing = roundEndTimers.get(roundId);
+      if (!existing) return; // no server timer (ended already, or a game that ends its own rounds)
+      const endsAt = roundEndsAt.get(roundId);
+      if (endsAt != null && endsAt - Date.now() <= PRACTICE_RESULTS_PAUSE_MS) return; // ends soon anyway
+      clearTimeout(existing);
+      roundEndsAt.set(roundId, Date.now() + PRACTICE_RESULTS_PAUSE_MS);
+      io.to(`session-${sessionCode}`).emit('round-timer', roundTimerPayload(roundId));
+      roundEndTimers.set(
+        roundId,
+        setTimeout(() => endRoundOnTimer(roundId, sessionCode, session.game_type), PRACTICE_RESULTS_PAUSE_MS)
+      );
+      console.log(`[Practice] Everyone has acted in ${sessionCode}; round ends in ${PRACTICE_RESULTS_PAUSE_MS}ms`);
+    } catch (err) {
+      console.error('[Practice] Error bringing the round end forward:', err);
+    }
   }
 
   // =========================================================================
@@ -312,6 +344,9 @@ export function setupSocketHandlers(httpServer: HTTPServer) {
 
   // Expose scheduleAutoAdvance so engines (like DiscoveryProcess) can trigger it
   (io as any).__scheduleAutoAdvance = scheduleAutoAdvance;
+
+  // Engines report a round in which everyone has acted (practice rounds then end after a short pause)
+  (io as any).__onEveryoneActed = onEveryoneActed;
 
   io.on('connection', (socket: Socket) => {
     console.log('Client connected:', socket.id);

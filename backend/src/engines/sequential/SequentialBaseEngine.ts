@@ -354,6 +354,8 @@ export abstract class SequentialBaseEngine implements GameEngine {
     if (activePairCount > 0 && firstMoveActions.length >= activePairCount && secondMoveActions.length >= activePairCount) {
       // All active pairs complete — calculate results
       await this.resolveRound(roundId, sessionCode, io, session);
+      // A practice round then ends after a short pause rather than at Time per Round (socketHandler)
+      await (io as any).__onEveryoneActed?.(roundId, sessionCode);
     }
   }
 
