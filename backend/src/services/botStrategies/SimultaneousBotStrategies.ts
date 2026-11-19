@@ -52,12 +52,29 @@ export const beautyContestStrategy: BotStrategy = {
 };
 
 // ─── Public Goods ──────────────────────────────────────────────────────────
+/**
+ * Conditional cooperators (Fischbacher, Gächter & Fehr 2001; Fischbacher & Gächter 2010), as the
+ * textbook's Chapter 6 lab describes them: "contributions start at 40-60% of endowment and decay
+ * toward zero across rounds ... contributing 40-60% depending on observed group behavior".
+ * Round 1: a random 40-60% of the endowment. Later rounds: a bit less than the average the OTHER
+ * players (human and bots alike) gave last round, i.e. that average times a random 0.75-0.95, plus
+ * noise of ±5% of the endowment, in whole tokens. Because each bot gives less than it sees, giving
+ * decays toward zero when the human free-rides and holds up (about 12-13 of 20) when the human gives
+ * everything. A bot that sees no other decision last round repeats the round-1 rule.
+ */
 export const publicGoodsStrategy: BotStrategy = {
-  getSimultaneousAction(_player, config) {
+  getSimultaneousAction(player, config, roundNumber, history) {
     const endowment = config.endowment || 20;
-    // Contribute 40–60% of endowment
-    const fraction = rand(0.4, 0.6);
-    return { contribution: r2(clamp(fraction * endowment, 0, endowment)) };
+    const last = roundNumber > 1 && history?.length ? history[history.length - 1] : null;
+    const others = (last?.decisions || []).filter(
+      (d) => d.playerId !== player.id && typeof d.action?.contribution === 'number'
+    );
+    if (others.length === 0) {
+      return { contribution: Math.round(clamp(rand(0.4, 0.6) * endowment, 0, endowment)) };
+    }
+    const othersAvg = others.reduce((sum, d) => sum + Number(d.action.contribution), 0) / others.length;
+    const target = othersAvg * rand(0.75, 0.95) + rand(-0.05, 0.05) * endowment;
+    return { contribution: Math.round(clamp(target, 0, endowment)) };
   },
 };
 
